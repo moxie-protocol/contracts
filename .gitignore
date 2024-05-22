@@ -5,9 +5,46 @@
 !.yarn/sdks
 !.yarn/versions
 
+# Logs
+yarn-debug.log*
+yarn-error.log*
+
+# Dependency directories
+node_modules/
+
+# Yarn
+.yarn/
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+
 # Swap the comments on the following lines if you wish to use zero-installs
 # In that case, don't forget to run `yarn config set enableGlobalCache false`!
 # Documentation here: https://yarnpkg.com/features/caching#zero-installs
 
 #!.yarn/cache
 .pnp.*
+
+# Hardhat artifacts
+artifacts/
+cache/
+cached/
+
+# Build artifacts
+dist/
+build/
+deployments/hardhat/
+
+# Ignore solc bin output
+bin/
+
+# Others
+.env
+.DS_Store
+.vscode
+
+# Coverage and other reports
+reports/
+coverage.json
