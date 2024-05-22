@@ -3,5 +3,11 @@
   "packageManager": "yarn@4.2.2",
   "workspaces": [
     "packages/*"
-  ]
+  ],
+  "scripts": {
+    "clean": "yarn workspaces foreach --all --parallel --verbose run clean",
+    "compile": "yarn workspaces foreach --all --verbose run compile",
+    "check": "yarn workspaces foreach --all --parallel --verbose run check",
+    "test": "yarn workspaces foreach --all --parallel --verbose --interlaced run test"
+  }
 }
