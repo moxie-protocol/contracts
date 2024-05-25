@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.24;
 
-interface ISubjectFactory {
-    event SubjectCreated(address subject, address tokenAddress, uint256 initialSupply);
+interface ISubjectTokenFactory {
+    event SubjectTokenCreated(address subject, address tokenAddress, uint256 initialSupply);
 
     function create(
         string memory name,
