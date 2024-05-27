@@ -34,6 +34,7 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "check": "hardhat check",
-    "clean": "rm -rf artifacts/ cache/"
+    "clean": "rm -rf artifacts/ cache/",
+    "coverage": "hardhat coverage"
   }
 }

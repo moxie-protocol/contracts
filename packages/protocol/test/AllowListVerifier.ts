@@ -119,8 +119,83 @@ describe("AllowListVerifier", function () {
     });
   });
 
-  describe("isAllowed", function () {
+  describe("onlyMoxiePassHolder", function () {
+    async function deployMockAllowListVerifierFixture() {
+      // Contracts are deployed using the first signer/account by default
+      const [deployer, owner, signer1, signer2] = await hre.ethers.getSigners();
+
+      const MoxiePassVerifier = await hre.ethers.getContractFactory(
+        "MockMoxiePassVerifier",
+      );
+      const MockERC721 = await hre.ethers.getContractFactory("MockERC721");
+      const mockErc721 = await MockERC721.deploy("MockERC721", "M721");
+      const moxiePassVerifier = await MoxiePassVerifier.deploy(owner.address);
+
+      return {
+        deployer,
+        owner,
+        mockErc721,
+        moxiePassVerifier,
+        signer1,
+        signer2,
+      };
+    }
+
     it("Should return true if the ERC721 token address is not set", async function () {
+      const { owner, moxiePassVerifier } = await loadFixture(
+        deployMockAllowListVerifierFixture,
+      );
+
+      await moxiePassVerifier
+        .connect(owner)
+        .setErc721ContractAddress(ZeroAddress);
+
+      expect(await moxiePassVerifier.testModifier()).to.be.true;
+    });
+
+    it("Should throw error if the ERC721 token is valid but the wallet address does not hold token", async function () {
+      const { owner, moxiePassVerifier, mockErc721, signer2 } =
+        await loadFixture(deployMockAllowListVerifierFixture);
+      // Set the new ERC721 contract address
+      await moxiePassVerifier
+        .connect(owner)
+        .setErc721ContractAddress(await mockErc721.getAddress());
+
+      await expect(
+        moxiePassVerifier.connect(signer2).testModifier(),
+      ).to.be.revertedWithCustomError(moxiePassVerifier, "NotaMoxiePassHolder");
+    });
+
+    it("Should throw error if the wallet address does not owns ERC721 token", async function () {
+      const { owner, moxiePassVerifier, mockErc721 } = await loadFixture(
+        deployMockAllowListVerifierFixture,
+      );
+      // Set the new ERC721 contract address
+      await moxiePassVerifier
+        .connect(owner)
+        .setErc721ContractAddress(await mockErc721.getAddress());
+
+      expect(
+        await moxiePassVerifier.testModifier(),
+      ).to.be.revertedWithCustomError(moxiePassVerifier, "NotaMoxiePassHolder");
+    });
+
+    it("Should not throw error if the wallet address owns ERC721 token", async function () {
+      const { owner, moxiePassVerifier, mockErc721, signer1 } =
+        await loadFixture(deployMockAllowListVerifierFixture);
+      // Set the new ERC721 contract address
+      await moxiePassVerifier
+        .connect(owner)
+        .setErc721ContractAddress(await mockErc721.getAddress());
+
+      await mockErc721.connect(owner).mint(signer1.address, 2);
+
+      expect(await moxiePassVerifier.testModifier()).to.be.true;
+    });
+  });
+
+  describe("isAllowed", function () {
+    it("Should return magic value if the ERC721 token address is not set", async function () {
       const { moxiePassVerifier, signer1 } = await loadFixture(
         deployAllowListVerifierFixture,
       );
@@ -130,7 +205,7 @@ describe("AllowListVerifier", function () {
       ).to.equal(MAGIC_VALUE);
     });
 
-    it("Should return false if the wallet address does not owns ERC721 token", async function () {
+    it("Should return zero bytes if the wallet address does not owns ERC721 token", async function () {
       const { owner, moxiePassVerifier, mockErc721, signer1 } =
         await loadFixture(deployAllowListVerifierFixture);
       // Set the new ERC721 contract address
@@ -143,7 +218,33 @@ describe("AllowListVerifier", function () {
       ).to.equal("0x00000000");
     });
 
-    it("Should return true if the wallet address owns ERC721 token", async function () {
+    it("Should return zero bytes if the wallet address is zero", async function () {
+      const { owner, moxiePassVerifier, mockErc721, signer1 } =
+        await loadFixture(deployAllowListVerifierFixture);
+      // Set the new ERC721 contract address
+      await moxiePassVerifier
+        .connect(owner)
+        .setErc721ContractAddress(await mockErc721.getAddress());
+
+      expect(
+        await moxiePassVerifier.isAllowed(ZeroAddress, 1, randomBytes(32)),
+      ).to.equal("0x00000000");
+    });
+
+    it("Should return zero bytes if the auction id is 0", async function () {
+      const { owner, moxiePassVerifier, mockErc721, signer1 } =
+        await loadFixture(deployAllowListVerifierFixture);
+      // Set the new ERC721 contract address
+      await moxiePassVerifier
+        .connect(owner)
+        .setErc721ContractAddress(await mockErc721.getAddress());
+
+      expect(
+        await moxiePassVerifier.isAllowed(signer1.address, 0, randomBytes(32)),
+      ).to.equal("0x00000000");
+    });
+
+    it("Should return magic value if the wallet address owns ERC721 token", async function () {
       const { owner, moxiePassVerifier, mockErc721, signer1 } =
         await loadFixture(deployAllowListVerifierFixture);
       // Set the new ERC721 contract address

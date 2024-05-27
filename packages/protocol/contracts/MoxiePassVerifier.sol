@@ -18,11 +18,6 @@ contract MoxiePassVerifier is Ownable, IAllowListVerifier {
     IERC721 public erc721ContractAddress;
 
     /**
-     * @dev The operation failed because the address is zero
-     */
-    error InvalidSenderAddress();
-
-    /**
      * @dev The operation failed because the address does not hold the moxie pass
      */
     error NotaMoxiePassHolder();
@@ -94,7 +89,7 @@ contract MoxiePassVerifier is Ownable, IAllowListVerifier {
         }
 
         // Check if the user is the owner of the NFT
-        if (erc721ContractAddress.balanceOf(user) != 0) {
+        if (erc721ContractAddress.balanceOf(user) > 0) {
             return AllowListVerifierHelper.MAGICVALUE;
         }
 
