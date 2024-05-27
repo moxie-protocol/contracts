@@ -6,7 +6,6 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "./MoxieTokenLock.sol";
 import "./IMoxieTokenLockManager.sol";
 
@@ -182,7 +181,7 @@ contract MoxieTokenLockWallet is MoxieTokenLock {
         if (revocable == Revocability.Enabled) {
             // Track contract balance change
             uint256 newBalance = currentBalance();
-            if (newBalance < oldBalance) {
+            if (newBalance < oldBalance) { 
                 // Outflow
                 uint256 diff = oldBalance.sub(newBalance);
                 usedAmount = usedAmount.add(diff);

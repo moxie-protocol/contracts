@@ -3,15 +3,16 @@
 pragma solidity ^0.7.3;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-
 import "./MinimalProxyFactory.sol";
 import "./IMoxieTokenLockManager.sol";
 import { MoxieTokenLockWallet } from "./MoxieTokenLockWallet.sol";
+import "./IERC721Mintable.sol";
 
 /**
  * @title MoxieTokenLockManager
@@ -36,6 +37,7 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
 
     address public masterCopy;
     IERC20 internal _token;
+    IERC721Mintable internal _moxiePassToken;
 
     // -- Events --
 
@@ -59,6 +61,7 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
 
     event FunctionCallAuth(address indexed caller, bytes4 indexed sigHash, address indexed target, string signature);
     event TokenDestinationAllowed(address indexed dst, bool allowed);
+    event MoxiePassTokenUpdated(address indexed moxiePassToken);
 
     /**
      * Constructor.
@@ -127,6 +130,10 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
         // Send managed amount to the created contract
         _token.safeTransfer(contractAddress, _managedAmount);
 
+        // mint MoxiePassToken to the newly created token lock wallet contract
+        // this will ensure that token lock wallet is whitelisted and can interact with in Moxie protocol contracts.
+        _moxiePassToken.mint(contractAddress) ;
+
         emit TokenLockCreated(
             contractAddress,
             keccak256(initializer),
@@ -140,12 +147,13 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
             _vestingCliffTime,
             _revocable
         );
+        
     }
 
     // -- Funds Management --
 
     /**
-     * @notice Gets the GRT token address
+     * @notice Gets the MOXIE token address
      * @return Token used for transfers and approvals
      */
     function token() external view override returns (IERC20) {
@@ -315,5 +323,17 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
             sigHash := mload(add(_signature, 32))
         }
         return sigHash;
+    }
+
+    // -- Moxie pass  --
+
+     /**
+     * @notice Sets the MoxiePassToken contract address to mint on every token lock creation
+     * @param moxiePassToken_ Address of the MoxiePassToken contract
+     */
+    function setMoxiePassToken(address moxiePassToken_) public onlyOwner{
+        require(moxiePassToken_ != address(0), "MoxiePassToken cannot be zero");
+        _moxiePassToken = IERC721Mintable(moxiePassToken_);
+        emit MoxiePassTokenUpdated(moxiePassToken_);
     }
 }

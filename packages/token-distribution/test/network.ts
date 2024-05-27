@@ -12,8 +12,8 @@ const { hexlify, parseUnits, formatUnits, randomBytes } = utils
 // Utils
 
 export const toBN = (value: string | number): BigNumber => BigNumber.from(value)
-export const toGRT = (value: string): BigNumber => parseUnits(value, '18')
-export const formatGRT = (value: BigNumber): string => formatUnits(value, '18')
+export const toMOXIE = (value: string): BigNumber => parseUnits(value, '18')
+export const formatMOXIE = (value: BigNumber): string => formatUnits(value, '18')
 export const randomHexBytes = (n = 32): string => hexlify(randomBytes(n))
 
 // Contracts
