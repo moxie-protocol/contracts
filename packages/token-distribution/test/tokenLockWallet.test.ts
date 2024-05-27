@@ -12,9 +12,10 @@ import { StakingMock } from '../build/typechain/contracts/StakingMock'
 
 import { Staking__factory } from '@graphprotocol/contracts/dist/types/factories/Staking__factory'
 
-import { Account, advanceBlocks, advanceTimeAndBlock, getAccounts, getContract, randomHexBytes, toGRT } from './network'
+import { Account, advanceBlocks, advanceTimeAndBlock, formatMOXIE, getAccounts, getContract, randomHexBytes, toMOXIE } from './network'
 import { defaultInitArgs, Revocability, TokenLockParameters } from './config'
 import { DeployOptions } from 'hardhat-deploy/types'
+import { string } from 'hardhat/internal/core/params/argumentTypes'
 
 const { AddressZero, MaxUint256 } = constants
 
@@ -42,7 +43,7 @@ const setupTest = deployments.createFixture(async ({ deployments }) => {
   // Deploy token
   await deploy('MoxieTokenMock', {
     from: deployer.address,
-    args: [toGRT('1000000000'), deployer.address],
+    args: [toMOXIE('1000000000'), deployer.address],
   })
   const grt = await getContract('MoxieTokenMock')
 
@@ -64,7 +65,8 @@ const setupTest = deployments.createFixture(async ({ deployments }) => {
   const staking = await getContract('StakingMock')
 
   // Fund the manager contract
-  await grt.connect(deployer.signer).transfer(tokenLockManager.address, toGRT('100000000'))
+  await grt.connect(deployer.signer).transfer(tokenLockManager.address, toMOXIE('100000000'))
+
 
   return {
     grt: grt as MoxieTokenMock,
@@ -80,6 +82,22 @@ async function authProtocolFunctions(tokenLockManager: MoxieTokenLockManager, st
   await tokenLockManager.setAuthFunctionCall('withdraw()', stakingAddress)
 }
 
+// Helper function to add a token destination and verify the process
+const addAndVerifyTokenDestination = async (tokenLockManager: MoxieTokenLockManager, address: string) => {
+  expect(await tokenLockManager.isTokenDestination(address)).to.equal(false);
+  const tx = tokenLockManager.addTokenDestination(address);
+  await expect(tx).to.emit(tokenLockManager, 'TokenDestinationAllowed').withArgs(address, true);
+  expect(await tokenLockManager.isTokenDestination(address)).to.equal(true);
+};
+
+const removeAndVerifyTokenDestination = async (tokenLockManager: MoxieTokenLockManager, address: string) => {
+  expect(await tokenLockManager.isTokenDestination(address)).to.equal(true);
+  const tx = tokenLockManager.removeTokenDestination(address);
+  await expect(tx).to.emit(tokenLockManager, 'TokenDestinationAllowed').withArgs(address, false);
+  expect(await tokenLockManager.isTokenDestination(address)).to.equal(false);
+};
+
+
 // -- Tests --
 
 describe('MoxieTokenLockWallet', () => {
@@ -87,7 +105,7 @@ describe('MoxieTokenLockWallet', () => {
   let beneficiary: Account
   let hacker: Account
 
-  let grt: MoxieTokenMock
+  let moxie: MoxieTokenMock
   let tokenLock: MoxieTokenLockWallet
   let tokenLockManager: MoxieTokenLockManager
   let staking: StakingMock
@@ -116,26 +134,19 @@ describe('MoxieTokenLockWallet', () => {
   })
 
   beforeEach(async () => {
-    ({ grt, tokenLockManager, staking } = await setupTest())
+    ({ grt: moxie, tokenLockManager, staking } = await setupTest())
 
     // Setup authorized functions in Manager
     await authProtocolFunctions(tokenLockManager, staking.address)
 
-    initArgs = defaultInitArgs(deployer, beneficiary, grt, toGRT('35000000'))
+    initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('35000000'))
     tokenLock = await initWithArgs(initArgs)
   })
 
   describe('Init', function () {
     it('should bubble up revert reasons on create', async function () {
-      initArgs = defaultInitArgs(deployer, beneficiary, grt, toGRT('35000000'))
+      initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('35000000'))
       const tx = initWithArgs({ ...initArgs, endTime: 0 })
-      await expect(tx).revertedWith('Start time > end time')
-    })
-  })
-
-  describe('TokenLockWallet get functions', function () {
-    it('is contract isInitialized', async function () {
-      let isInitialized = tokenLock.isInitialized()
       await expect(tx).revertedWith('Start time > end time')
     })
   })
@@ -162,28 +173,118 @@ describe('MoxieTokenLockWallet', () => {
       await expect(tx).revertedWith('MasterCopy cannot be zero')
     })
 
+    // token destinations
     it('should add a token destination', async function () {
-      const address = Wallet.createRandom().address
+      const address = Wallet.createRandom().address;
+      await addAndVerifyTokenDestination(tokenLockManager, address);
+    });
 
-      expect(await tokenLockManager.isTokenDestination(address)).eq(false)
-      const tx = tokenLockManager.addTokenDestination(address)
-      await expect(tx).emit(tokenLockManager, 'TokenDestinationAllowed').withArgs(address, true)
-      expect(await tokenLockManager.isTokenDestination(address)).eq(true)
-    })
+    it('revert if token destination is already added', async function () {
+      const address = Wallet.createRandom().address;
+      await addAndVerifyTokenDestination(tokenLockManager, address);
+      const duplicatedTx = tokenLockManager.addTokenDestination(address);
+      await expect(duplicatedTx).to.be.revertedWith('Destination already added');
+    });
 
     it('revert add a token destination with zero address', async function () {
       const tx = tokenLockManager.addTokenDestination(AddressZero)
       await expect(tx).revertedWith('Destination cannot be zero')
     })
+
+    it('should remove a token destination', async function () {
+      const address = Wallet.createRandom().address;
+      await addAndVerifyTokenDestination(tokenLockManager, address);
+      await removeAndVerifyTokenDestination(tokenLockManager, address);
+    })
+    it('revert if token destination is already removed', async function () {
+      const address = Wallet.createRandom().address;
+      await addAndVerifyTokenDestination(tokenLockManager, address);
+      await removeAndVerifyTokenDestination(tokenLockManager, address)
+      const duplicatedTx = tokenLockManager.removeTokenDestination(address);
+      await expect(duplicatedTx).revertedWith('Destination already removed')
+    });
+    it('should return the configured token destinations correctly', async function () {
+      const address = Wallet.createRandom().address;
+      await addAndVerifyTokenDestination(tokenLockManager, address);
+      const destinations = await tokenLockManager.getTokenDestinations();
+      expect(destinations).to.include(address);
+    })
+    // function call auth
+    it('should set an authorized function call', async function () {
+      const tx = tokenLockManager.setAuthFunctionCall('stake(uint256)', staking.address)
+      await expect(tx).emit(tokenLockManager, 'FunctionCallAuth').withArgs(deployer.address, '0xa694fc3a', staking.address, 'stake(uint256)')
+      const address = await tokenLockManager.getAuthFunctionCallTarget('0xa694fc3a')
+      expect(address).to.equal(staking.address)
+      const authCallresponse = await tokenLockManager.isAuthFunctionCall('0xa694fc3a')
+      expect(authCallresponse).to.equal(true)
+    })
+    it('revert if token lock manager address is used as protocal address', async function () {
+      const tx = tokenLockManager.setAuthFunctionCall('stake(uint256)', tokenLockManager.address)
+      await expect(tx).revertedWith('Target must be other contract')
+    })
+    it('revert if protocal address is not a contract', async function () {
+      const randomAddress = Wallet.createRandom().address;
+      const tx = tokenLockManager.setAuthFunctionCall('stake(uint256)', randomAddress)
+      await expect(tx).revertedWith('Target must be a contract')
+    })
+    it('should unset an authorized function call', async function () {
+      const tx = tokenLockManager.setAuthFunctionCall('stake(uint256)', staking.address)
+      await expect(tx).emit(tokenLockManager, 'FunctionCallAuth').withArgs(deployer.address, '0xa694fc3a', staking.address, 'stake(uint256)')
+      const tx2 = tokenLockManager.unsetAuthFunctionCall('stake(uint256)')
+      await expect(tx2).emit(tokenLockManager, 'FunctionCallAuth').withArgs(deployer.address, '0xa694fc3a', AddressZero, 'stake(uint256)')
+      const address = await tokenLockManager.getAuthFunctionCallTarget('0xa694fc3a')
+      expect(address).to.equal(AddressZero)
+      const authCallresponse = await tokenLockManager.isAuthFunctionCall('0xa694fc3a')
+      expect(authCallresponse).to.equal(false)
+    })
+    it('should set multiple authorized function calls using setAuthFunctionCallMany', async function () {
+      const tx = tokenLockManager.setAuthFunctionCallMany(['stake(uint256)', 'unstake(uint256)'], [staking.address, staking.address])
+      await expect(tx).emit(tokenLockManager, 'FunctionCallAuth').withArgs(deployer.address, '0xa694fc3a', staking.address, 'stake(uint256)')
+      await expect(tx).emit(tokenLockManager, 'FunctionCallAuth').withArgs(deployer.address, '0x2e17de78', staking.address, 'unstake(uint256)')
+    })
+    it('revert if array lengths are not matching using setAuthFunctionCallMany', async function () {
+      const tx = tokenLockManager.setAuthFunctionCallMany(['stake(uint256)', 'unstake(uint256)'], [staking.address])
+      await expect(tx).revertedWith('Array length mismatch')
+    })
+
+    // deposit
+    it('should deposit tokens into the token lock manager', async function () {
+      const amount = toMOXIE('1000000')
+      const oldBalance = await moxie.balanceOf(tokenLockManager.address)
+      // approve Fund the manager contract to 
+      await moxie.connect(deployer.signer).approve(tokenLockManager.address, toMOXIE('100000000'))
+      const tx = tokenLockManager.deposit(amount)
+      await expect(tx).emit(tokenLockManager, 'TokensDeposited').withArgs(deployer.address, amount)
+      expect(await moxie.balanceOf(tokenLockManager.address)).to.equal(oldBalance.add(amount))
+    })
+    it('revert if deposit amount is zero', async function () {
+      const tx = tokenLockManager.deposit(0)
+      await expect(tx).revertedWith('Amount cannot be zero')
+    })
+
+    // withdraw
+    it('should withdraw tokens from the token lock manager', async function () {
+      const amount = toMOXIE('1000000')
+      const oldBalance = await moxie.balanceOf(tokenLockManager.address)
+      // approve Fund the manager contract to 
+      await moxie.connect(deployer.signer).approve(tokenLockManager.address, toMOXIE('100000000'))
+      const tx = tokenLockManager.withdraw(amount)
+      await expect(tx).emit(tokenLockManager, 'TokensWithdrawn').withArgs(deployer.address, amount)
+      expect(await moxie.balanceOf(tokenLockManager.address)).to.equal(oldBalance.sub(amount))
+    })
+    it('revert if withdraw amount is zero', async function () {
+      const tx = tokenLockManager.withdraw(0)
+      await expect(tx).revertedWith('Amount cannot be zero')
+    })
   })
 
   describe('Admin wallet', function () {
     it('should set manager', async function () {
-      // Note: we use GRT contract here just to provide a different contract
+      // Note: we use MOXIE contract here just to provide a different contract
       const oldManager = await tokenLock.manager()
-      const tx = tokenLock.connect(deployer.signer).setManager(grt.address)
-      await expect(tx).emit(tokenLock, 'ManagerUpdated').withArgs(oldManager, grt.address)
-      expect(await tokenLock.manager()).eq(grt.address)
+      const tx = tokenLock.connect(deployer.signer).setManager(moxie.address)
+      await expect(tx).emit(tokenLock, 'ManagerUpdated').withArgs(oldManager, moxie.address)
+      expect(await tokenLock.manager()).eq(moxie.address)
     })
 
     it('reject set manager to a non-contract', async function () {
@@ -205,12 +306,12 @@ describe('MoxieTokenLockWallet', () => {
 
     it('should approve protocol contracts', async function () {
       const tx = tokenLock.connect(beneficiary.signer).approveProtocol()
-      await expect(tx).emit(grt, 'Approval').withArgs(tokenLock.address, staking.address, MaxUint256)
+      await expect(tx).emit(moxie, 'Approval').withArgs(tokenLock.address, staking.address, MaxUint256)
     })
 
     it('should revoke protocol contracts', async function () {
       const tx = tokenLock.connect(beneficiary.signer).revokeProtocol()
-      await expect(tx).emit(grt, 'Approval').withArgs(tokenLock.address, staking.address, 0)
+      await expect(tx).emit(moxie, 'Approval').withArgs(tokenLock.address, staking.address, 0)
     })
 
     it('reject approve and revoke if not the beneficiary', async function () {
@@ -238,27 +339,27 @@ describe('MoxieTokenLockWallet', () => {
 
     it('should call an authorized function (stake)', async function () {
       // Before state
-      const beforeLockBalance = await grt.balanceOf(lockAsStaking.address)
+      const beforeLockBalance = await moxie.balanceOf(lockAsStaking.address)
 
       // Stake must work and the deposit address must be the one of the lock contract
-      const stakeAmount = toGRT('100')
+      const stakeAmount = toMOXIE('100')
       const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
       await expect(tx).emit(staking, 'StakeDeposited').withArgs(tokenLock.address, stakeAmount)
 
       // After state
-      const afterLockBalance = await grt.balanceOf(lockAsStaking.address)
+      const afterLockBalance = await moxie.balanceOf(lockAsStaking.address)
       expect(afterLockBalance).eq(beforeLockBalance.sub(stakeAmount))
     })
 
     it('should bubble up revert reasons for forwarded calls', async function () {
       // Force a failing call
-      const tx = lockAsStaking.connect(beneficiary.signer).stake(toGRT('0'))
+      const tx = lockAsStaking.connect(beneficiary.signer).stake(toMOXIE('0'))
       await expect(tx).revertedWith('!tokens')
     })
 
     it('reject a function call from other than the beneficiary', async function () {
       // Send a function call from an unauthorized caller
-      const stakeAmount = toGRT('100')
+      const stakeAmount = toMOXIE('100')
       const tx = lockAsStaking.connect(hacker.signer).stake(stakeAmount)
       await expect(tx).revertedWith('Unauthorized caller')
     })
@@ -275,7 +376,7 @@ describe('MoxieTokenLockWallet', () => {
 
     beforeEach(async () => {
       // Deploy a revocable contract with 6 periods, 1 per month
-      initArgs = defaultInitArgs(deployer, beneficiary, grt, toGRT('10000000'))
+      initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('10000000'))
       tokenLock = await initWithArgs({ ...initArgs, periods: 6, revocable: Revocability.Enabled })
 
       // Use the tokenLock contract as if it were the Staking contract
@@ -293,7 +394,7 @@ describe('MoxieTokenLockWallet', () => {
 
       // At this point no period has passed so we haven't vested any token
       // Try to stake funds into the protocol should fail
-      const stakeAmount = toGRT('100')
+      const stakeAmount = toMOXIE('100')
       const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
       await expect(tx).revertedWith('Cannot use more tokens than vested amount')
     })
@@ -307,7 +408,7 @@ describe('MoxieTokenLockWallet', () => {
       const releasableAmount = await tokenLock.releasableAmount()
 
       // Use tokens in the protocol
-      const stakeAmount = toGRT('100')
+      const stakeAmount = toMOXIE('100')
       await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
 
       // Release - should take into account used tokens
@@ -329,7 +430,7 @@ describe('MoxieTokenLockWallet', () => {
       const releasableAmount = await tokenLock.releasableAmount()
 
       // Use tokens in the protocol
-      const stakeAmount = (await tokenLock.availableAmount()).sub(toGRT('1'))
+      const stakeAmount = (await tokenLock.availableAmount()).sub(toMOXIE('1'))
       await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
 
       // Release - should take into account used tokens
@@ -348,18 +449,71 @@ describe('MoxieTokenLockWallet', () => {
 
       // At this point we vested one period, we have tokens
       // Stake funds into the protocol
-      const stakeAmount = toGRT('100')
+      const stakeAmount = toMOXIE('100')
       await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
 
       // Simulate having a profit
-      await grt.approve(staking.address, toGRT('1000000'))
-      await staking.stakeTo(lockAsStaking.address, toGRT('1000000'))
+      await moxie.approve(staking.address, toMOXIE('1000000'))
+      await staking.stakeTo(lockAsStaking.address, toMOXIE('1000000'))
 
       // Unstake more than we used in the protocol, this should work!
-      await lockAsStaking.connect(beneficiary.signer).unstake(toGRT('1000000'))
+      await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('1000000'))
       await advanceBlocks(20)
       await lockAsStaking.connect(beneficiary.signer).withdraw()
     })
+  })
+
+  describe('Withdraw surplus amount profit received from protocal', function () {
+    let lockAsStaking
+    beforeEach(async () => {
+      // Deploy a revocable contract with 6 periods, 1 per month
+      initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('1000'))
+      tokenLock = await initWithArgs({ ...initArgs, periods: 6, revocable: Revocability.Enabled })
+
+      // Use the tokenLock contract as if itCannot use more tokens than vested amoun were the Staking contract
+      lockAsStaking = Staking__factory.connect(tokenLock.address, deployer.signer)
+
+      // Add the staking contract as token destination
+      await tokenLockManager.addTokenDestination(staking.address)
+
+      // Approve contracts to pull tokens from the token lock
+      await tokenLock.connect(beneficiary.signer).approveProtocol()
+    })
+    it('should withdraw surplus amount profit received from protocal', async function () {
+      await advanceToStart(tokenLock)
+      await advancePeriods(tokenLock, 1)
+
+      // before stake releasable, vested amounts from token lock contract
+      const beforeReleasableAmount = await tokenLock.connect(beneficiary.signer).releasableAmount()
+      const beforeVestedAmount= await tokenLock.connect(beneficiary.signer).vestedAmount()
+      const beforeUsedAmount= await tokenLock.connect(beneficiary.signer).usedAmount()
+      console.log('beforeReleasableAmount', formatMOXIE(beforeReleasableAmount))
+      console.log('beforeVestedAmount',  formatMOXIE(beforeVestedAmount))
+      console.log('beforeUsedAmount', formatMOXIE(beforeUsedAmount))
+
+      // At this point we vested one period, we have tokens
+      // Stake funds into the protocol
+      const stakeAmount = toMOXIE('1000')
+      await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
+
+      // Simulate having a loss
+      await moxie.approve(staking.address, toMOXIE('800'))
+      await staking.stakeTo(lockAsStaking.address, toMOXIE('800'))
+
+      // Unstake more than we used in the protocol, this should work!
+      await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('800'))
+      await advanceBlocks(20)
+      await lockAsStaking.connect(beneficiary.signer).withdraw()
+
+      const afterReleasableAmount = await tokenLock.connect(beneficiary.signer).releasableAmount()
+      const afterVestedAmount= await tokenLock.connect(beneficiary.signer).vestedAmount()
+      const afterUsedAmount= await tokenLock.connect(beneficiary.signer).usedAmount()
+      console.log('afterReleasableAmount', formatMOXIE(afterReleasableAmount))
+      console.log('afterVestedAmount', formatMOXIE(afterVestedAmount))
+      console.log('afterUsedAmount', formatMOXIE(afterUsedAmount))
+
+    })
+
   })
 
   describe('xyz', function () {
@@ -367,7 +521,7 @@ describe('MoxieTokenLockWallet', () => {
 
     beforeEach(async () => {
       // Deploy a revocable contract with 6 periods, 1 per month
-      initArgs = defaultInitArgs(deployer, beneficiary, grt, toGRT('10000000'))
+      initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('10000000'))
       tokenLock = await initWithArgs({ ...initArgs, periods: 6, revocable: Revocability.Enabled })
 
       // Use the tokenLock contract as if it were the Staking contract
