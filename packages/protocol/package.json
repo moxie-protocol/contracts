@@ -26,16 +26,15 @@
     "solidity-coverage": "^0.8.1",
     "ts-node": "^10.9.2",
     "typechain": "^8.3.0",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "@ablack/fundraising-bancor-formula": "^1.0.0",
+    "@openzeppelin/contracts": "^5.0.2",
+    "@openzeppelin/contracts-upgradeable": "^5.0.2"
   },
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
     "check": "hardhat check",
     "clean": "rm -rf arfifacts/ cache/"
-  },
-  "dependencies": {
-    "@openzeppelin/contracts": "^5.0.2",
-    "@openzeppelin/contracts-upgradeable": "^5.0.2"
   }
 }

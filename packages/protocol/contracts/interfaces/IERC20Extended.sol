@@ -2,11 +2,10 @@
 
 pragma solidity ^0.8.24;
 
-interface IERC20 {
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+interface IERC20Extended is IERC20 {
     function mint(address beneficiary, uint256 amount) external;
 
-    function transfer(
-        address beneficiary,
-        uint256 amoint
-    ) external returns (bool);
+    function burn(uint256 amount) external;
 }

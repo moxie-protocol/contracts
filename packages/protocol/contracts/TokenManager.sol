@@ -2,12 +2,17 @@
 
 pragma solidity ^0.8.24;
 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 import "./SecurityModule.sol";
 import "./interfaces/ITokenManager.sol";
 import "./interfaces/ISubjectTokenFactory.sol";
-import "./interfaces/IERC20.sol";
+import "./interfaces/IERC20Extended.sol";
 
 contract TokenManager is ITokenManager, SecurityModule {
+
+    using SafeERC20 for IERC20Extended;
+
     bytes32 public constant MINT_ROLE = keccak256("MINT_ROLE");
     bytes32 public constant CREATE_ROLE = keccak256("CREATE_ROLE");
 
@@ -15,7 +20,7 @@ contract TokenManager is ITokenManager, SecurityModule {
     ISubjectTokenFactory public subjectTokenFactory;
 
     /// @dev Mapping that tracks subject & its deployed token contract.
-    mapping(address => address) public tokens;
+    mapping(address => IERC20Extended) public tokens;
 
     /**
      * @notice Initialize the contract.
@@ -47,7 +52,7 @@ contract TokenManager is ITokenManager, SecurityModule {
         string memory _symbol,
         uint256 _initialSupply
     ) external whenNotPaused onlyRole(CREATE_ROLE) returns (address token_) {
-        require(tokens[_subject] == address(0), "!token exists");
+        require(address(tokens[_subject]) == address(0), "!token exists");
 
         token_ = subjectTokenFactory.create(
             _name,
@@ -55,7 +60,7 @@ contract TokenManager is ITokenManager, SecurityModule {
             _initialSupply,
             address(this)
         );
-        tokens[_subject] = token_;
+        tokens[_subject] = IERC20Extended(token_);
 
         // Transfer initial supply to creator.
         require(
@@ -77,8 +82,8 @@ contract TokenManager is ITokenManager, SecurityModule {
         address _beneficiary,
         uint256 _amount
     ) public whenNotPaused onlyRole(MINT_ROLE) returns (bool) {
-        require(tokens[_subject] == address(0), "!token exists");
-        IERC20(tokens[_subject]).mint(_beneficiary, _amount);
+        require(address(tokens[_subject]) == address(0), "!token exists");
+        IERC20Extended(tokens[_subject]).mint(_beneficiary, _amount);
         return true;
     }
 }

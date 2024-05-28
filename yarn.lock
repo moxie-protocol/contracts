@@ -5,6 +5,13 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
+"@ablack/fundraising-bancor-formula@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "@ablack/fundraising-bancor-formula@npm:1.0.0"
+  checksum: 10c0/6bf14db64bb8bea928eddc7416b379fb87b605f440365c7526928ae7598215040d7a13efff30c67fb02a8dc0e30d429296f9493f70a31dc1623349026bb0cefd
+  languageName: node
+  linkType: hard
+
 "@adraffy/ens-normalize@npm:1.10.1":
   version: 1.10.1
   resolution: "@adraffy/ens-normalize@npm:1.10.1"
@@ -2216,6 +2223,8 @@ __metadata:
 "contracts@workspace:.":
   version: 0.0.0-use.local
   resolution: "contracts@workspace:."
+  dependencies:
+    "@ablack/fundraising-bancor-formula": "npm:^1.0.0"
   languageName: unknown
   linkType: soft
 
