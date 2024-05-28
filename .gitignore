@@ -64,3 +64,6 @@ bin/
 # Coverage and other reports
 reports/
 coverage.json
+coverage/
+
+*.html
