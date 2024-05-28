@@ -91,12 +91,12 @@ function setupNetworkConfig(config) {
 extendEnvironment(async (hre) => {
   const accounts = await hre.ethers.getSigners()
   try {
-    const deployment = await hre.deployments.get('GraphTokenLockManager')
-    const contract = await hre.ethers.getContractAt('GraphTokenLockManager', deployment.address)
+    const deployment = await hre.deployments.get('MoxieTokenLockManager')
+    const contract = await hre.ethers.getContractAt('MoxieTokenLockManager', deployment.address)
     await contract.deployed() // test if deployed
 
     hre['c'] = {
-      GraphTokenLockManager: contract.connect(accounts[0]),
+      MoxieTokenLockManager: contract.connect(accounts[0]),
     }
   } catch (err) {
     // do not load the contract

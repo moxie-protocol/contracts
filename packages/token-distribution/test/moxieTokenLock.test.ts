@@ -25,7 +25,7 @@ const setupTest = deployments.createFixture(async ({ deployments }) => {
     from: deployer.address,
     args: [toMOXIE('1000000000'), deployer.address],
   })
-  const grt = await getContract('MoxieTokenMock')
+  const MOXIE = await getContract('MoxieTokenMock')
 
   // Deploy token lock
   await deploy('MoxieTokenLockSimple', {
@@ -35,7 +35,7 @@ const setupTest = deployments.createFixture(async ({ deployments }) => {
   const tokenLock = await getContract('MoxieTokenLockSimple')
 
   return {
-    grt: grt as MoxieTokenMock,
+    MOXIE: MOXIE as MoxieTokenMock,
     tokenLock: tokenLock as MoxieTokenLockSimple,
   }
 })
@@ -78,11 +78,12 @@ const forEachPeriod = async (tokenLock: MoxieTokenLockSimple, fn) => {
 
 const shouldMatchSchedule = async (tokenLock: MoxieTokenLockSimple, fnName: string, initArgs: TokenLockParameters) => {
   await forEachPeriod(tokenLock, async function (passedPeriods: BigNumber) {
-    const amount = (await tokenLock.functions[fnName]())[0]
+    const fn = (tokenLock.functions as any)[fnName];
+    const amount = (await fn())[0];
     const amountPerPeriod = await tokenLock.amountPerPeriod()
     const managedAmount = await tokenLock.managedAmount()
 
-    // console.log(`\t    - amount: ${formatGRT(amount)}/${formatGRT(managedAmount)}`)
+    // console.log(`\t    - amount: ${formatMOXIE(amount)}/${formatMOXIE(managedAmount)}`)
 
     // After last period we expect to have all managed tokens available
     const expectedAmount = passedPeriods.lt(initArgs.periods) ? passedPeriods.mul(amountPerPeriod) : managedAmount
@@ -97,7 +98,7 @@ describe('MoxieTokenLockSimple', () => {
   let beneficiary1: Account
   let beneficiary2: Account
 
-  let grt: MoxieTokenMock
+  let MOXIE: MoxieTokenMock
   let tokenLock: MoxieTokenLockSimple
 
   let initArgs: TokenLockParameters
@@ -121,7 +122,7 @@ describe('MoxieTokenLockSimple', () => {
 
   const fundContract = async (contract: MoxieTokenLockSimple) => {
     const managedAmount = await contract.managedAmount()
-    await grt.connect(deployer.signer).transfer(contract.address, managedAmount)
+    await MOXIE.connect(deployer.signer).transfer(contract.address, managedAmount)
   }
 
   before(async function () {
@@ -130,9 +131,9 @@ describe('MoxieTokenLockSimple', () => {
 
   describe('Init', function () {
     it('Reject initialize with non-set revocability option', async function () {
-      ({ grt, tokenLock } = await setupTest())
+      ({ MOXIE, tokenLock } = await setupTest())
 
-      const args = defaultInitArgs(deployer, beneficiary1, grt, toMOXIE('1000'))
+      const args = defaultInitArgs(deployer, beneficiary1, MOXIE, toMOXIE('1000'))
       const tx = tokenLock
         .connect(deployer.signer)
         .initialize(
@@ -154,12 +155,12 @@ describe('MoxieTokenLockSimple', () => {
   createScheduleScenarios().forEach(function (schedule) {
     describe('> Test scenario', function () {
       beforeEach(async function () {
-        ({ grt, tokenLock } = await setupTest())
+        ({ MOXIE, tokenLock } = await setupTest())
 
         const staticArgs = {
           owner: deployer.address,
           beneficiary: beneficiary1.address,
-          token: grt.address,
+          token: MOXIE.address,
           managedAmount: toMOXIE('35000000'),
         }
         initArgs = { ...staticArgs, ...schedule }
@@ -198,7 +199,7 @@ describe('MoxieTokenLockSimple', () => {
 
             // Transfer
             const totalAmount = toMOXIE('100')
-            await grt.connect(deployer.signer).transfer(tokenLock.address, totalAmount)
+            await MOXIE.connect(deployer.signer).transfer(tokenLock.address, totalAmount)
 
             // After
             expect(await tokenLock.currentBalance()).eq(totalAmount)
@@ -318,7 +319,7 @@ describe('MoxieTokenLockSimple', () => {
               const managedAmount = await tokenLock.managedAmount()
               const currentTime = await tokenLock.currentTime()
 
-              // console.log(`\t    - amount: ${formatGRT(amount)}/${formatGRT(managedAmount)}`)
+              // console.log(`\t    - amount: ${formatMOXIE(amount)}/${formatMOXIE(managedAmount)}`)
 
               let expectedAmount = managedAmount
               // Before cliff no vested tokens
@@ -435,7 +436,7 @@ describe('MoxieTokenLockSimple', () => {
             await tokenLock.connect(beneficiary1.signer).release()
 
             // Send extra amount
-            await grt.connect(deployer.signer).transfer(tokenLock.address, toMOXIE('1000'))
+            await MOXIE.connect(deployer.signer).transfer(tokenLock.address, toMOXIE('1000'))
 
             // Test
             const surplusAmount = await tokenLock.surplusAmount()
@@ -472,12 +473,12 @@ describe('MoxieTokenLockSimple', () => {
         })
 
         it('should cancel lock and return funds to owner', async function () {
-          const beforeBalance = await grt.balanceOf(deployer.address)
-          const contractBalance = await grt.balanceOf(tokenLock.address)
+          const beforeBalance = await MOXIE.balanceOf(deployer.address)
+          const contractBalance = await MOXIE.balanceOf(tokenLock.address)
           const tx = tokenLock.connect(deployer.signer).cancelLock()
           await expect(tx).emit(tokenLock, 'LockCanceled')
 
-          const afterBalance = await grt.balanceOf(deployer.address)
+          const afterBalance = await MOXIE.balanceOf(deployer.address)
           const diff = afterBalance.sub(beforeBalance)
           expect(diff).eq(contractBalance)
         })
@@ -513,9 +514,9 @@ describe('MoxieTokenLockSimple', () => {
           const beneficiaryAddress = await tokenLock.beneficiary()
           const ownerAddress = await tokenLock.owner()
           return {
-            beneficiaryBalance: await grt.balanceOf(beneficiaryAddress),
-            contractBalance: await grt.balanceOf(tokenLock.address),
-            ownerBalance: await grt.balanceOf(ownerAddress),
+            beneficiaryBalance: await MOXIE.balanceOf(beneficiaryAddress),
+            contractBalance: await MOXIE.balanceOf(tokenLock.address),
+            ownerBalance: await MOXIE.balanceOf(ownerAddress),
           }
         }
 
@@ -607,7 +608,7 @@ describe('MoxieTokenLockSimple', () => {
             const managedAmount = await tokenLock.managedAmount()
             const amountToWithdraw = toMOXIE('100')
             const totalAmount = managedAmount.add(amountToWithdraw)
-            await grt.connect(deployer.signer).transfer(tokenLock.address, totalAmount)
+            await MOXIE.connect(deployer.signer).transfer(tokenLock.address, totalAmount)
 
             // Revert if trying to withdraw more than managed amount
             const tx1 = tokenLock.connect(beneficiary1.signer).withdrawSurplus(amountToWithdraw.add(1))
@@ -631,7 +632,7 @@ describe('MoxieTokenLockSimple', () => {
             const managedAmount = await tokenLock.managedAmount()
             const surplusAmount = toMOXIE('100')
             const totalAmount = managedAmount.add(surplusAmount)
-            await grt.connect(deployer.signer).transfer(tokenLock.address, totalAmount)
+            await MOXIE.connect(deployer.signer).transfer(tokenLock.address, totalAmount)
 
             // Should withdraw
             const tx2 = tokenLock.connect(beneficiary1.signer).withdrawSurplus(surplusAmount.sub(1))
@@ -644,7 +645,7 @@ describe('MoxieTokenLockSimple', () => {
               const managedAmount = await tokenLock.managedAmount()
               const surplusAmount = toMOXIE('100')
               const totalAmount = managedAmount.add(surplusAmount)
-              await grt.connect(deployer.signer).transfer(tokenLock.address, totalAmount)
+              await MOXIE.connect(deployer.signer).transfer(tokenLock.address, totalAmount)
 
               // Vest some amount
               await advanceToReleasable(tokenLock)
@@ -659,7 +660,7 @@ describe('MoxieTokenLockSimple', () => {
               await expect(tx2).emit(tokenLock, 'TokensWithdrawn').withArgs(beneficiary1.address, surplusAmount)
 
               // Contract must have no balance after all actions
-              const balance = await grt.balanceOf(tokenLock.address)
+              const balance = await MOXIE.balanceOf(tokenLock.address)
               expect(balance).eq(0)
             }
           })
@@ -670,7 +671,7 @@ describe('MoxieTokenLockSimple', () => {
               const managedAmount = await tokenLock.managedAmount()
               const surplusAmount = toMOXIE('100')
               const totalAmount = managedAmount.add(surplusAmount)
-              await grt.connect(deployer.signer).transfer(tokenLock.address, totalAmount)
+              await MOXIE.connect(deployer.signer).transfer(tokenLock.address, totalAmount)
 
               // Vest some amount
               await advanceToReleasable(tokenLock)
@@ -685,13 +686,13 @@ describe('MoxieTokenLockSimple', () => {
               await expect(tx2).emit(tokenLock, 'TokensWithdrawn').withArgs(beneficiary1.address, surplusAmount)
 
               // Contract must have no balance after all actions
-              const balance = await grt.balanceOf(tokenLock.address)
+              const balance = await MOXIE.balanceOf(tokenLock.address)
               expect(balance).eq(0)
             }
           })
 
           it('reject withdraw if not the beneficiary', async function () {
-            await grt.connect(deployer.signer).transfer(tokenLock.address, toMOXIE('100'))
+            await MOXIE.connect(deployer.signer).transfer(tokenLock.address, toMOXIE('100'))
 
             const tx = tokenLock.connect(beneficiary2.signer).withdrawSurplus(toMOXIE('100'))
             await expect(tx).revertedWith('!auth')

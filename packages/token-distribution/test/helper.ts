@@ -139,7 +139,7 @@ const forEachPeriod = async (tokenLock: MoxieTokenLockWallet, fn) => {
       const amountPerPeriod = await tokenLock.amountPerPeriod()
       const managedAmount = await tokenLock.managedAmount()
   
-      // console.log(`\t    - amount: ${formatGRT(amount)}/${formatGRT(managedAmount)}`)
+      // console.log(`\t    - amount: ${formatMOXIE(amount)}/${formatMOXIE(managedAmount)}`)
   
       // After last period we expect to have all managed tokens available
       const expectedAmount = passedPeriods.lt(initArgs.periods) ? passedPeriods.mul(amountPerPeriod) : managedAmount

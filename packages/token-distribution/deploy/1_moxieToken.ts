@@ -12,11 +12,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const deploy = (name: string, options: DeployOptions) => hre.deployments.deploy(name, options)
   const { deployer } = await hre.getNamedAccounts()
 
-  // -- Fake Graph Token --
+  // -- Mock Moxie Token --
 
-  logger.info('Deploying GraphTokenMock...')
+  logger.info('Deploying MoxieTokenMock...')
 
-  await deploy('GraphTokenMock', {
+  const deployResult = await deploy('MoxieTokenMock', {
     from: deployer,
     args: [
       parseEther('10000000000'), // 10B
@@ -27,6 +27,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 }
 
 func.skip = (hre: HardhatRuntimeEnvironment) => Promise.resolve(hre.network.name === 'mainnet')
-func.tags = ['test']
+func.tags = ['mockMoxieToken']
 
 export default func
