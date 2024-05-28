@@ -9,93 +9,16 @@ import { MoxieTokenLockManager } from '../build/typechain/contracts/MoxieTokenLo
 import { MoxieTokenLockWallet } from '../build/typechain/contracts/MoxieTokenLockWallet'
 import { MoxieTokenMock } from '../build/typechain/contracts/MoxieTokenMock'
 import { StakingMock } from '../build/typechain/contracts/StakingMock'
+import { MoxiePassTokenMock } from '../build/typechain/contracts/MoxiePassTokenMock'
 
 import { Staking__factory } from '@graphprotocol/contracts/dist/types/factories/Staking__factory'
 
 import { Account, advanceBlocks, advanceTimeAndBlock, formatMOXIE, getAccounts, getContract, randomHexBytes, toMOXIE } from './network'
 import { defaultInitArgs, Revocability, TokenLockParameters } from './config'
 import { DeployOptions } from 'hardhat-deploy/types'
-import { string } from 'hardhat/internal/core/params/argumentTypes'
+import { setupTest, authProtocolFunctions, addAndVerifyTokenDestination, removeAndVerifyTokenDestination , advanceToStart, advancePeriods} from './helper'
 
 const { AddressZero, MaxUint256 } = constants
-
-// -- Time utils --
-
-const advancePeriods = async (tokenLock: MoxieTokenLockWallet, n = 1) => {
-  const periodDuration = await tokenLock.periodDuration()
-  return advanceTimeAndBlock(periodDuration.mul(n).toNumber()) // advance N period
-}
-const advanceToStart = async (tokenLock: MoxieTokenLockWallet) => moveToTime(tokenLock, await tokenLock.startTime(), 60)
-const moveToTime = async (tokenLock: MoxieTokenLockWallet, target: BigNumber, buffer: number) => {
-  const ts = await tokenLock.currentTime()
-  const delta = target.sub(ts).add(buffer)
-  return advanceTimeAndBlock(delta.toNumber())
-}
-
-// Fixture
-const setupTest = deployments.createFixture(async ({ deployments }) => {
-  const deploy = (name: string, options: DeployOptions) => deployments.deploy(name, options)
-  const [deployer] = await getAccounts()
-
-  // Start from a fresh snapshot
-  await deployments.fixture([])
-
-  // Deploy token
-  await deploy('MoxieTokenMock', {
-    from: deployer.address,
-    args: [toMOXIE('1000000000'), deployer.address],
-  })
-  const grt = await getContract('MoxieTokenMock')
-
-  // Deploy token lock masterCopy
-  await deploy('MoxieTokenLockWallet', {
-    from: deployer.address,
-  })
-  const tokenLockWallet = await getContract('MoxieTokenLockWallet')
-
-  // Deploy token lock manager
-  await deploy('MoxieTokenLockManager', {
-    from: deployer.address,
-    args: [grt.address, tokenLockWallet.address],
-  })
-  const tokenLockManager = await getContract('MoxieTokenLockManager')
-
-  // Protocol contracts
-  await deployments.deploy('StakingMock', { from: deployer.address, args: [grt.address] })
-  const staking = await getContract('StakingMock')
-
-  // Fund the manager contract
-  await grt.connect(deployer.signer).transfer(tokenLockManager.address, toMOXIE('100000000'))
-
-
-  return {
-    grt: grt as MoxieTokenMock,
-    staking: staking as StakingMock,
-    // tokenLock: tokenLockWallet as MoxieTokenLockWallet,
-    tokenLockManager: tokenLockManager as MoxieTokenLockManager,
-  }
-})
-
-async function authProtocolFunctions(tokenLockManager: MoxieTokenLockManager, stakingAddress: string) {
-  await tokenLockManager.setAuthFunctionCall('stake(uint256)', stakingAddress)
-  await tokenLockManager.setAuthFunctionCall('unstake(uint256)', stakingAddress)
-  await tokenLockManager.setAuthFunctionCall('withdraw()', stakingAddress)
-}
-
-// Helper function to add a token destination and verify the process
-const addAndVerifyTokenDestination = async (tokenLockManager: MoxieTokenLockManager, address: string) => {
-  expect(await tokenLockManager.isTokenDestination(address)).to.equal(false);
-  const tx = tokenLockManager.addTokenDestination(address);
-  await expect(tx).to.emit(tokenLockManager, 'TokenDestinationAllowed').withArgs(address, true);
-  expect(await tokenLockManager.isTokenDestination(address)).to.equal(true);
-};
-
-const removeAndVerifyTokenDestination = async (tokenLockManager: MoxieTokenLockManager, address: string) => {
-  expect(await tokenLockManager.isTokenDestination(address)).to.equal(true);
-  const tx = tokenLockManager.removeTokenDestination(address);
-  await expect(tx).to.emit(tokenLockManager, 'TokenDestinationAllowed').withArgs(address, false);
-  expect(await tokenLockManager.isTokenDestination(address)).to.equal(false);
-};
 
 
 // -- Tests --
@@ -108,6 +31,7 @@ describe('MoxieTokenLockWallet', () => {
   let moxie: MoxieTokenMock
   let tokenLock: MoxieTokenLockWallet
   let tokenLockManager: MoxieTokenLockManager
+  let moxiePassToken: MoxiePassTokenMock
   let staking: StakingMock
 
   let initArgs: TokenLockParameters
@@ -134,7 +58,7 @@ describe('MoxieTokenLockWallet', () => {
   })
 
   beforeEach(async () => {
-    ({ grt: moxie, tokenLockManager, staking } = await setupTest())
+    ({ moxie: moxie, tokenLockManager, staking , moxiePassToken} = await setupTest())
 
     // Setup authorized functions in Manager
     await authProtocolFunctions(tokenLockManager, staking.address)
@@ -148,6 +72,13 @@ describe('MoxieTokenLockWallet', () => {
       initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('35000000'))
       const tx = initWithArgs({ ...initArgs, endTime: 0 })
       await expect(tx).revertedWith('Start time > end time')
+    })
+  })
+
+  describe('MoxiePassToken NFT check', function () {
+    it('Should have moxie pass token nft after successful lock creation', async function () {
+      const balanceResult = await moxiePassToken.balanceOf(tokenLock.address)
+      expect(balanceResult).to.equal(1)
     })
   })
 
@@ -376,8 +307,8 @@ describe('MoxieTokenLockWallet', () => {
 
     beforeEach(async () => {
       // Deploy a revocable contract with 6 periods, 1 per month
-      initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('10000000'))
-      tokenLock = await initWithArgs({ ...initArgs, periods: 6, revocable: Revocability.Enabled })
+      initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('10000'))
+      tokenLock = await initWithArgs({ ...initArgs, periods: 10, revocable: Revocability.Enabled })
 
       // Use the tokenLock contract as if it were the Staking contract
       lockAsStaking = Staking__factory.connect(tokenLock.address, deployer.signer)
@@ -394,7 +325,7 @@ describe('MoxieTokenLockWallet', () => {
 
       // At this point no period has passed so we haven't vested any token
       // Try to stake funds into the protocol should fail
-      const stakeAmount = toMOXIE('100')
+      const stakeAmount = toMOXIE('1000')
       const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
       await expect(tx).revertedWith('Cannot use more tokens than vested amount')
     })
@@ -408,7 +339,7 @@ describe('MoxieTokenLockWallet', () => {
       const releasableAmount = await tokenLock.releasableAmount()
 
       // Use tokens in the protocol
-      const stakeAmount = toMOXIE('100')
+      const stakeAmount = toMOXIE('1000')
       await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
 
       // Release - should take into account used tokens
@@ -461,14 +392,41 @@ describe('MoxieTokenLockWallet', () => {
       await advanceBlocks(20)
       await lockAsStaking.connect(beneficiary.signer).withdraw()
     })
+    it('should exclude loss received from protocol investing', async function () {
+      await advanceToStart(tokenLock)
+      await advancePeriods(tokenLock, 2)
+
+      const beforeReleasableAmount = await tokenLock.releasableAmount()
+
+      // At this point we vested one period, we have tokens
+      // Stake funds into the protocol
+      const stakeAmount = toMOXIE('2000')
+      await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
+      // Simulate having a profit
+      await moxie.approve(staking.address, toMOXIE('1000'))
+      await staking.stakeTo(lockAsStaking.address, toMOXIE('1000'))
+
+      // Unstake more than we used in the protocol, this should work!
+      await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('1000'))
+      await advanceBlocks(20)
+      await lockAsStaking.connect(beneficiary.signer).withdraw()
+
+      const afterReleasableAmount = await tokenLock.releasableAmount()
+      expect(afterReleasableAmount).to.equal(toMOXIE('1000'))
+
+      await advancePeriods(tokenLock, 10)
+      const finalReleasableAmount = await tokenLock.releasableAmount()
+      expect(finalReleasableAmount).to.equal(toMOXIE('9000'))
+
+    })
   })
 
-  describe('Withdraw surplus amount profit received from protocal', function () {
+  describe('Invest while you vest - revocability enabled', function () {
     let lockAsStaking
     beforeEach(async () => {
       // Deploy a revocable contract with 6 periods, 1 per month
-      initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('1000'))
-      tokenLock = await initWithArgs({ ...initArgs, periods: 6, revocable: Revocability.Enabled })
+      initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('10000'))
+      tokenLock = await initWithArgs({ ...initArgs, periods: 10, revocable: Revocability.Enabled })
 
       // Use the tokenLock contract as if itCannot use more tokens than vested amoun were the Staking contract
       lockAsStaking = Staking__factory.connect(tokenLock.address, deployer.signer)
@@ -479,52 +437,78 @@ describe('MoxieTokenLockWallet', () => {
       // Approve contracts to pull tokens from the token lock
       await tokenLock.connect(beneficiary.signer).approveProtocol()
     })
-    it('should withdraw surplus amount profit received from protocal', async function () {
+
+    it('should not allow to invest - unvested tokens with revocability enabled', async function () {
       await advanceToStart(tokenLock)
       await advancePeriods(tokenLock, 1)
 
-      // before stake releasable, vested amounts from token lock contract
-      const beforeReleasableAmount = await tokenLock.connect(beneficiary.signer).releasableAmount()
-      const beforeVestedAmount= await tokenLock.connect(beneficiary.signer).vestedAmount()
-      const beforeUsedAmount= await tokenLock.connect(beneficiary.signer).usedAmount()
-      console.log('beforeReleasableAmount', formatMOXIE(beforeReleasableAmount))
-      console.log('beforeVestedAmount',  formatMOXIE(beforeVestedAmount))
-      console.log('beforeUsedAmount', formatMOXIE(beforeUsedAmount))
+      // At this point we vested one period, we have tokens
+      // Stake funds into the protocol
+      const stakeAmount = toMOXIE('2000')
+      const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount, {gasLimit: 1000000})
+      await expect(tx).to.be.revertedWith('Cannot use more tokens than vested amount')
+    })
+
+    it('should get surplus profit amount received from protocol investing', async function () {
+      await advanceToStart(tokenLock)
+      await advancePeriods(tokenLock, 2)
 
       // At this point we vested one period, we have tokens
       // Stake funds into the protocol
-      const stakeAmount = toMOXIE('1000')
+      const stakeAmount = toMOXIE('2000')
       await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
 
-      // Simulate having a loss
-      await moxie.approve(staking.address, toMOXIE('800'))
-      await staking.stakeTo(lockAsStaking.address, toMOXIE('800'))
+      // Simulate having a profit
+      await moxie.approve(staking.address, toMOXIE('10000'))
+      await staking.stakeTo(lockAsStaking.address, toMOXIE('10000'))
 
       // Unstake more than we used in the protocol, this should work!
-      await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('800'))
+      await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('10000'))
       await advanceBlocks(20)
       await lockAsStaking.connect(beneficiary.signer).withdraw()
 
-      const afterReleasableAmount = await tokenLock.connect(beneficiary.signer).releasableAmount()
-      const afterVestedAmount= await tokenLock.connect(beneficiary.signer).vestedAmount()
-      const afterUsedAmount= await tokenLock.connect(beneficiary.signer).usedAmount()
-      console.log('afterReleasableAmount', formatMOXIE(afterReleasableAmount))
-      console.log('afterVestedAmount', formatMOXIE(afterVestedAmount))
-      console.log('afterUsedAmount', formatMOXIE(afterUsedAmount))
+      const surplus = await tokenLock.connect(beneficiary.signer).surplusAmount()
+      expect(surplus).to.equal(toMOXIE('8000'))
+    })
+
+    it('should exclude loss received from protocol investing', async function () {
+      await advanceToStart(tokenLock)
+      await advancePeriods(tokenLock, 2)
+
+      const beforeReleasableAmount = await tokenLock.releasableAmount()
+
+      // At this point we vested one period, we have tokens
+      // Stake funds into the protocol
+      const stakeAmount = toMOXIE('2000')
+      await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
+      // Simulate having a profit
+      await moxie.approve(staking.address, toMOXIE('1000'))
+      await staking.stakeTo(lockAsStaking.address, toMOXIE('1000'))
+
+      // Unstake more than we used in the protocol, this should work!
+      await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('1000'))
+      await advanceBlocks(20)
+      await lockAsStaking.connect(beneficiary.signer).withdraw()
+
+      const afterReleasableAmount = await tokenLock.releasableAmount()
+      expect(afterReleasableAmount).to.equal(toMOXIE('1000'))
+
+      await advancePeriods(tokenLock, 10)
+      const finalReleasableAmount = await tokenLock.releasableAmount()
+      expect(finalReleasableAmount).to.equal(toMOXIE('9000'))
 
     })
 
   })
 
-  describe('xyz', function () {
+  describe('Invest while you vest - revocability disabled', function () {
     let lockAsStaking
-
     beforeEach(async () => {
       // Deploy a revocable contract with 6 periods, 1 per month
-      initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('10000000'))
-      tokenLock = await initWithArgs({ ...initArgs, periods: 6, revocable: Revocability.Enabled })
+      initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('10000'))
+      tokenLock = await initWithArgs({ ...initArgs, periods: 10, revocable: Revocability.Disabled })
 
-      // Use the tokenLock contract as if it were the Staking contract
+      // Use the tokenLock contract as if itCannot use more tokens than vested amoun were the Staking contract
       lockAsStaking = Staking__factory.connect(tokenLock.address, deployer.signer)
 
       // Add the staking contract as token destination
@@ -534,5 +518,48 @@ describe('MoxieTokenLockWallet', () => {
       await tokenLock.connect(beneficiary.signer).approveProtocol()
     })
 
+    it('should allow to invest - unvested tokens as well', async function () {
+      await advanceToStart(tokenLock)
+      await advancePeriods(tokenLock, 1)
+
+      // At this point we vested one period, we have tokens
+      // Stake funds into the protocol
+      const stakeAmount = toMOXIE('2000')
+      const tx = await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
+    })
+
+    it('revert if invest amount is greater than the token lock wallet balance', async function () {
+      await advanceToStart(tokenLock)
+      await advancePeriods(tokenLock, 1)
+
+      // At this point we vested one period, we have tokens
+      // Stake funds into the protocol
+      const stakeAmount = toMOXIE('50000000')
+      const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount, {gasLimit: 1000000})
+      await expect(tx).to.be.revertedWith('ERC20: transfer amount exceeds balance')
+    })
+
+    it('should get surplus profit amount received from protocol investing', async function () {
+      await advanceToStart(tokenLock)
+      await advancePeriods(tokenLock, 2)
+
+      // At this point we vested one period, we have tokens
+      // Stake funds into the protocol
+      const stakeAmount = toMOXIE('5000')
+      await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
+
+      // Simulate having a profit
+      await moxie.approve(staking.address, toMOXIE('10000'))
+      await staking.stakeTo(lockAsStaking.address, toMOXIE('10000'))
+
+      // Unstake more than we used in the protocol, this should work!
+      await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('10000'))
+      await advanceBlocks(20)
+      await lockAsStaking.connect(beneficiary.signer).withdraw()
+
+      const surplus = await tokenLock.connect(beneficiary.signer).surplusAmount()
+      expect(surplus).to.equal(toMOXIE('5000'))
+     
+    })
   })
 })
