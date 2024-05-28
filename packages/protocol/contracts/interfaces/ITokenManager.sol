@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.24;
 
+import "./IERC20Extended.sol";
+
 interface ITokenManager {
     error TokenManager_InvalidSubjectImplementation();
     error TokenManager_SubjectExists();
@@ -22,6 +24,8 @@ interface ITokenManager {
     event TransferAllowListWalletAllowed(address indexed _wallet, bool allowed);
 
     function tokens(address _subject) view external returns (address token_);
+
+    function tokens(address _subject) external returns(IERC20Extended token_address);
 
     function create(
         address _beneficiary,
