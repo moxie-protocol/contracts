@@ -68,7 +68,7 @@ export const setupTest = deployments.createFixture(async ({ deployments }) => {
     return {
       moxie: moxie as MoxieTokenMock,
       staking: staking as StakingMock,
-      // tokenLock: tokenLockWallet as MoxieTokenLockWallet,
+      tokenLock: tokenLockWallet as MoxieTokenLockWallet,
       tokenLockManager: tokenLockManager as MoxieTokenLockManager,
       moxiePassToken: moxiePassToken as MoxiePassTokenMock,
     }
@@ -108,3 +108,41 @@ export const advancePeriods = async (tokenLock: MoxieTokenLockWallet, n = 1) => 
     expect(await tokenLockManager.isTokenDestination(address)).to.equal(false);
   };
   
+  export const advanceToEnd = async (tokenLock: MoxieTokenLockWallet) => moveToTime(tokenLock, await tokenLock.endTime(), 60)
+
+  export const advanceToAboutStart = async (tokenLock: MoxieTokenLockWallet) =>
+  moveToTime(tokenLock, await tokenLock.startTime(), -60)
+    
+  export const advanceToReleasable = async (tokenLock: MoxieTokenLockWallet) => {
+  const values = await Promise.all([
+    tokenLock.vestingCliffTime(),
+    tokenLock.releaseStartTime(),
+    tokenLock.startTime(),
+  ]).then(values => values.map(e => e.toNumber()))
+  const time = Math.max(...values)
+  await moveToTime(tokenLock, BigNumber.from(time), 60)
+}
+
+const forEachPeriod = async (tokenLock: MoxieTokenLockWallet, fn) => {
+    const periods = (await tokenLock.periods()).toNumber()
+    for (let currentPeriod = 1; currentPeriod <= periods + 1; currentPeriod++) {
+      const currentPeriod = await tokenLock.currentPeriod()
+      // console.log('\t  ✓ period ->', currentPeriod.toString())
+      await fn(currentPeriod.sub(1), currentPeriod)
+      await advancePeriods(tokenLock, 1)
+    }
+  }
+  
+  const shouldMatchSchedule = async (tokenLock: MoxieTokenLockWallet, fnName: string, initArgs: TokenLockParameters) => {
+    await forEachPeriod(tokenLock, async function (passedPeriods: BigNumber) {
+      const amount = (await tokenLock.functions[fnName]())[0]
+      const amountPerPeriod = await tokenLock.amountPerPeriod()
+      const managedAmount = await tokenLock.managedAmount()
+  
+      // console.log(`\t    - amount: ${formatGRT(amount)}/${formatGRT(managedAmount)}`)
+  
+      // After last period we expect to have all managed tokens available
+      const expectedAmount = passedPeriods.lt(initArgs.periods) ? passedPeriods.mul(amountPerPeriod) : managedAmount
+      expect(amount).eq(expectedAmount)
+    })
+  }

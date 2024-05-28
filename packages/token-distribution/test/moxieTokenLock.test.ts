@@ -55,8 +55,7 @@ const moveToTime = async (tokenLock: MoxieTokenLockSimple, target: BigNumber, bu
 
 const advanceToStart = async (tokenLock: MoxieTokenLockSimple) => moveToTime(tokenLock, await tokenLock.startTime(), 60)
 const advanceToEnd = async (tokenLock: MoxieTokenLockSimple) => moveToTime(tokenLock, await tokenLock.endTime(), 60)
-const advanceToAboutStart = async (tokenLock: MoxieTokenLockSimple) =>
-  moveToTime(tokenLock, await tokenLock.startTime(), -60)
+const advanceToAboutStart = async (tokenLock: MoxieTokenLockSimple) => moveToTime(tokenLock, await tokenLock.startTime(), -60)
 const advanceToReleasable = async (tokenLock: MoxieTokenLockSimple) => {
   const values = await Promise.all([
     tokenLock.vestingCliffTime(),
@@ -165,21 +164,19 @@ describe('MoxieTokenLockSimple', () => {
         }
         initArgs = { ...staticArgs, ...schedule }
         await initWithArgs(initArgs)
-        console.log('\t>> initWithArgs ', JSON.stringify(initArgs))
 
         // Move time to just before the contract starts
-        await advanceToAboutStart(tokenLock)
+       //await advanceToAboutStart(tokenLock)
       })
-
       describe('Init', function () {
         it('reject re-initialization', async function () {
-          console.log('\t>> initWithArgs ', JSON.stringify(initArgs))
+          //console.log('\t>> initWithArgs ', JSON.stringify(initArgs))
           const tx = initWithArgs(initArgs)
           await expect(tx).revertedWith('Already initialized')
         })
 
         it('should be each parameter initialized properly', async function () {
-          console.log('\t>> Scenario ', JSON.stringify(schedule))
+         // console.log('\t>> Scenario ', JSON.stringify(schedule))
 
           expect(await tokenLock.beneficiary()).eq(initArgs.beneficiary)
           expect(await tokenLock.managedAmount()).eq(initArgs.managedAmount)

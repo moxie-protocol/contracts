@@ -47,7 +47,7 @@ describe('MoxieTokenLockWallet', () => {
       args.revocable,
     )
     const receipt = await tx.wait()
-    const contractAddress = receipt.events[0].args['proxy']
+    const contractAddress = receipt.events?.[0]?.args?.['proxy'];
     return ethers.getContractAt('MoxieTokenLockWallet', contractAddress) as Promise<MoxieTokenLockWallet>
   }
 

@@ -72,12 +72,13 @@ const createSchedule = (
 
 export const createScheduleScenarios = (): Array<TokenLockSchedule> => {
   return [
-    //createSchedule(0, 6, 1, Revocability.Disabled), // 6m lock-up + full release + fully vested
-    //createSchedule(0, 12, 1, Revocability.Disabled), // 12m lock-up + full release  + fully vested
-   // createSchedule(12, 12, 12, Revocability.Disabled), // 12m lock-up + 1/12 releases  + fully vested
-    //createSchedule(0, 12, 12, Revocability.Disabled), // no-lockup + 1/12 releases  + fully vested
-    createSchedule(-12, 48, 48, Revocability.Enabled, 0), // 1/48 releases + vested + past start + start time override
-    //createSchedule(-12, 48, 48, Revocability.Enabled, 0, 12), // 1/48 releases + vested + past start + start time override + cliff
+    createSchedule(0, 6, 6, Revocability.Disabled), // 6m lock-up + full release + fully vested
+    createSchedule(0, 6, 6, Revocability.Enabled), // 6m lock-up + full release + fully vested
+    // createSchedule(0, 12, 1, Revocability.Disabled), // 12m lock-up + full release  + fully vested
+  //  createSchedule(12, 12, 12, Revocability.Disabled), // 12m lock-up + 1/12 releases  + fully vested
+   //createSchedule(0, 12, 12, Revocability.Disabled), // no-lockup + 1/12 releases  + fully vested
+    // createSchedule(-12, 48, 48, Revocability.Enabled, 0), // 1/48 releases + vested + past start + start time override
+    // createSchedule(-12, 48, 48, Revocability.Enabled, 0, 12), // 1/48 releases + vested + past start + start time override + cliff
   ]
 }
 
