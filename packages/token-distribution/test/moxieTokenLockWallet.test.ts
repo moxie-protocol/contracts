@@ -1,3 +1,4 @@
+
 import { BigNumber, constants, Wallet } from 'ethers'
 import { deployments, ethers } from 'hardhat'
 import { expect } from 'chai'
@@ -17,6 +18,7 @@ import { Account, advanceBlocks, advanceTimeAndBlock, formatMOXIE, getAccounts, 
 import { defaultInitArgs, Revocability, TokenLockParameters } from './config'
 import { DeployOptions } from 'hardhat-deploy/types'
 import { setupTest, authProtocolFunctions, addAndVerifyTokenDestination, removeAndVerifyTokenDestination , advanceToStart, advancePeriods} from './helper'
+import { Staking } from '@graphprotocol/contracts/dist/types/Staking'
 
 const { AddressZero, MaxUint256 } = constants
 
@@ -127,17 +129,14 @@ describe('MoxieTokenLockWallet', () => {
         await expect(tx2).revertedWith('!auth')
       })
     })
-    
+
     describe('Function call forwarding', function () {
-      let lockAsStaking
+      let lockAsStaking: Staking
   
       beforeEach(async () => {
         // Use the tokenLock contract as if it were the Staking contract
         lockAsStaking = Staking__factory.connect(tokenLock.address, deployer.signer)
-  
-        // Add the staking contract as token destination
-        await tokenLockManager.addTokenDestination(staking.address)
-  
+
         // Approve contracts to pull tokens from the token lock
         await tokenLock.connect(beneficiary.signer).approveProtocol()
       })
@@ -176,272 +175,255 @@ describe('MoxieTokenLockWallet', () => {
       })
     })
 
-    
+    describe('Revokability, Call Forwarding and Used Tokens', function () {
+      let lockAsStaking: Staking
 
-
-
-
-  })
-
-
-  describe('Revokability, Call Forwarding and Used Tokens', function () {
-    let lockAsStaking
-
-    beforeEach(async () => {
-      // Deploy a revocable contract with 6 periods, 1 per month
-      initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('10000'))
-      tokenLock = await initWithArgs({ ...initArgs, periods: 10, revocable: Revocability.Enabled })
-
-      // Use the tokenLock contract as if it were the Staking contract
-      lockAsStaking = Staking__factory.connect(tokenLock.address, deployer.signer)
-
-      // Add the staking contract as token destination
-      await tokenLockManager.addTokenDestination(staking.address)
-
-      // Approve contracts to pull tokens from the token lock
-      await tokenLock.connect(beneficiary.signer).approveProtocol()
+      beforeEach(async () => {
+        // Deploy a revocable contract with 10 periods, 1 per month
+        initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('10000'))
+        tokenLock = await initWithArgs({ ...initArgs, periods: 10, revocable: Revocability.Enabled })
+  
+        // Use the tokenLock contract as if it were the Staking contract
+        lockAsStaking = Staking__factory.connect(tokenLock.address, deployer.signer)
+  
+        // Approve contracts to pull tokens from the token lock
+        await tokenLock.connect(beneficiary.signer).approveProtocol()
+      })
+  
+      it('reject using more than vested amount in the protocol', async function () {
+        await advanceToStart(tokenLock)
+  
+        // At this point no period has passed so we haven't vested any token
+        // Try to stake funds into the protocol should fail
+        const stakeAmount = toMOXIE('1000')
+        const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
+        await expect(tx).revertedWith('Cannot use more tokens than vested amount')
+      })
+  
+      it('should release considering what is used in the protocol', async function () {
+        // Move to have some vested periods
+        await advanceToStart(tokenLock)
+        await advancePeriods(tokenLock, 2)
+  
+        // Get amount that can be released with no used tokens yet
+        const releasableAmount = await tokenLock.releasableAmount()
+  
+        // Use tokens in the protocol
+        const stakeAmount = toMOXIE('1000')
+        await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
+  
+        // Release - should take into account used tokens
+        const tx = await tokenLock.connect(beneficiary.signer).release()
+        await expect(tx)
+          .emit(tokenLock, 'TokensReleased')
+          .withArgs(beneficiary.address, releasableAmount.sub(stakeAmount))
+  
+        // Revoke should work
+        await tokenLock.connect(deployer.signer).revoke()
+      })
+  
+      it('should release considering what is used in the protocol (even if most is used)', async function () {
+        // Move to have some vested periods
+        await advanceToStart(tokenLock)
+        await advancePeriods(tokenLock, 2)
+  
+        // Get amount that can be released with no used tokens yet
+        const releasableAmount = await tokenLock.releasableAmount()
+  
+        // Use tokens in the protocol
+        const stakeAmount = (await tokenLock.availableAmount()).sub(toMOXIE('1'))
+        await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
+  
+        // Release - should take into account used tokens
+        const tx = await tokenLock.connect(beneficiary.signer).release()
+        await expect(tx)
+          .emit(tokenLock, 'TokensReleased')
+          .withArgs(beneficiary.address, releasableAmount.sub(stakeAmount))
+  
+        // Revoke should work
+        await tokenLock.connect(deployer.signer).revoke()
+      })
     })
 
-    it('reject using more than vested amount in the protocol', async function () {
-      await advanceToStart(tokenLock)
-
-      // At this point no period has passed so we haven't vested any token
-      // Try to stake funds into the protocol should fail
-      const stakeAmount = toMOXIE('1000')
-      const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
-      await expect(tx).revertedWith('Cannot use more tokens than vested amount')
+    describe('Invest while you vest - revocability enabled', function () {
+      let lockAsStaking: Staking
+      beforeEach(async () => {
+        // Deploy a revocable contract with 10 periods, 1 per month
+        initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('10000'))
+        tokenLock = await initWithArgs({ ...initArgs, periods: 10, revocable: Revocability.Enabled })
+  
+        // Use the tokenLock contract as if itCannot use more tokens than vested amoun were the Staking contract
+        lockAsStaking = Staking__factory.connect(tokenLock.address, deployer.signer)
+  
+        // Approve contracts to pull tokens from the token lock
+        await tokenLock.connect(beneficiary.signer).approveProtocol()
+      })
+  
+      it('should not allow to invest - unvested tokens - revocability enabled', async function () {
+        await advanceToStart(tokenLock)
+        await advancePeriods(tokenLock, 1)
+  
+        // At this point we vested one period, we have tokens
+        // Stake funds into the protocol
+        const stakeAmount = toMOXIE('2000')
+        const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount, {gasLimit: 1000000})
+        await expect(tx).to.be.revertedWith('Cannot use more tokens than vested amount')
+      })
+  
+      it('should get surplus profit amount received from protocol investing - revocability enabled', async function () {
+        await advanceToStart(tokenLock)
+        await advancePeriods(tokenLock, 2)
+  
+        // At this point we vested one period, we have tokens
+        // Stake funds into the protocol
+        const stakeAmount = toMOXIE('2000')
+        await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
+  
+        // Simulate having a profit
+        await moxie.approve(staking.address, toMOXIE('10000'))
+        await staking.stakeTo(lockAsStaking.address, toMOXIE('10000'))
+  
+        // Unstake more than we used in the protocol, this should work!
+        await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('10000'))
+        await advanceBlocks(20)
+        await lockAsStaking.connect(beneficiary.signer).withdraw()
+  
+        const surplus = await tokenLock.connect(beneficiary.signer).surplusAmount()
+        expect(surplus).to.equal(toMOXIE('8000'))
+      })
+  
+      it('should exclude loss received from protocol investing - revocability enabled', async function () {
+        await advanceToStart(tokenLock)
+        await advancePeriods(tokenLock, 2)
+  
+        const beforeReleasableAmount = await tokenLock.releasableAmount()
+  
+        // At this point we vested one period, we have tokens
+        // Stake funds into the protocol
+        const stakeAmount = toMOXIE('2000')
+        await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
+       
+        // Simulate having a loss
+        await moxie.approve(staking.address, toMOXIE('1000'))
+        await staking.stakeTo(lockAsStaking.address, toMOXIE('1000'))
+  
+        await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('1000'))
+        await advanceBlocks(20)
+        await lockAsStaking.connect(beneficiary.signer).withdraw()
+  
+        const afterReleasableAmount = await tokenLock.releasableAmount()
+        expect(afterReleasableAmount).to.equal(toMOXIE('1000'))
+  
+        await advancePeriods(tokenLock, 10)
+        const finalReleasableAmount = await tokenLock.releasableAmount()
+        expect(finalReleasableAmount).to.equal(toMOXIE('9000'))
+  
+      })
     })
 
-    it('should release considering what is used in the protocol', async function () {
-      // Move to have some vested periods
-      await advanceToStart(tokenLock)
-      await advancePeriods(tokenLock, 2)
+    describe('Invest while you vest - revocability disabled', function () {
+      let lockAsStaking: Staking
+      beforeEach(async () => {
+        // Deploy a revocable contract with 6 periods, 1 per month
+        initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('10000'))
+        tokenLock = await initWithArgs({ ...initArgs, periods: 10, revocable: Revocability.Disabled })
+  
+        // Use the tokenLock contract as if itCannot use more tokens than vested amoun were the Staking contract
+        lockAsStaking = Staking__factory.connect(tokenLock.address, deployer.signer)
+  
+        // Approve contracts to pull tokens from the token lock
+        await tokenLock.connect(beneficiary.signer).approveProtocol()
+      })
+  
+      it('should allow to invest unvested tokens as well - revocability disabled', async function () {
+        await advanceToStart(tokenLock)
+        await advancePeriods(tokenLock, 1)
+  
+        // At this point we vested one period, we have tokens
+        // Stake funds into the protocol
+        const stakeAmount = toMOXIE('2000')
+        const tx = await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
+      })
+  
+      it('revert if invest amount is greater than the token lock wallet balance - revocability disabled', async function () {
+        await advanceToStart(tokenLock)
+        await advancePeriods(tokenLock, 1)
+  
+        // At this point we vested one period, we have tokens
+        // Stake funds into the protocol
+        const stakeAmount = toMOXIE('50000000')
+        const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount, {gasLimit: 1000000})
+        await expect(tx).to.be.revertedWith('ERC20: transfer amount exceeds balance')
+      })
+  
+      it('should get surplus profit amount received from protocol investing - revocability disabled', async function () {
+        await advanceToStart(tokenLock)
+        await advancePeriods(tokenLock, 2)
+  
+        // At this point we vested one period, we have tokens
+        // Stake funds into the protocol
+        const stakeAmount = toMOXIE('5000')
+        await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
+  
+        // Simulate having a profit
+        await moxie.approve(staking.address, toMOXIE('10000'))
+        await staking.stakeTo(lockAsStaking.address, toMOXIE('10000'))
+  
+        // Unstake more than we used in the protocol, this should work!
+        await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('10000'))
+        await advanceBlocks(20)
+        await lockAsStaking.connect(beneficiary.signer).withdraw()
+  
+        const surplus = await tokenLock.connect(beneficiary.signer).surplusAmount()
+        expect(surplus).to.equal(toMOXIE('5000'))
+       
+      })
 
-      // Get amount that can be released with no used tokens yet
-      const releasableAmount = await tokenLock.releasableAmount()
+      it('should exclude loss received from protocol investing - revocability disabled', async function () {
+        await advanceToStart(tokenLock)
+        await advancePeriods(tokenLock, 2)
+  
+        const beforeReleasableAmount = await tokenLock.releasableAmount()
+      //  console.log('beforeReleasableAmount', formatMOXIE(beforeReleasableAmount))
+        const currentBalance = await tokenLock.currentBalance()
+      //  console.log('currentBalance', formatMOXIE(currentBalance))
+  
+        // At this point we vested one period, we have tokens
+        // Stake funds into the protocol
+        const stakeAmount = toMOXIE('5000')
+        await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
 
-      // Use tokens in the protocol
-      const stakeAmount = toMOXIE('1000')
-      await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
+        const releasedAmount = await tokenLock.releasedAmount()
+       // console.log('releasedAmount', formatMOXIE(releasedAmount))
+  
+        // Simulate having a loss
+        await moxie.approve(staking.address, toMOXIE('1000'))
+        await staking.stakeTo(lockAsStaking.address, toMOXIE('1000'))
 
-      // Release - should take into account used tokens
-      const tx = await tokenLock.connect(beneficiary.signer).release()
-      await expect(tx)
-        .emit(tokenLock, 'TokensReleased')
-        .withArgs(beneficiary.address, releasableAmount.sub(stakeAmount))
+        const currentBalanceAfterStake = await tokenLock.currentBalance()
+       // console.log('currentBalanceAfterStake', formatMOXIE(currentBalanceAfterStake))
+  
+        await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('1000'))
+        await advanceBlocks(20)
+        await lockAsStaking.connect(beneficiary.signer).withdraw()
 
-      // Revoke should work
-      await tokenLock.connect(deployer.signer).revoke()
-    })
+        const currentBalanceAfterUnStake = await tokenLock.currentBalance()
+      //  console.log('currentBalanceAfterUnStake', formatMOXIE(currentBalanceAfterUnStake))
+  
+        //const afterReleasableAmount = await tokenLock.releasableAmount()
+       // console.log('afterReleasableAmount', formatMOXIE(afterReleasableAmount))
+       // expect(afterReleasableAmount).to.equal(toMOXIE('1000'))
 
-    it('should release considering what is used in the protocol (even if most is used)', async function () {
-      // Move to have some vested periods
-      await advanceToStart(tokenLock)
-      await advancePeriods(tokenLock, 2)
-
-      // Get amount that can be released with no used tokens yet
-      const releasableAmount = await tokenLock.releasableAmount()
-
-      // Use tokens in the protocol
-      const stakeAmount = (await tokenLock.availableAmount()).sub(toMOXIE('1'))
-      await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
-
-      // Release - should take into account used tokens
-      const tx = await tokenLock.connect(beneficiary.signer).release()
-      await expect(tx)
-        .emit(tokenLock, 'TokensReleased')
-        .withArgs(beneficiary.address, releasableAmount.sub(stakeAmount))
-
-      // Revoke should work
-      await tokenLock.connect(deployer.signer).revoke()
-    })
-
-    it('should allow to get profit from the protocol', async function () {
-      await advanceToStart(tokenLock)
-      await advancePeriods(tokenLock, 1)
-
-      // At this point we vested one period, we have tokens
-      // Stake funds into the protocol
-      const stakeAmount = toMOXIE('100')
-      await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
-
-      // Simulate having a profit
-      await moxie.approve(staking.address, toMOXIE('1000000'))
-      await staking.stakeTo(lockAsStaking.address, toMOXIE('1000000'))
-
-      // Unstake more than we used in the protocol, this should work!
-      await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('1000000'))
-      await advanceBlocks(20)
-      await lockAsStaking.connect(beneficiary.signer).withdraw()
-    })
-    it('should exclude loss received from protocol investing', async function () {
-      await advanceToStart(tokenLock)
-      await advancePeriods(tokenLock, 2)
-
-      const beforeReleasableAmount = await tokenLock.releasableAmount()
-
-      // At this point we vested one period, we have tokens
-      // Stake funds into the protocol
-      const stakeAmount = toMOXIE('2000')
-      await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
-      // Simulate having a profit
-      await moxie.approve(staking.address, toMOXIE('1000'))
-      await staking.stakeTo(lockAsStaking.address, toMOXIE('1000'))
-
-      // Unstake more than we used in the protocol, this should work!
-      await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('1000'))
-      await advanceBlocks(20)
-      await lockAsStaking.connect(beneficiary.signer).withdraw()
-
-      const afterReleasableAmount = await tokenLock.releasableAmount()
-      expect(afterReleasableAmount).to.equal(toMOXIE('1000'))
-
-      await advancePeriods(tokenLock, 10)
-      const finalReleasableAmount = await tokenLock.releasableAmount()
-      expect(finalReleasableAmount).to.equal(toMOXIE('9000'))
-
-    })
-  })
-
-  describe('Invest while you vest - revocability enabled', function () {
-    let lockAsStaking
-    beforeEach(async () => {
-      // Deploy a revocable contract with 6 periods, 1 per month
-      initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('10000'))
-      tokenLock = await initWithArgs({ ...initArgs, periods: 10, revocable: Revocability.Enabled })
-
-      // Use the tokenLock contract as if itCannot use more tokens than vested amoun were the Staking contract
-      lockAsStaking = Staking__factory.connect(tokenLock.address, deployer.signer)
-
-      // Add the staking contract as token destination
-      await tokenLockManager.addTokenDestination(staking.address)
-
-      // Approve contracts to pull tokens from the token lock
-      await tokenLock.connect(beneficiary.signer).approveProtocol()
-    })
-
-    it('should not allow to invest - unvested tokens with revocability enabled', async function () {
-      await advanceToStart(tokenLock)
-      await advancePeriods(tokenLock, 1)
-
-      // At this point we vested one period, we have tokens
-      // Stake funds into the protocol
-      const stakeAmount = toMOXIE('2000')
-      const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount, {gasLimit: 1000000})
-      await expect(tx).to.be.revertedWith('Cannot use more tokens than vested amount')
-    })
-
-    it('should get surplus profit amount received from protocol investing', async function () {
-      await advanceToStart(tokenLock)
-      await advancePeriods(tokenLock, 2)
-
-      // At this point we vested one period, we have tokens
-      // Stake funds into the protocol
-      const stakeAmount = toMOXIE('2000')
-      await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
-
-      // Simulate having a profit
-      await moxie.approve(staking.address, toMOXIE('10000'))
-      await staking.stakeTo(lockAsStaking.address, toMOXIE('10000'))
-
-      // Unstake more than we used in the protocol, this should work!
-      await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('10000'))
-      await advanceBlocks(20)
-      await lockAsStaking.connect(beneficiary.signer).withdraw()
-
-      const surplus = await tokenLock.connect(beneficiary.signer).surplusAmount()
-      expect(surplus).to.equal(toMOXIE('8000'))
-    })
-
-    it('should exclude loss received from protocol investing', async function () {
-      await advanceToStart(tokenLock)
-      await advancePeriods(tokenLock, 2)
-
-      const beforeReleasableAmount = await tokenLock.releasableAmount()
-
-      // At this point we vested one period, we have tokens
-      // Stake funds into the protocol
-      const stakeAmount = toMOXIE('2000')
-      await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
-      // Simulate having a profit
-      await moxie.approve(staking.address, toMOXIE('1000'))
-      await staking.stakeTo(lockAsStaking.address, toMOXIE('1000'))
-
-      // Unstake more than we used in the protocol, this should work!
-      await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('1000'))
-      await advanceBlocks(20)
-      await lockAsStaking.connect(beneficiary.signer).withdraw()
-
-      const afterReleasableAmount = await tokenLock.releasableAmount()
-      expect(afterReleasableAmount).to.equal(toMOXIE('1000'))
-
-      await advancePeriods(tokenLock, 10)
-      const finalReleasableAmount = await tokenLock.releasableAmount()
-      expect(finalReleasableAmount).to.equal(toMOXIE('9000'))
-
-    })
-
-  })
-
-  describe('Invest while you vest - revocability disabled', function () {
-    let lockAsStaking
-    beforeEach(async () => {
-      // Deploy a revocable contract with 6 periods, 1 per month
-      initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('10000'))
-      tokenLock = await initWithArgs({ ...initArgs, periods: 10, revocable: Revocability.Disabled })
-
-      // Use the tokenLock contract as if itCannot use more tokens than vested amoun were the Staking contract
-      lockAsStaking = Staking__factory.connect(tokenLock.address, deployer.signer)
-
-      // Add the staking contract as token destination
-      await tokenLockManager.addTokenDestination(staking.address)
-
-      // Approve contracts to pull tokens from the token lock
-      await tokenLock.connect(beneficiary.signer).approveProtocol()
-    })
-
-    it('should allow to invest - unvested tokens as well', async function () {
-      await advanceToStart(tokenLock)
-      await advancePeriods(tokenLock, 1)
-
-      // At this point we vested one period, we have tokens
-      // Stake funds into the protocol
-      const stakeAmount = toMOXIE('2000')
-      const tx = await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
-    })
-
-    it('revert if invest amount is greater than the token lock wallet balance', async function () {
-      await advanceToStart(tokenLock)
-      await advancePeriods(tokenLock, 1)
-
-      // At this point we vested one period, we have tokens
-      // Stake funds into the protocol
-      const stakeAmount = toMOXIE('50000000')
-      const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount, {gasLimit: 1000000})
-      await expect(tx).to.be.revertedWith('ERC20: transfer amount exceeds balance')
-    })
-
-    it('should get surplus profit amount received from protocol investing', async function () {
-      await advanceToStart(tokenLock)
-      await advancePeriods(tokenLock, 2)
-
-      // At this point we vested one period, we have tokens
-      // Stake funds into the protocol
-      const stakeAmount = toMOXIE('5000')
-      await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
-
-      // Simulate having a profit
-      await moxie.approve(staking.address, toMOXIE('10000'))
-      await staking.stakeTo(lockAsStaking.address, toMOXIE('10000'))
-
-      // Unstake more than we used in the protocol, this should work!
-      await lockAsStaking.connect(beneficiary.signer).unstake(toMOXIE('10000'))
-      await advanceBlocks(20)
-      await lockAsStaking.connect(beneficiary.signer).withdraw()
-
-      const surplus = await tokenLock.connect(beneficiary.signer).surplusAmount()
-      expect(surplus).to.equal(toMOXIE('5000'))
-     
+       await advancePeriods(tokenLock, 5)
+       const releaseAmountAt8thPeriod = await tokenLock.releasableAmount()
+      // console.log('currentPeriod', await tokenLock.currentPeriod())
+       //console.log('releaseAmountAt8thPeriod', formatMOXIE(releaseAmountAt8thPeriod))
+       expect(releaseAmountAt8thPeriod).to.equal(toMOXIE('6000'))
+  
+        await advancePeriods(tokenLock, 10)
+        const finalReleasableAmount = await tokenLock.releasableAmount()
+        expect(finalReleasableAmount).to.equal(toMOXIE('6000'))
+      })
     })
   })
 })
