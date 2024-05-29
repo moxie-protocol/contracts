@@ -1,0 +1,2 @@
+beneficiary,managedAmount,startTime,endTime,periods,revocable,releaseStartTime,vestingCliffTime
+0x51986c53F57894d3D51f6DE06E9b9669C5772120,500000.00,1716467768,1716482168,5,2,0,0
