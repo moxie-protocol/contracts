@@ -10,7 +10,6 @@ import "./interfaces/ISubjectTokenFactory.sol";
 import "./interfaces/IERC20Extended.sol";
 
 contract TokenManager is ITokenManager, SecurityModule {
-
     using SafeERC20 for IERC20Extended;
 
     bytes32 public constant MINT_ROLE = keccak256("MINT_ROLE");
@@ -19,8 +18,8 @@ contract TokenManager is ITokenManager, SecurityModule {
     /// @dev Factory contract to deploy ERC20 contract for subject.abi
     ISubjectTokenFactory public subjectTokenFactory;
 
-    /// @dev Mapping that tracks subject & its deployed token contract.
-    mapping(address => IERC20Extended) public tokens;
+    /// @dev Mapping of subject & its Token
+    mapping(address => address) public tokens;
 
     /**
      * @notice Initialize the contract.
@@ -31,17 +30,20 @@ contract TokenManager is ITokenManager, SecurityModule {
         address _owner,
         address _subjectTokenFactory
     ) public initializer {
+
+        if (_subjectTokenFactory == address(0)) revert InvalidSubjectFactory();
+        if(_owner == address(0)) revert InvalidOwner();
+
         __AccessControl_init();
         __Pausable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
 
-        require(_subjectTokenFactory != address(0), "!subject token factory");
         subjectTokenFactory = ISubjectTokenFactory(subjectTokenFactory);
     }
 
     /**
      * @notice Creates token for subject, mints initial supply & transfer it to creator.
-     * @param _subject Address of Subject for which token is getting deployed.
+     * @param _subject Address of subject for which token is getting deployed.
      * @param _name Name of token getting deployed.
      * @param _symbol Symbol of token getting deployed
      * @param _initialSupply Initial supply of token getting deployed.
@@ -52,21 +54,19 @@ contract TokenManager is ITokenManager, SecurityModule {
         string memory _symbol,
         uint256 _initialSupply
     ) external whenNotPaused onlyRole(CREATE_ROLE) returns (address token_) {
-        require(address(tokens[_subject]) == address(0), "!token exists");
+        if (_subject == address(0)) revert InvalidSubject();
+        if (tokens[_subject] != address(0)) revert SubjectExists();
 
+        //create token & mint initial supply.
         token_ = subjectTokenFactory.create(
             _name,
             _symbol,
             _initialSupply,
             address(this)
         );
-        tokens[_subject] = IERC20Extended(token_);
-
+        tokens[_subject] = token_;
         // Transfer initial supply to creator.
-        require(
-            IERC20(token_).transfer(msg.sender, _initialSupply),
-            "!transfer"
-        );
+        IERC20Extended(token_).safeTransfer(msg.sender, _initialSupply);
 
         emit TokenDeployed(_subject, token_, _initialSupply);
     }
@@ -82,7 +82,9 @@ contract TokenManager is ITokenManager, SecurityModule {
         address _beneficiary,
         uint256 _amount
     ) public whenNotPaused onlyRole(MINT_ROLE) returns (bool) {
-        require(address(tokens[_subject]) == address(0), "!token exists");
+
+        if (tokens[_subject] == address(0)) revert TokenNotFound();
+        
         IERC20Extended(tokens[_subject]).mint(_beneficiary, _amount);
         return true;
     }
