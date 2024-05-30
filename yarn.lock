@@ -7042,8 +7042,6 @@ __metadata:
 "contracts@workspace:.":
   version: 0.0.0-use.local
   resolution: "contracts@workspace:."
-  dependencies:
-    "@ablack/fundraising-bancor-formula": "npm:^1.0.0"
   languageName: unknown
   linkType: soft
 
