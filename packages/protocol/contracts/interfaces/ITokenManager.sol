@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import "./IERC20Extended.sol";
 
 interface ITokenManager {
-    error InvalidSubjectFactory();
+    error InvalidSubjectImplementation();
     error SubjectExists();
     error InvalidSubject();
     error TokenNotFound();
@@ -23,7 +23,8 @@ interface ITokenManager {
         address _beneficiary,
         string memory _name,
         string memory _symbol,
-        uint256 _initialSupply
+        uint256 _initialSupply,
+        address _moxiePassVerifier
     ) external returns (address token_);
 
     function mint(

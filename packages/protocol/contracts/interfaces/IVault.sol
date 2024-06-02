@@ -13,13 +13,15 @@ interface IVault {
         address indexed subject,
         address indexed token,
         address indexed to,
-        uint256 amount
+        uint256 amount,
+        uint256 totalReserve
     );
     event VaultDeposit(
         address indexed subject,
         address indexed token,
         address indexed sender,
-        uint256 amount
+        uint256 amount,
+        uint256 totalReserve
     );
 
     function balanceOf(

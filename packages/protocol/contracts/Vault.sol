@@ -63,7 +63,7 @@ contract Vault is SecurityModule, IVault {
 
         reserves[_subjectToken][_token] += _value;
 
-        emit VaultDeposit(_subjectToken, _token, msg.sender, _value);
+        emit VaultDeposit(_subjectToken, _token, msg.sender, _value, reserves[_subjectToken][_token]);
     }
 
     /**
@@ -93,6 +93,6 @@ contract Vault is SecurityModule, IVault {
         reserves[_subjectToken][_token] -= _value;
         IERC20Extended(_token).safeTransfer(_to, _value);
 
-        emit VaultTransfer(_subjectToken, _token, _to, _value);
+        emit VaultTransfer(_subjectToken, _token, _to, _value, reserves[_subjectToken][_token]);
     }
 }
