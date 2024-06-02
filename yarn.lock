@@ -20038,8 +20038,6 @@ __metadata:
 "contracts@workspace:.":
   version: 0.0.0-use.local
   resolution: "contracts@workspace:."
-  dependencies:
-    "@ablack/fundraising-bancor-formula": "npm:^1.0.0"
   languageName: unknown
   linkType: soft
 
@@ -22456,6 +22454,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "protocol@workspace:packages/protocol"
   dependencies:
+    "@ablack/fundraising-bancor-formula": "npm:^1.0.0"
     "@nomicfoundation/hardhat-chai-matchers": "npm:^2.0.0"
     "@nomicfoundation/hardhat-ethers": "npm:^3.0.0"
     "@nomicfoundation/hardhat-ignition": "npm:^0.15.4"

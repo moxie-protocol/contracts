@@ -2,20 +2,33 @@
 pragma solidity ^0.8.24;
 
 interface IVault {
+    error InvalidSubject();
+    error InvalidToken();
+    error InvalidAmount();
+    error InvalidToAddress();
+    error InvalidReserveBalance();
+    error InvalidOwner();
+
     event VaultTransfer(
         address indexed subject,
         address indexed token,
         address indexed to,
-        uint256 amount
+        uint256 amount,
+        uint256 totalReserve
     );
     event VaultDeposit(
         address indexed subject,
         address indexed token,
         address indexed sender,
-        uint256 amount
+        uint256 amount,
+        uint256 totalReserve
     );
 
-    function balanceOf(address _subject, address _token) external returns(uint256 balance_);
+    function balanceOf(
+        address _subject,
+        address _token
+    ) external returns (uint256 balance_);
+
     function deposit(address _subject, address _token, uint256 _value) external;
 
     function transfer(
