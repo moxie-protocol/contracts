@@ -34,11 +34,18 @@ contract ISubjectFactory {
         string name;
         string symbol;
         uint96 initialSupply;
-        uint96 minBuyAmount;
-        uint256 minBiddingAmount;
-        uint256 minFundingThreshold;
-        bool isAtomicClosureAllowed;
-        address accessManagerContract;
-        bytes accessManagerContractData;
+        uint96 minBuyAmount; // in moxie token
+        uint256 minBiddingAmount; // in subject token
+        uint256 minFundingThreshold; // amount of auction funding in moxie token below which auction will be cancelled.
+        bool isAtomicClosureAllowed; // false can be hardcoded
+        address accessManagerContract; //
+        bytes accessManagerContractData; //0x00 can be hardcoded
+    }
+
+    struct FeeInput {
+        uint256 protocolBuyFeePct;
+        uint256 protocolSellFeePct;
+        uint256 subjectBuyFeePct;
+        uint256 subjectSellFeePct;
     }
 }

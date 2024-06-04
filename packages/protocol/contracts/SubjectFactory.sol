@@ -54,10 +54,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      * @param _moxieBondingCurve  Address of Bonding curve contract.
      * @param _token  Address of moxie token.
      * @param _easyAuction Address of Easy auction contract.
-     * @param _protocolBuyFeePct protocol buy side fee in PCT_BASE.
-     * @param _protocolSellFeePct  protocol sell side fee in PCT_BASE.
-     * @param _subjectBuyFeePct  subject buy side fee in PCT_BASE.
-     * @param _subjectSellFeePct  subject sell side fee in PCT_BASE.
+     * @param _feeInput Fee input struct
      * @param _feeBeneficiary Protocol fee beneficiary.
      * @param _auctionDuration Duration of auction in unixtimestamp.
      * @param _auctionOrderCancellationDuration  duration of auction order  cancellation in unixtimestamp.
@@ -68,10 +65,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         address _moxieBondingCurve,
         address _token,
         address _easyAuction,
-        uint256 _protocolBuyFeePct,
-        uint256 _protocolSellFeePct,
-        uint256 _subjectBuyFeePct,
-        uint256 _subjectSellFeePct,
+        FeeInput memory _feeInput,
         address _feeBeneficiary,
         uint256 _auctionDuration,
         uint256 _auctionOrderCancellationDuration
@@ -82,10 +76,10 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         if (_easyAuction == address(0)) revert InvalidAuctionContract();
 
         if (
-            !_feeIsValid(_protocolBuyFeePct) ||
-            _feeIsValid(_protocolSellFeePct) ||
-            _feeIsValid(_subjectBuyFeePct) ||
-            _feeIsValid(_subjectSellFeePct)
+            !_feeIsValid(_feeInput.protocolBuyFeePct) ||
+            _feeIsValid(_feeInput.protocolSellFeePct) ||
+            _feeIsValid(_feeInput.subjectBuyFeePct) ||
+            _feeIsValid(_feeInput.subjectSellFeePct)
         ) revert InvalidFeePercentage();
 
         if (!_feeBeneficiaryIsValid(_feeBeneficiary))
@@ -96,11 +90,11 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         if (_auctionOrderCancellationDuration == 0)
             revert InvalidAuctionOrderCancellationDuration();
 
-        protocolBuyFeePct = _protocolBuyFeePct;
-        protocolSellFeePct = _protocolSellFeePct;
-        subjectBuyFeePct = _subjectBuyFeePct;
-        subjectSellFeePct = _subjectSellFeePct;
-        feeBeneficiary = _feeBeneficiary;
+        protocolBuyFeePct = _feeInput.protocolBuyFeePct;
+        protocolSellFeePct = _feeInput.protocolSellFeePct;
+        subjectBuyFeePct = _feeInput.subjectBuyFeePct;
+        subjectSellFeePct = _feeInput.subjectSellFeePct;
+        feeBeneficiary =  _feeBeneficiary;
         token = IERC20Extended(_token);
         auctionDuration = _auctionDuration;
         auctionOrderCancellationDuration = _auctionOrderCancellationDuration;
@@ -144,6 +138,30 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         );
     }
 
+    function _createAuction(
+        address _subject,
+        address _subjectToken,
+        SubjectAuctionInput memory auctionInput
+    ) internal returns (uint256 auctionId_,  uint256 auctionEndDate_) {
+        auctionEndDate_ = block.timestamp + auctionDuration;
+        auctionId_ = easyAuction.initiateAuction(
+            _subjectToken,
+            address(token),
+            block.timestamp + auctionOrderCancellationDuration,
+            auctionEndDate_,
+            auctionInput.initialSupply,
+            auctionInput.minBuyAmount,
+            auctionInput.minBiddingAmount,
+            auctionInput.minFundingThreshold,
+            auctionInput.isAtomicClosureAllowed,
+            auctionInput.accessManagerContract,
+            auctionInput.accessManagerContractData
+        );
+
+        auctions[_subject].auctionId = auctionId_;
+        auctions[_subject].auctionEndDate = auctionEndDate_;
+    }
+
     /**
      * @dev Function to onboard & start auction of initial supply of subject.
      * @param _subject Address of subject.
@@ -175,23 +193,9 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
             auctionInput.initialSupply
         );
 
-        uint256 auctionEndDate = block.timestamp + auctionDuration;
-        auctionId_ = easyAuction.initiateAuction(
-            subjectToken,
-            address(token),
-            block.timestamp + auctionOrderCancellationDuration,
-            block.timestamp + auctionDuration,
-            auctionInput.initialSupply,
-            auctionInput.minBuyAmount,
-            auctionInput.minBiddingAmount,
-            auctionInput.minFundingThreshold,
-            auctionInput.isAtomicClosureAllowed,
-            auctionInput.accessManagerContract,
-            auctionInput.accessManagerContractData
-        );
+        (uint256 auctionId, uint256 auctionEndDate) = _createAuction(_subject, subjectToken, auctionInput);
 
-        auctions[_subject].auctionId = auctionId_;
-        auctions[_subject].auctionEndDate = auctionEndDate;
+        auctionId_ = auctionId;
 
         emit SubjectOnboardingInitiated(
             _subject,
@@ -203,29 +207,48 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         );
     }
 
-    function finalizeSubjectOnboarding(
-        address _subject,
-        uint32 _reserveRatio
-    ) external whenNotPaused onlyRole(ONBOARDING_ROLE) {
-        if (_subject == address(0)) revert InvalidSubject();
+    //    function _decodeOrder(bytes32 _orderData)
+    //     internal
+    //     pure
+    //     returns (
+    //         uint64 userId,
+    //         uint96 buyAmount, //moxie amount
+    //         uint96 sellAmount //subject amount
+    //     )
+    // {
+    //     // Note: converting to uint discards the binary digits that do not fit
+    //     // the type.
+    //     userId = uint64(uint256(_orderData) >> 192);
+    //     buyAmount = uint96(uint256(_orderData) >> 96);
+    //     sellAmount = uint96(uint256(_orderData));
+    // }
 
-        uint256 auctionId = auctions[_subject].auctionId;
-        if (auctionId == 0) revert AuctionNotCreated();
+    // function finalizeSubjectOnboarding(
+    //     address _subject,
+    //     uint32 _reserveRatio
+    // ) external whenNotPaused onlyRole(ONBOARDING_ROLE) {
+    //     if (_subject == address(0)) revert InvalidSubject();
 
-        if (block.timestamp < auctions[_subject].auctionEndDate)
-            revert AuctionNotDoneYet();
+    //     uint256 auctionId = auctions[_subject].auctionId;
+    //     if (auctionId == 0) revert AuctionNotCreated();
 
-        uint256 finalSupply = 0;
-        uint256 reserveAmount = 0;
+    //     if (block.timestamp < auctions[_subject].auctionEndDate)
+    //         revert AuctionNotDoneYet();
 
-        easyAuction.settleAuction(auctionId);
-        moxieBondingCurve.initializeSubjectBondingCurve(
-            _subject,
-            _reserveRatio,
-            finalSupply,
-            reserveAmount
-        );
-    }
+    //     uint256 finalSupply = 0; // how much sold in auction
+    //     uint256 reserveAmount = 0; // how much moxie is raised
+
+    //     bytes32 clearingOrder = easyAuction.settleAuction(auctionId);
+
+    //     (uint64 userId, uint96 buyAmount, uint96 sellAmount ) = _decodeOrder(clearingOrder);
+    //     //
+    //     moxieBondingCurve.initializeSubjectBondingCurve(
+    //         _subject,
+    //         _reserveRatio,
+    //         finalSupply,
+    //         reserveAmount
+    //     );
+    // }
 
     /**
      * @notice Update beneficiary to `_beneficiary. It can be done by UPDATE_BENEFICIARY_ROLE.

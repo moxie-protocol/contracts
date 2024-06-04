@@ -57,7 +57,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _subjectToken,
         uint256 _initialSupply,
         uint256 _reserve,
-        uint32 _reserveRation
+        uint32 _reserveRatio
     );
 
     event SubjectSharePurchased(
@@ -243,6 +243,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
 
         if (shares_ < _minReturnAmountAfterFee) revert SlippageExceedsLimit();
 
+        //todo if onBehalfOf is zero mint to self & then burn
         tokenManager.mint(address(_subjectToken), _onBehalfOf, shares_);
 
         emit SubjectSharePurchased(
@@ -473,6 +474,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             tokenManager.tokens(_subject)
         );
 
+        
         if (address(subjectToken) == address(0)) revert InvalidSubjectToken();
 
         returnAmount_ = _sellShares(
