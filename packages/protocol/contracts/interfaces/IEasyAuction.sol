@@ -17,5 +17,5 @@ interface IEasyAuction {
         bytes memory accessManagerContractData
     ) external returns (uint256);
 
-    function settleAuction(uint256 _auctionId) external;
+    function settleAuction(uint256 _auctionId) external  returns (bytes32 clearingOrder);
 }
