@@ -11,8 +11,9 @@ import "./SecurityModule.sol";
 import "./interfaces/ITokenManager.sol";
 import "./interfaces/IERC20Extended.sol";
 import "./interfaces/IVault.sol";
+import "./interfaces/IMoxieBondingCurve.sol";
 
-contract MoxieBondingCurve is SecurityModule {
+contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     using SafeERC20 for IERC20Extended;
 
     bytes32 public constant UPDATE_FEES_ROLE = keccak256("UPDATE_FEES_ROLE");
@@ -22,7 +23,7 @@ contract MoxieBondingCurve is SecurityModule {
         keccak256("UPDATE_BENEFICIARY_ROLE");
 
     error InvalidBeneficiary();
-    error InvalidPercentage();
+    error InvalidFeePercentage();
     error InvalidFormula();
     error InvalidTokenManager();
     error InvalidOwner();
@@ -135,7 +136,7 @@ contract MoxieBondingCurve is SecurityModule {
             _feeIsValid(_protocolSellFeePct) ||
             _feeIsValid(_subjectBuyFeePct) ||
             _feeIsValid(_subjectSellFeePct)
-        ) revert InvalidPercentage();
+        ) revert InvalidFeePercentage();
 
         if (!_feeBeneficiaryIsValid(_feeBeneficiary))
             revert InvalidBeneficiary();
@@ -321,7 +322,7 @@ contract MoxieBondingCurve is SecurityModule {
             !_feeIsValid(_protocolSellFeePct) ||
             !_feeIsValid(_subjectBuyFeePct) ||
             !_feeIsValid(_subjectSellFeePct)
-        ) revert InvalidPercentage();
+        ) revert InvalidFeePercentage();
 
         _updateFees(
             _protocolBuyFeePct,
