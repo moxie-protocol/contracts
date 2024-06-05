@@ -17,7 +17,7 @@ contract TokenManager is ITokenManager, SecurityModule {
     bytes32 public constant CREATE_ROLE = keccak256("CREATE_ROLE");
 
     /// @dev Address of subject implementation.
-    address subjectImplementation;
+    address public subjectImplementation;
 
     /// @dev Mapping of subject & its Token
     mapping(address => address) public tokens;
@@ -93,6 +93,8 @@ contract TokenManager is ITokenManager, SecurityModule {
         uint256 _amount
     ) public whenNotPaused onlyRole(MINT_ROLE) returns (bool) {
         if (tokens[_subject] == address(0)) revert TokenNotFound();
+
+        if(_amount == 0) revert InvalidAmount();
 
         IERC20Extended(tokens[_subject]).mint(_beneficiary, _amount);
         return true;

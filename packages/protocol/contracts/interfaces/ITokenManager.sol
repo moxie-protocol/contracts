@@ -9,7 +9,8 @@ interface ITokenManager {
     error InvalidSubject();
     error TokenNotFound();
     error InvalidOwner();
-
+    error InvalidAmount();
+    
     event TokenDeployed(
         address _beneficiary,
         address _token,

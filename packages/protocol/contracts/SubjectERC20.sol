@@ -19,7 +19,7 @@ contract SubjectERC20 is
     OwnableUpgradeable,
     ERC20PermitUpgradeable
 {
-    IMoxiePassVerifier moxiePassVerifier;
+    IMoxiePassVerifier public moxiePassVerifier;
 
     error NotAMoxiePassHolder();
 
