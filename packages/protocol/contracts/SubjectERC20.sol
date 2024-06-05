@@ -22,30 +22,41 @@ contract SubjectERC20 is
     IMoxiePassVerifier public moxiePassVerifier;
 
     error NotAMoxiePassHolder();
+    error InvalidOwner();
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
-
+    /**
+     * @notice Initialize contract
+     * @param _owner Owner of contract,
+     * @param _name Name of erc20.
+     * @param _symbol Symbol of erc20.
+     * @param _initialSupply Initial supply used to mint on initialization.
+     * @param _moxiePassVerifier Address of moxie pass verifier.
+     */
     function initialize(
-        address initialOwner,
-        string memory name,
-        string memory symbol,
+        address _owner,
+        string memory _name,
+        string memory _symbol,
         uint256 _initialSupply,
         address _moxiePassVerifier
     ) public initializer {
-        __ERC20_init(name, symbol);
+        if (_owner == address(0)) revert InvalidOwner();
+
+        __ERC20_init(_name, _symbol);
         __ERC20Burnable_init();
-        __Ownable_init(initialOwner);
-        __ERC20Permit_init(name);
+        __Ownable_init(_owner);
+        __ERC20Permit_init(_name);
 
         moxiePassVerifier = IMoxiePassVerifier(_moxiePassVerifier);
-        _mint(initialOwner, _initialSupply);
+        _mint(_owner, _initialSupply);
     }
 
-    function mint(address to, uint256 amount) public onlyOwner {
-        _mint(to, amount);
+    /**
+     * @notice Mint tokens to address.
+     * @param _to Address of beneficiary.
+     * @param _amount Amount of tokens to be minted.
+     */
+    function mint(address _to, uint256 _amount) public onlyOwner {
+        _mint(_to, _amount);
     }
 
     function _update(
@@ -53,7 +64,7 @@ contract SubjectERC20 is
         address to,
         uint256 value
     ) internal virtual override {
-        if (!moxiePassVerifier.isMoxiePassHolder(to))
+        if (to != address(0) && !moxiePassVerifier.isMoxiePassHolder(to))
             revert NotAMoxiePassHolder();
 
         super._update(from, to, value);
