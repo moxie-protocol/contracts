@@ -16,13 +16,13 @@ import { defaultInitArgs, TokenLockParameters } from './config'
 import { setupTest, authProtocolFunctions, advancePeriods } from './helper'
 
 
-describe('airdrop contract', () => {
+describe('Airdrop Contract', () => {
 
     /*
        * TEST SUMMARY AIRDROP CONTRACT
        * deploy vesting contract (vesting schedule)
        * create new vesting schedule (180 tokens)
-       * should be able to see unvested toke ns as 180
+       * should be able to see unvested tokens as 180
        * check that vested amount is 0
        * check that releasable amount is 0
        * check that released amount is 0
@@ -30,15 +30,14 @@ describe('airdrop contract', () => {
        * check that releasable amount is 1
        * check the unvested amount should be 179
        * check that owner cannot revoke vested and unvested tokens
-       * check that beneficiary cannot release more than the vested amount
        * release 1 token and check that a Transfer event is emitted with a value of 1
        * check that the released amount is 1
-       * set current time after the end of the vesting period
-       * check that the vested amount is 179 (180 - 1 released tokens)
+       * vest all tokens and check that the vested amount is 180
        * check that the releasable amount is 179
-       * release all vested tokens (179) and check that a Transfer event is emitted with a value of 179
-       * check that the released amount is 180
-       * check that the unvested amount is 0
+       * release all releasable tokens and check that a Transfer event is emitted with a value of 179
+       * check after releasing all tokens the unvested amount is 0
+       * check after releasing all tokens the releasable amount is 0
+       * check after releasing all tokens beneficiary should not be able to release more tokens
     */
 
     let deployer: Account
@@ -135,6 +134,52 @@ describe('airdrop contract', () => {
     it('check that owner cannot revoke vested and unvested tokens', async function () {
         const tx = tokenLock.connect(deployer.signer).revoke()
         await expect(tx).revertedWith('Contract is non-revocable')
+    })
+
+    it('release 1 token and check that a Transfer event is emitted with a value of 1', async function () {
+        const tx = tokenLock.connect(beneficiary.signer).release()
+        await expect(tx).emit(tokenLock, 'TokensReleased').withArgs(beneficiary.address, toMOXIE('1'))
+    })
+
+    it('check that the released amount is 1', async function () {
+        const releasedAmount = await tokenLock.releasedAmount()
+        expect(releasedAmount).to.equal(toMOXIE('1'))
+    })
+
+    it('vest all tokens and check that the vested amount is 180', async function () {
+        // Increase time by 179 day
+        await advancePeriods(tokenLock, 179)
+
+        const availableAmount = await tokenLock.availableAmount()
+        expect(availableAmount).to.equal(toMOXIE('180'))
+    })
+
+    it('check that the releasable amount is 179', async function () {
+        const releasableAmount = await tokenLock.releasableAmount()
+        expect(releasableAmount).to.equal(toMOXIE('179'))
+    })
+
+    it('release all releasable tokens and check that a Transfer event is emitted with a value of 179', async function () {
+        const tx = tokenLock.connect(beneficiary.signer).release()
+        await expect(tx).emit(tokenLock, 'TokensReleased').withArgs(beneficiary.address, toMOXIE('179'))
+    })
+
+    it('check after releasing all tokens the unvested amount is 0', async function () {
+        const managedAmount = await tokenLock.managedAmount()
+        const availableAmount = await tokenLock.availableAmount()
+        const unVestedAmount = managedAmount.sub(availableAmount)
+        expect(unVestedAmount).to.equal(0)
+    })
+
+    it('check after releasing all tokens the releasable amount is 0', async function () {
+        const releasableAmount = await tokenLock.releasableAmount()
+        expect(releasableAmount).to.equal(0)
+    })
+
+    it('check after releasing all tokens beneficiary should not be able to release more tokens', async function () {
+        const amountToRelease = await tokenLock.releasableAmount()
+        const tx = tokenLock.connect(beneficiary.signer).release()
+        await expect(tx).revertedWith('No available releasable amount')
     })
 
 });
