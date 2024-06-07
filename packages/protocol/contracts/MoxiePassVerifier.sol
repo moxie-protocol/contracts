@@ -3,7 +3,6 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./lib/AllowListVerifierHelper.sol";
 import "./interface/IAllowListVerifier.sol";
 
 /**
@@ -13,6 +12,13 @@ import "./interface/IAllowListVerifier.sol";
  */
 contract MoxiePassVerifier is Ownable, IAllowListVerifier {
     IERC721 public erc721ContractAddress;
+
+    /**
+     * @dev Value returned by a call to `isAllowed` if the check
+     * was successful. The value is defined as:
+     * bytes4(keccak256("isAllowed(address,uint256,bytes)"))
+     */
+    bytes4 internal constant MAGICVALUE = 0x19a05a7e;
 
     /**
      * @dev The operation failed because the address does not hold the moxie pass
@@ -95,12 +101,12 @@ contract MoxiePassVerifier is Ownable, IAllowListVerifier {
         // If the erc721ContractAddress is 0, that mean the check if the user holds the NFT is not required.
         // @dev this is by design, as the contract owner can set the erc721ContractAddress to 0 to disable the check
         if (address(erc721ContractAddress) == address(0)) {
-            return AllowListVerifierHelper.MAGICVALUE;
+            return MAGICVALUE;
         }
 
         // Check if the user is the owner of the NFT
         if (erc721ContractAddress.balanceOf(user) > 0) {
-            return AllowListVerifierHelper.MAGICVALUE;
+            return MAGICVALUE;
         }
 
         // Finally return 0
