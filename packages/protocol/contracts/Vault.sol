@@ -51,7 +51,7 @@ contract Vault is SecurityModule, IVault {
         address _token,
         uint256 _value
     ) external override {
-        if (_subjectToken == address(0)) revert InvalidSubject();
+        if (_subjectToken == address(0)) revert InvalidSubjectToken();
         if (_token == address(0)) revert InvalidToken();
         if (_value == 0) revert InvalidAmount();
 
@@ -79,7 +79,7 @@ contract Vault is SecurityModule, IVault {
         address _to,
         uint256 _value
     ) external override whenNotPaused onlyRole(TRANSFER_ROLE) {
-        if (_subjectToken == address(0)) revert InvalidSubject();
+        if (_subjectToken == address(0)) revert InvalidSubjectToken();
 
         if (_token == address(0)) revert InvalidToken();
 

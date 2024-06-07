@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 interface IVault {
-    error InvalidSubject();
+    error InvalidSubjectToken();
     error InvalidToken();
     error InvalidAmount();
     error InvalidToAddress();
