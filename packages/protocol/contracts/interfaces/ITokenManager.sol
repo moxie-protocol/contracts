@@ -4,13 +4,13 @@ pragma solidity ^0.8.24;
 import "./IERC20Extended.sol";
 
 interface ITokenManager {
-    error InvalidSubjectImplementation();
-    error SubjectExists();
-    error InvalidSubject();
-    error TokenNotFound();
-    error InvalidOwner();
-    error InvalidAmount();
-    
+    error TokenManager_InvalidSubjectImplementation();
+    error TokenManager_SubjectExists();
+    error TokenManager_InvalidSubject();
+    error TokenManager_TokenNotFound();
+    error TokenManager_InvalidOwner();
+    error TokenManager_InvalidAmount();
+
     event TokenDeployed(
         address _beneficiary,
         address _token,

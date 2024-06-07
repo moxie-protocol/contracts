@@ -21,8 +21,8 @@ contract SubjectERC20 is
 {
     IMoxiePassVerifier public moxiePassVerifier;
 
-    error NotAMoxiePassHolder();
-    error InvalidOwner();
+    error SubjectERC20_NotAMoxiePassHolder();
+    error SubjectERC20_InvalidOwner();
 
     /**
      * @notice Initialize contract
@@ -39,7 +39,7 @@ contract SubjectERC20 is
         uint256 _initialSupply,
         address _moxiePassVerifier
     ) public initializer {
-        if (_owner == address(0)) revert InvalidOwner();
+        if (_owner == address(0)) revert SubjectERC20_InvalidOwner();
 
         __ERC20_init(_name, _symbol);
         __ERC20Burnable_init();
@@ -65,7 +65,7 @@ contract SubjectERC20 is
         uint256 value
     ) internal virtual override {
         if (to != address(0) && !moxiePassVerifier.isMoxiePassHolder(to))
-            revert NotAMoxiePassHolder();
+            revert SubjectERC20_NotAMoxiePassHolder();
 
         super._update(from, to, value);
     }

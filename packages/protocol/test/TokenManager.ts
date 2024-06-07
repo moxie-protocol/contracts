@@ -60,6 +60,23 @@ describe("TokenManager", () => {
             expect(implementationAddress).to.equal(subjectErc20Address)
         });
 
+
+        it('should fail if subject implementation is zero address', async () => {
+
+            const [deployer] = await ethers.getSigners();
+
+            const TokenManager =
+                await hre.ethers.getContractFactory("TokenManager");
+
+            const tokenManager = await TokenManager.deploy({ from: deployer.address });
+
+            await expect(tokenManager.connect(deployer).initialize(
+                deployer.address, ethers.ZeroAddress
+            )).to.revertedWithCustomError(tokenManager, 'TokenManager_InvalidSubjectImplementation');
+
+        })
+
+
         it('should fail if zero owner address is passed', async () => {
 
             const [deployer, subjectErc20] = await ethers.getSigners();
@@ -71,7 +88,7 @@ describe("TokenManager", () => {
 
             await expect(tokenManager.connect(deployer).initialize(
                 ethers.ZeroAddress, subjectErc20.address
-            )).to.revertedWithCustomError(tokenManager, 'InvalidOwner');
+            )).to.revertedWithCustomError(tokenManager, 'TokenManager_InvalidOwner');
 
         })
 
@@ -107,13 +124,13 @@ describe("TokenManager", () => {
             const subject = deployer.address;
             const initialSupply = 100 * 10 ^ 18;
             const passVerifierAddress = await moxiePassVerifier.getAddress();
-            expect(await tokenManager.connect(deployer).create(
+            await expect(await tokenManager.connect(deployer).create(
                 subject,
                 'test',
                 'test',
                 initialSupply,
                 passVerifierAddress,
-            )).to.emit(tokenManager, 'TokenDeployed');
+            )).to.emit(tokenManager, 'TokenDeployed').withArgs(subject, await tokenManager.tokens(subject), initialSupply);
 
             const subjectTokenAddress = await tokenManager.tokens(subject);
             expect(subjectTokenAddress).to.be.not.null;
@@ -129,6 +146,31 @@ describe("TokenManager", () => {
             const balanceOfDeployer = await subjectERC20.balanceOf(deployer.address);
 
             expect(balanceOfDeployer).to.equal(initialSupply);
+
+        });
+
+
+        it('should revert if sender without create role send transaction', async () => {
+
+            const {
+                tokenManager,
+                owner,
+                deployer,
+                moxiePassVerifier,
+            } = await loadFixture(deploy);
+
+
+            const subject = deployer.address;
+            const initialSupply = 100 * 10 ^ 18;
+            const passVerifierAddress = await moxiePassVerifier.getAddress();
+            await expect(tokenManager.connect(deployer).create(
+                subject,
+                'test',
+                'test',
+                initialSupply,
+                passVerifierAddress,
+            )).to.revertedWithCustomError(tokenManager, 'AccessControlUnauthorizedAccount').withArgs(deployer.address, await tokenManager.CREATE_ROLE());
+
 
         });
 
@@ -151,7 +193,7 @@ describe("TokenManager", () => {
                 'test',
                 initialSupply,
                 passVerifierAddress,
-            )).to.emit(tokenManager, 'TokenDeployed');
+            )).to.emit(tokenManager, 'TokenDeployed').withArgs(subject, await tokenManager.tokens(subject), initialSupply);
 
             await expect(tokenManager.connect(deployer).create(
                 subject,
@@ -159,7 +201,7 @@ describe("TokenManager", () => {
                 'test',
                 initialSupply,
                 passVerifierAddress,
-            )).to.revertedWithCustomError(tokenManager, 'SubjectExists');
+            )).to.revertedWithCustomError(tokenManager, 'TokenManager_SubjectExists');
 
         });
 
@@ -182,8 +224,33 @@ describe("TokenManager", () => {
                 'test',
                 initialSupply,
                 passVerifierAddress,
-            )).to.revertedWithCustomError(tokenManager, 'InvalidSubject');
+            )).to.revertedWithCustomError(tokenManager, 'TokenManager_InvalidSubject');
 
+        });
+
+        it('should revert on create when contract is paused', async () => {
+
+            const {
+                tokenManager,
+                owner,
+                deployer,
+                moxiePassVerifier,
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole((await tokenManager.CREATE_ROLE()), deployer.address);
+            await tokenManager.connect(owner).grantRole((await tokenManager.PAUSE_ROLE()), deployer.address);
+
+            await tokenManager.connect(deployer).pause();
+            const subject = ethers.ZeroAddress;
+            const initialSupply = 100 * 10 ^ 18;
+            const passVerifierAddress = await moxiePassVerifier.getAddress();
+            await expect(tokenManager.connect(deployer).create(
+                subject,
+                'test',
+                'test',
+                initialSupply,
+                passVerifierAddress,
+            )).to.revertedWithCustomError(tokenManager, 'EnforcedPause');
 
         });
     });
@@ -210,7 +277,7 @@ describe("TokenManager", () => {
                 'test',
                 initialSupply,
                 passVerifierAddress,
-            )).to.emit(tokenManager, 'TokenDeployed');
+            )).to.emit(tokenManager, 'TokenDeployed').withArgs(subject, await tokenManager.tokens(subject), initialSupply);
 
 
             await tokenManager.connect(owner).grantRole((await tokenManager.MINT_ROLE()), deployer.address);
@@ -225,7 +292,7 @@ describe("TokenManager", () => {
             const preBalance = await subjectERC20.balanceOf(beneficiaryAddress);
             await expect(await tokenManager.connect(deployer).mint(subject, beneficiaryAddress, amount)).to.emit(
                 subjectERC20, "Transfer"
-            );
+            ).withArgs(ethers.ZeroAddress, beneficiaryAddress, amount);
 
             const postBalance = await subjectERC20.balanceOf(beneficiaryAddress);
             const expectedBalance = BigInt(preBalance) + BigInt(amount);
@@ -252,7 +319,7 @@ describe("TokenManager", () => {
                 'test',
                 initialSupply,
                 passVerifierAddress,
-            )).to.emit(tokenManager, 'TokenDeployed');
+            )).to.emit(tokenManager, 'TokenDeployed').withArgs(subject, await tokenManager.tokens(subject), initialSupply);
 
             const beneficiaryAddress = owner.address;
 
@@ -264,6 +331,45 @@ describe("TokenManager", () => {
 
 
         });
+
+
+        it('should not allow mint if contract is paused mint role', async () => {
+            const {
+                tokenManager,
+                owner,
+                deployer,
+                moxiePassVerifier,
+            } = await loadFixture(deploy);
+
+
+            await tokenManager.connect(owner).grantRole((await tokenManager.CREATE_ROLE()), deployer.address);
+            await tokenManager.connect(owner).grantRole((await tokenManager.MINT_ROLE()), deployer.address);
+            await tokenManager.connect(owner).grantRole((await tokenManager.PAUSE_ROLE()), deployer.address);
+
+            const subject = deployer.address;
+            const initialSupply = 100 * 10 ^ 18;
+            const passVerifierAddress = await moxiePassVerifier.getAddress();
+            expect(await tokenManager.connect(deployer).create(
+                subject,
+                'test',
+                'test',
+                initialSupply,
+                passVerifierAddress,
+            )).to.emit(tokenManager, 'TokenDeployed').withArgs(subject, await tokenManager.tokens(subject), initialSupply);
+
+
+            await tokenManager.connect(deployer).pause();
+            const beneficiaryAddress = owner.address;
+
+            const amount = 20 * 10 ^ 18;
+
+            await expect(tokenManager.connect(deployer).mint(subject, beneficiaryAddress, amount)).to.be.revertedWithCustomError(
+                tokenManager, 'EnforcedPause'
+            );
+
+
+        });
+
 
         it('should not allow mint for invalid subject', async () => {
             const {
@@ -279,7 +385,7 @@ describe("TokenManager", () => {
             const amount = 20 * 10 ^ 18;
 
             await expect(tokenManager.connect(deployer).mint(subject, beneficiaryAddress, amount)).to.be.revertedWithCustomError(
-                tokenManager, 'TokenNotFound'
+                tokenManager, 'TokenManager_TokenNotFound'
             );
 
         });
@@ -306,15 +412,101 @@ describe("TokenManager", () => {
                 'test',
                 initialSupply,
                 passVerifierAddress,
-            )).to.emit(tokenManager, 'TokenDeployed');
+            )).to.emit(tokenManager, 'TokenDeployed').withArgs(subject, await tokenManager.tokens(subject), initialSupply);
 
             const amount = 0;
 
-            await expect( tokenManager.connect(deployer).mint(subject, beneficiaryAddress, amount)).to.be.revertedWithCustomError(
-                tokenManager, 'InvalidAmount'
+            await expect(tokenManager.connect(deployer).mint(subject, beneficiaryAddress, amount)).to.be.revertedWithCustomError(
+                tokenManager, 'TokenManager_InvalidAmount'
             );
 
         });
     });
+
+    describe('pause/unpause', () => {
+
+        it('should allow to pause ', async () => {
+            const {
+                tokenManager,
+                owner,
+                deployer
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole(await tokenManager.PAUSE_ROLE(), deployer.address);
+            await expect(tokenManager.connect(deployer).pause()).to.emit(tokenManager, 'Paused').withArgs(deployer.address);
+
+        });
+
+
+        it('should allow to unpause ', async () => {
+
+            const {
+                tokenManager,
+                owner,
+                deployer
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole(await tokenManager.PAUSE_ROLE(), deployer.address);
+            await expect(tokenManager.connect(deployer).pause()).to.emit(tokenManager, 'Paused').withArgs(deployer.address);
+            await expect(tokenManager.connect(deployer).unpause()).to.emit(tokenManager, 'Unpaused').withArgs(deployer.address);
+
+        });
+
+        it('should not allow to pause without pause role ', async () => {
+
+            const {
+                tokenManager,
+                owner,
+                deployer
+            } = await loadFixture(deploy);
+
+            await expect(tokenManager.connect(deployer).pause()).to.revertedWithCustomError(tokenManager, "AccessControlUnauthorizedAccount")
+
+        });
+
+
+        it('should not allow to unpause without pause role ', async () => {
+
+            const {
+                tokenManager,
+                owner,
+                deployer
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole(await tokenManager.PAUSE_ROLE(), deployer.address);
+            await expect(tokenManager.connect(deployer).pause()).to.emit(tokenManager, 'Paused').withArgs(deployer.address);
+
+            await tokenManager.connect(owner).revokeRole(await tokenManager.PAUSE_ROLE(), deployer.address);
+            await expect(tokenManager.connect(deployer).unpause()).to.revertedWithCustomError(tokenManager, "AccessControlUnauthorizedAccount")
+
+        });
+
+        it('should fail to unpause if not paused', async () => {
+
+            const {
+                tokenManager,
+                owner,
+                deployer
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole(await tokenManager.PAUSE_ROLE(), deployer.address);
+            await expect(tokenManager.connect(deployer).unpause()).to.revertedWithCustomError(tokenManager, "ExpectedPause");
+
+        });
+
+        it('should fail to pause if not unpaused', async () => {
+
+            const {
+                tokenManager,
+                owner,
+                deployer
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole(await tokenManager.PAUSE_ROLE(), deployer.address);
+            await expect(tokenManager.connect(deployer).pause()).to.emit(tokenManager, 'Paused').withArgs(deployer.address);
+            await expect(tokenManager.connect(deployer).pause()).to.revertedWithCustomError(tokenManager, "EnforcedPause")
+
+        });
+    })
 
 });

@@ -24,20 +24,20 @@ contract TokenManager is ITokenManager, SecurityModule {
 
     /**
      * @notice Initialize the contract.
-     * @param _owner Owner of contract which gets admin role.
+     * @param _admin Admin of contract which gets admin role.
      * @param _subjectImplementation Implemetation of subject ERC20 contract.
      */
     function initialize(
-        address _owner,
+        address _admin,
         address _subjectImplementation
     ) public initializer {
         if (_subjectImplementation == address(0))
-            revert InvalidSubjectImplementation();
-        if (_owner == address(0)) revert InvalidOwner();
+            revert TokenManager_InvalidSubjectImplementation();
+        if (_admin == address(0)) revert TokenManager_InvalidOwner();
 
         __AccessControl_init();
         __Pausable_init();
-        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
 
         subjectImplementation = _subjectImplementation;
     }
@@ -48,7 +48,7 @@ contract TokenManager is ITokenManager, SecurityModule {
      * @param _name Name of token getting deployed.
      * @param _symbol Symbol of token getting deployed
      * @param _initialSupply Initial supply of token getting deployed.
-     * @param _moxiePassVerifier Address of moxie pass verifier contract. 
+     * @param _moxiePassVerifier Address of moxie pass verifier contract.
      */
     function create(
         address _subject,
@@ -57,21 +57,21 @@ contract TokenManager is ITokenManager, SecurityModule {
         uint256 _initialSupply,
         address _moxiePassVerifier
     ) external whenNotPaused onlyRole(CREATE_ROLE) returns (address token_) {
-        if (_subject == address(0)) revert InvalidSubject();
-        if (tokens[_subject] != address(0)) revert SubjectExists();
+        if (_subject == address(0)) revert TokenManager_InvalidSubject();
+        if (tokens[_subject] != address(0)) revert TokenManager_SubjectExists();
 
         token_ = Clones.cloneDeterministic(
             subjectImplementation,
             keccak256(abi.encodePacked(_subject))
         );
 
-       //create initialize & mint initial supply.
+        //Initialize & mint initial supply.
         ISubjectErc20(token_).initialize(
-        address(this),
-        _name,
-        _symbol,
-        _initialSupply,
-        _moxiePassVerifier
+            address(this),
+            _name,
+            _symbol,
+            _initialSupply,
+            _moxiePassVerifier
         );
 
         tokens[_subject] = token_;
@@ -92,11 +92,12 @@ contract TokenManager is ITokenManager, SecurityModule {
         address _beneficiary,
         uint256 _amount
     ) public whenNotPaused onlyRole(MINT_ROLE) returns (bool) {
-        if (tokens[_subject] == address(0)) revert TokenNotFound();
+        address token = tokens[_subject];
+        if (token == address(0)) revert TokenManager_TokenNotFound();
 
-        if(_amount == 0) revert InvalidAmount();
+        if (_amount == 0) revert TokenManager_InvalidAmount();
 
-        IERC20Extended(tokens[_subject]).mint(_beneficiary, _amount);
+        IERC20Extended(token).mint(_beneficiary, _amount);
         return true;
     }
 }

@@ -61,6 +61,28 @@ describe("SubjectERC20", () => {
             expect(await subjectErc20.balanceOf(owner.address)).to.equal(initialSupply);
         });
 
+        it('should fail to initialize if already initialized', async () => {
+
+            const {
+                subjectErc20,
+                owner,
+                name,
+                symbol,
+                initialSupply,
+                moxiePassVerifier,
+                deployer
+            } = await loadFixture(deploy);
+
+            await expect(subjectErc20.connect(deployer).initialize(
+                owner.address,
+                name,
+                symbol,
+                initialSupply,
+                await moxiePassVerifier.getAddress()
+            )).to.revertedWithCustomError(subjectErc20, "InvalidInitialization");
+
+        });
+
 
         it('should fail for zero owner ', async () => {
 
@@ -81,7 +103,7 @@ describe("SubjectERC20", () => {
                 symbol,
                 initialSupply,
                 await moxiePassVerifier.getAddress()
-            )).revertedWithCustomError(subjectErc20, 'InvalidOwner');
+            )).revertedWithCustomError(subjectErc20, 'SubjectERC20_InvalidOwner');
 
         });
     });
@@ -102,7 +124,8 @@ describe("SubjectERC20", () => {
 
             const amount = 20 * 10 ^ 18;
             const beforeBalance = await subjectErc20.balanceOf(signer.address);
-            await expect(subjectErc20.connect(owner).mint(signer.address, amount)).emit(subjectErc20, 'Transfer');
+            await expect(subjectErc20.connect(owner).mint(signer.address, amount)).emit(subjectErc20, 'Transfer')
+                .withArgs(ethers.ZeroAddress, signer.address, amount);
             const afterBalance = await subjectErc20.balanceOf(signer.address);
 
             expect(BigInt(afterBalance) - BigInt(beforeBalance)).to.equal(amount);
@@ -122,10 +145,27 @@ describe("SubjectERC20", () => {
 
             const amount = 20 * 10 ^ 18;
             const beforeBalance = await subjectErc20.balanceOf(signer.address);
-            await expect(subjectErc20.connect(owner).transfer(signer.address, amount)).emit(subjectErc20, 'Transfer');
+            await expect(subjectErc20.connect(owner).transfer(signer.address, amount))
+                .emit(subjectErc20, 'Transfer').withArgs(owner.address, signer.address, amount);
             const afterBalance = await subjectErc20.balanceOf(signer.address);
 
             expect(BigInt(afterBalance) - BigInt(beforeBalance)).to.equal(amount);
+
+        });
+
+        it('should not allow mint by non owner', async () => {
+            const {
+                subjectErc20,
+                owner,
+                mockErc721,
+                signer
+            } = await loadFixture(deploy);
+
+            const amount = 20 * 10 ^ 18;
+
+            await mockErc721.connect(signer).mint(signer.address, '200');
+            await expect(subjectErc20.connect(signer).mint(signer.address, amount)).to.revertedWithCustomError(subjectErc20, 'OwnableUnauthorizedAccount');
+
 
         });
 
@@ -138,7 +178,7 @@ describe("SubjectERC20", () => {
             } = await loadFixture(deploy);
 
             const amount = 20 * 10 ^ 18;
-            await expect(subjectErc20.connect(owner).burn(amount)).emit(subjectErc20, 'Transfer');
+            await expect(subjectErc20.connect(owner).burn(amount)).emit(subjectErc20, 'Transfer').withArgs(owner.address, ethers.ZeroAddress, amount);
             const afterBalance = await subjectErc20.balanceOf(owner.address);
             expect(BigInt(initialSupply) - BigInt(amount)).to.equal(afterBalance);
 
@@ -154,7 +194,7 @@ describe("SubjectERC20", () => {
 
             const amount = 20 * 10 ^ 18;
             await expect(subjectErc20.connect(owner).mint(signer.address, amount))
-                .revertedWithCustomError(subjectErc20, 'NotAMoxiePassHolder');
+                .revertedWithCustomError(subjectErc20, 'SubjectERC20_NotAMoxiePassHolder');
 
         });
 
@@ -167,7 +207,7 @@ describe("SubjectERC20", () => {
 
             const amount = 20 * 10 ^ 18;
             await expect(subjectErc20.connect(owner).transfer(signer.address, amount))
-                .revertedWithCustomError(subjectErc20, 'NotAMoxiePassHolder');
+                .revertedWithCustomError(subjectErc20, 'SubjectERC20_NotAMoxiePassHolder');
 
         });
     });
