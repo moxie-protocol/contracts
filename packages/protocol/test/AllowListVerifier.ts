@@ -163,7 +163,7 @@ describe("AllowListVerifier", function () {
 
       await expect(
         moxiePassVerifier.connect(signer2).testModifier(),
-      ).to.be.revertedWithCustomError(moxiePassVerifier, "NotaMoxiePassHolder");
+      ).to.be.revertedWithCustomError(moxiePassVerifier, "MoxiePassVerifier_NotaMoxiePassHolder");
     });
 
     it("Should throw error if the wallet address does not owns ERC721 token", async function () {
@@ -177,7 +177,7 @@ describe("AllowListVerifier", function () {
 
       expect(
         await moxiePassVerifier.testModifier(),
-      ).to.be.revertedWithCustomError(moxiePassVerifier, "NotaMoxiePassHolder");
+      ).to.be.revertedWithCustomError(moxiePassVerifier, "MoxiePassVerifier_NotaMoxiePassHolder");
     });
 
     it("Should not throw error if the wallet address owns ERC721 token", async function () {
