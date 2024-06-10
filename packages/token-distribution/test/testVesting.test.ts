@@ -183,3 +183,192 @@ describe('Airdrop Contract', () => {
     })
 
 });
+
+
+describe('Investor Contract 1 Year', () => {
+
+    /*
+       * TEST SUMMARY INVESTOR CONTRACT 1 YEAR
+       * deploy vesting contract (vesting schedule)
+       * create new vesting schedule (166.7 tokens)
+            suppossing we are providing 1000 tokens for 2 years
+       * should be able to see unvested tokens as 166.7
+       * check that vested amount is 0
+       * check that releasable amount is 0
+       * check that released amount is 0
+       * wait till 365 days and check that vested amount is 0
+       * check that releasable amount is 0
+       * check the unvested amount should be 166.7
+       * check that owner cannot revoke vested and unvested tokens
+       * wait till 370 days and check the vested amount is 27.78
+       * check that releasable amount is 27.78
+       * release 27.78 token and check that a Transfer event is emitted with a value of 27.78
+       * check that the released amount is 27.78
+       * vest all tokens and check that the vested amount is 166.7
+       * check that the releasable amount is 138.91
+       * release all releasable tokens and check that a Transfer event is emitted with a value of 138.91
+       * check after releasing all tokens the unvested amount is 0
+       * check after releasing all tokens the releasable amount is 0
+       * check after releasing all tokens beneficiary should not be able to release more tokens
+    */
+
+    let deployer: Account
+    let beneficiary: Account
+    let hacker: Account
+  
+    let moxie: MoxieTokenMock
+    let tokenLock: MoxieTokenLockWallet
+    let tokenLockManager: MoxieTokenLockManager
+    let moxiePassToken: MoxiePassTokenMock
+    let staking: StakingMock
+  
+    let initArgs: TokenLockParameters
+
+    const initWithArgs = async (args: TokenLockParameters): Promise<MoxieTokenLockWallet> => {
+      const tx = await tokenLockManager.createTokenLockWallet(
+        args.owner,
+        args.beneficiary,
+        args.managedAmount,
+        args.startTime,
+        args.endTime,
+        args.periods,
+        args.releaseStartTime,
+        args.vestingCliffTime,
+        args.revocable,
+      )
+      const receipt = await tx.wait()
+      const contractAddress = receipt.events?.[0]?.args?.['proxy'];
+      return ethers.getContractAt('MoxieTokenLockWallet', contractAddress) as Promise<MoxieTokenLockWallet>
+    }
+  
+    before(async function () {
+        [deployer, beneficiary, hacker] = await getAccounts();
+
+        ({ moxie, tokenLockManager, staking, moxiePassToken } = await setupTest())
+  
+        // Setup authorized functions in Manager
+        await authProtocolFunctions(tokenLockManager, staking.address);
+
+        initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('166.7'));
+
+        // Change the initArgs to the startTime to start after 1 year
+        // Current epoch time for startTime
+        const currentTime = Math.floor(Date.now() / 1000);
+        const secondsInAYear = 365 * 24 * 60 * 60;
+        const currentTimePlusOneYear = currentTime + secondsInAYear;
+        const secondsIn30Days = 30 * 24 * 60 * 60; // 30 days in seconds
+        initArgs.startTime = currentTimePlusOneYear;
+        initArgs.endTime = currentTimePlusOneYear + secondsIn30Days;
+        initArgs.periods = 30;
+            
+        tokenLock = await initWithArgs(initArgs);
+    })
+
+    it('should be able to see unvested tokens as 166.7', async function () {
+        const managedAmount = await tokenLock.managedAmount()
+        const availableAmount = await tokenLock.availableAmount()
+        const unVestedAmount = managedAmount.sub(availableAmount)
+        expect(unVestedAmount).to.equal(toMOXIE('166.7'))
+    })
+
+    it('check that vested amount is 0', async function () {
+        const availableAmount = await tokenLock.availableAmount()
+        expect(availableAmount).to.equal(0)
+    })
+
+    it('check that releasable amount is 0', async function () {
+        const releasableAmount = await tokenLock.releasableAmount()
+        expect(releasableAmount).to.equal(0)
+    })
+
+    it('check that released amount is 0', async function () {
+        const releasedAmount = await tokenLock.releasedAmount()
+        expect(releasedAmount).to.equal(0)
+    })
+
+    it('wait till 365 days and check that vested amount is 0', async function () {
+        // Increase time by 365 days
+        await advancePeriods(tokenLock, 365)
+
+        const availableAmount = await tokenLock.availableAmount()
+        expect(availableAmount).to.equal(0)
+    })
+
+    it('check that releasable amount is 0', async function () {
+        const releasableAmount = await tokenLock.releasableAmount()
+        expect(releasableAmount).to.equal(0)
+    })
+
+    it('check the unvested amount should be 166.7', async function () {
+        const managedAmount = await tokenLock.managedAmount()
+        const availableAmount = await tokenLock.availableAmount()
+        const unVestedAmount = managedAmount.sub(availableAmount)
+        expect(unVestedAmount).to.equal(toMOXIE('166.7'))
+    })
+
+    it('check that owner cannot revoke vested and unvested tokens', async function () {
+        const tx = tokenLock.connect(deployer.signer).revoke()
+        await expect(tx).revertedWith('Contract is non-revocable')
+    })
+
+    it('wait till 370 days and check the vested amount is 27.78', async function () {
+        // Increase time by 5 days
+        await advancePeriods(tokenLock, 5)
+
+        const availableAmount = await tokenLock.availableAmount()
+        expect(availableAmount).to.equal('27783333333333333330')
+    })
+
+    it('check that releasable amount is 27.78', async function () {
+        const releasableAmount = await tokenLock.releasableAmount()
+        expect(releasableAmount).to.equal('27783333333333333330')
+    })
+
+    it('release 27.78 token and check that a Transfer event is emitted with a value of 27.78', async function () {
+        const tx = tokenLock.connect(beneficiary.signer).release()
+        await expect(tx).emit(tokenLock, 'TokensReleased').withArgs(beneficiary.address, '27783333333333333330')
+    })
+
+    it('check that the released amount is 27.78', async function () {
+        const releasedAmount = await tokenLock.releasedAmount()
+        expect(releasedAmount).to.equal('27783333333333333330')
+    })
+
+    it('vest all tokens and check that the vested amount is 166.7', async function () {
+        // Increase time by 25 days
+        await advancePeriods(tokenLock, 25)
+
+        const availableAmount = await tokenLock.availableAmount()
+        expect(availableAmount).to.equal(toMOXIE('166.7'))
+    })
+
+    it('check that the releasable amount is 138.91', async function () {
+        const releasableAmount = await tokenLock.releasableAmount()
+        expect(releasableAmount).to.equal('138916666666666666670')
+    })
+
+    it('release all releasable tokens and check that a Transfer event is emitted with a value of 138.91', async function () {
+        const tx = tokenLock.connect(beneficiary.signer).release()
+        await expect(tx).emit(tokenLock, 'TokensReleased').withArgs(beneficiary.address, '138916666666666666670')
+    })
+
+    it('check after releasing all tokens the unvested amount is 0', async function () {
+        const managedAmount = await tokenLock.managedAmount()
+        const availableAmount = await tokenLock.availableAmount()
+        const unVestedAmount = managedAmount.sub(availableAmount)
+        expect(unVestedAmount).to.equal(0)
+    })
+
+    it('check after releasing all tokens the releasable amount is 0', async function () {
+        const releasableAmount = await tokenLock.releasableAmount()
+        expect(releasableAmount).to.equal(0)
+    })
+
+    it('check after releasing all tokens beneficiary should not be able to release more tokens', async function () {
+        const amountToRelease = await tokenLock.releasableAmount()
+        const tx = tokenLock.connect(beneficiary.signer).release()
+        await expect(tx).revertedWith('No available releasable amount')
+    })
+  
+
+});
