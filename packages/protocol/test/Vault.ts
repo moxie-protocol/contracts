@@ -115,7 +115,7 @@ describe("Vault", () => {
 
             let previousBalance = await token.balanceOf(vaultAddress);
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
-            .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
+                .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
             let afterBalance = await token.balanceOf(vaultAddress);
 
             expect(BigInt(previousBalance) + BigInt(amount)).equal(BigInt(afterBalance));
@@ -127,7 +127,7 @@ describe("Vault", () => {
             await token.connect(owner).approve(vaultAddress, amount2);
             previousBalance = await token.balanceOf(vaultAddress);
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount2))
-            .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount+amount2);;
+                .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount + amount2);;
             afterBalance = await token.balanceOf(vaultAddress);
 
             expect(BigInt(previousBalance) + BigInt(amount2)).equal(BigInt(afterBalance));
@@ -230,7 +230,7 @@ describe("Vault", () => {
             let amount = 15 * 10 ^ 18;
             await token.connect(owner).approve(vaultAddress, amount);
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
-            .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
+                .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
 
             await vaultInstance.connect(owner).grantRole((await vaultInstance.TRANSFER_ROLE()), signer1.address);
             const transferAmount = 1 * 10 ^ 18;
@@ -242,7 +242,7 @@ describe("Vault", () => {
                 tokenAddress,
                 benficiary.address,
                 transferAmount
-            )).to.emit(vaultInstance, 'VaultTransfer').withArgs(anyAddress.address, tokenAddress, benficiary, transferAmount, amount-transferAmount);
+            )).to.emit(vaultInstance, 'VaultTransfer').withArgs(anyAddress.address, tokenAddress, benficiary, transferAmount, amount - transferAmount);
 
             const afterBalance = await token.balanceOf(benficiary.address);
 
@@ -264,7 +264,7 @@ describe("Vault", () => {
             let amount = 15 * 10 ^ 18;
             await token.connect(owner).approve(vaultAddress, amount);
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
-            .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
+                .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
 
             await vaultInstance.connect(owner).grantRole((await vaultInstance.TRANSFER_ROLE()), signer1.address);
             const transferAmount = 1 * 10 ^ 18;
@@ -296,7 +296,7 @@ describe("Vault", () => {
             let amount = 15 * 10 ^ 18;
             await token.connect(owner).approve(vaultAddress, amount);
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
-            .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
+                .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
 
             await vaultInstance.connect(owner).grantRole((await vaultInstance.TRANSFER_ROLE()), signer1.address);
             const transferAmount = 1000 * 10 ^ 18;
@@ -325,7 +325,7 @@ describe("Vault", () => {
             let amount = 15 * 10 ^ 18;
             await token.connect(owner).approve(vaultAddress, amount);
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
-            .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
+                .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
 
             const transferAmount = 1 * 10 ^ 18;
             const benficiary = owner;
@@ -354,7 +354,7 @@ describe("Vault", () => {
             await token.connect(owner).approve(vaultAddress, amount);
             await vaultInstance.connect(owner).grantRole((await vaultInstance.TRANSFER_ROLE()), signer1.address);
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
-            .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
+                .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
 
             const transferAmount = 1 * 10 ^ 18;
             const benficiary = owner;
@@ -383,7 +383,7 @@ describe("Vault", () => {
             await token.connect(owner).approve(vaultAddress, amount);
             await vaultInstance.connect(owner).grantRole((await vaultInstance.TRANSFER_ROLE()), signer1.address);
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
-            .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
+                .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
 
             const transferAmount = 1 * 10 ^ 18;
             const benficiary = owner;
@@ -413,7 +413,7 @@ describe("Vault", () => {
             await token.connect(owner).approve(vaultAddress, amount);
             await vaultInstance.connect(owner).grantRole((await vaultInstance.TRANSFER_ROLE()), signer1.address);
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
-            .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
+                .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
 
             const transferAmount = 1 * 10 ^ 18;
             await expect(vaultInstance.connect(signer1).transfer(
@@ -441,7 +441,7 @@ describe("Vault", () => {
             await token.connect(owner).approve(vaultAddress, amount);
             await vaultInstance.connect(owner).grantRole((await vaultInstance.TRANSFER_ROLE()), signer1.address);
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
-            .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
+                .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
 
             const benficiary = owner;
             await expect(vaultInstance.connect(signer1).transfer(

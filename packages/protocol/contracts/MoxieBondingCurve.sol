@@ -84,24 +84,31 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         uint256 _buyAmount,
         address _beneficiary
     );
-
+    /// @dev Address of moxie token. 
     IERC20Extended public token;
+    /// @dev address of Bancors formula.
     IBancorFormula public formula;
+    /// @dev Address of token manager contracts. 
     ITokenManager public tokenManager;
+    /// @dev Address of vault contract.
     IVault public vault;
 
     uint256 public constant PCT_BASE = 10 ** 18; // 0% = 0; 1% = 10 ** 16; 100% = 10 ** 18
     uint32 public constant PPM = 1000000;
-
+    
+    /// @dev Fee settings.
     uint256 public protocolBuyFeePct;
     uint256 public protocolSellFeePct;
     uint256 public subjectBuyFeePct;
     uint256 public subjectSellFeePct;
 
+    /// @dev Address of protocol fee beneficiary.
     address public feeBeneficiary;
+
+    /// @dev Address of subject factory.
     address public subjectFactory;
 
-    // @dev subject address vs reserve ratio
+    /// @dev subject address vs reserve ratio
     mapping(address => uint32) public reserveRatio;
 
     /**
@@ -159,6 +166,16 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
     }
 
+    /**
+     * @dev Internal function to validate initialization input.
+     * @param _token Address of moxie token.
+     * @param _formula Address of formula contract address.
+     * @param _owner Address of owner.
+     * @param _tokenManager  Address of token manager.
+     * @param _vault Address of vault.
+     * @param _feeBeneficiary Address of fee beneficiary.
+     * @param _subjectFactory Address of subject factory.
+     */
     function _validateInput(
         address _token,
         address _formula,
@@ -181,38 +198,67 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             revert MoxieBondingCurve_InvalidBeneficiary();
     }
 
+    /**
+     * @dev Internal function to update fee beneficiary.
+     * @param _beneficiary Address of fee beneficiary.
+     */
     function _updateFeeBeneficiary(address _beneficiary) internal {
         feeBeneficiary = _beneficiary;
 
         emit UpdateBeneficiary(_beneficiary);
     }
 
+    /**
+     * @dev Internal function to update bancor formula.
+     * @param _formula Address of formula contract address.
+     */
     function _updateFormula(IBancorFormula _formula) internal {
         formula = _formula;
 
         emit UpdateFormula(address(_formula));
     }
 
+    /**
+     * @dev Internal function to validate fee.
+     * @param _fee Fee Input in PCT_Base.
+     */
     function _feeIsValid(uint256 _fee) internal pure returns (bool) {
         return _fee < PCT_BASE;
     }
 
+    /**
+     * @dev Internal function to validate formula.
+     * @param _formula Address of formula contract.
+     */
     function _formulaIsValid(address _formula) internal pure returns (bool) {
         return _formula != address(0);
     }
 
-    function _isNonZeroAddress(
-        address _beneficiary
-    ) internal pure returns (bool) {
-        return _beneficiary != address(0);
+    /**
+     * @dev Internal function to validate address.
+     * @param _address  Address to validate.
+     */
+    function _isNonZeroAddress(address _address) internal pure returns (bool) {
+        return _address != address(0);
     }
 
+    /**
+     * @dev Internal function to validate reserve ratio.
+     * @param _reserveRatio Reserve ratio in PPM.
+     */
     function _reserveRatioIsValid(
         uint32 _reserveRatio
     ) internal pure returns (bool) {
         return _reserveRatio <= PPM;
     }
 
+    /**
+     * @dev Internal function to update fee.
+     * @param _protocolBuyFeePct Protocol fee percentage applied during buy share transaction.
+     * @param _protocolSellFeePct Subject fee percentage applied during sell share transaction.
+     * @param _subjectBuyFeePct Subject fee percentage applied during buy share transaction.
+     * @param _subjectSellFeePct Subject fee percentage applied during sell share transaction.
+     */
     function _updateFees(
         uint256 _protocolBuyFeePct,
         uint256 _protocolSellFeePct,
@@ -232,10 +278,19 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         );
     }
 
+    /**
+     * @dev Internal function to buy  shares of subject. 
+     * @param _subjectToken Address of Subject Token.
+     * @param _depositAmount Amount of deposit to buy shares.
+     * @param _onBehalfOf Address of beneficiary where shares will be minted. This address can be zero address too.
+     * @param _minReturnAmountAfterFee Minimum number of shares that must be recieved. 
+     * @param _subject Address of subject.
+     * @param _subjectReserveRatio Subject Reserve ratio. 
+     */
     function _buyShares(
         IERC20Extended _subjectToken,
         uint256 _depositAmount,
-        address _onBehalfOf, 
+        address _onBehalfOf,
         uint256 _minReturnAmountAfterFee,
         address _subject,
         uint32 _subjectReserveRatio
@@ -286,6 +341,15 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         );
     }
 
+    /**
+     * @dev Internal function to sell  shares of subject. 
+     * @param _subjectToken Address of Subject Token.
+     * @param _sellAmount Amount of shares to sell.
+     * @param _onBehalfOf Address of beneficiary where funds will be returned. 
+     * @param _minReturnAmountAfterFee Minimum amount of funds that should be returned. 
+     * @param _subject Address of subject.
+     * @param _subjectReserveRatio Subject Reserve ratio. 
+     */
     function _sellShares(
         IERC20Extended _subjectToken,
         uint256 _sellAmount,
@@ -339,13 +403,24 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         );
     }
 
+    /**
+     * @dev Internal function to calculate buy side fee. 
+     * @param _depositAmount Deposit amount for buy.
+     * @return protocolFee_ Buy side protocol fee in PCT_BASE.
+     * @return subjectFee_  Buy side subject fee in PCT_BASE.
+     */
     function _calculateBuySideFee(
         uint256 _depositAmount
     ) internal view returns (uint256 protocolFee_, uint256 subjectFee_) {
         protocolFee_ = (_depositAmount * protocolBuyFeePct) / PCT_BASE;
         subjectFee_ = (_depositAmount * subjectBuyFeePct) / PCT_BASE;
     }
-
+    /**
+     * @dev Internal function to calculate sell side fee.
+     * @param _sellAmount Amount of subject shares to sell. 
+     * @return protocolFee_ Sell side protocol fee in PCT_BASE.
+     * @return subjectFee_ Sell side subject fee in PCT_BASE.
+     */
     function _calculateSellSideFee(
         uint256 _sellAmount
     ) internal view returns (uint256 protocolFee_, uint256 subjectFee_) {
@@ -498,7 +573,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
      * @param _subject Address of subject.
      * @param _sellAmount Amount of subject shares to sell.
      * @param _onBehalfOf Address of buy token beneficiary.
-     * @param _minReturnAmountAfterFee Minimum buy token that must be returned. 
+     * @param _minReturnAmountAfterFee Minimum buy token that must be returned.
      */
     function sellShares(
         address _subject,
