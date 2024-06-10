@@ -23,7 +23,7 @@ contract MoxiePassVerifier is Ownable, IAllowListVerifier {
     /**
      * @dev The operation failed because the address does not hold the moxie pass
      */
-    error NotaMoxiePassHolder();
+    error MoxiePassVerifier_NotaMoxiePassHolder();
 
     /**
      * @dev Modifier to make a function callable only when the msg.sender holds moxie pass
@@ -59,7 +59,7 @@ contract MoxiePassVerifier is Ownable, IAllowListVerifier {
             address(erc721ContractAddress) != address(0) &&
             erc721ContractAddress.balanceOf(msg.sender) == 0
         ) {
-            revert NotaMoxiePassHolder();
+            revert MoxiePassVerifier_NotaMoxiePassHolder();
         }
     }
 
@@ -86,6 +86,7 @@ contract MoxiePassVerifier is Ownable, IAllowListVerifier {
     function isAllowed(
         address user,
         uint256 auctionId,
+        // @solhint @ignore
         bytes calldata callData
     ) external view returns (bytes4) {
         // If the user address is 0, return 0
