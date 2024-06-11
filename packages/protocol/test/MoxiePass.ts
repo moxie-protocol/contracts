@@ -81,16 +81,44 @@ describe('Moxie Pass', () => {
         });
     });
 
-    describe('supportsInterface', () => {
+    describe('transfer', () => {
 
-        it('should return true for eip 165 ', async () => {
+        it('should not allow transfer of tokens ', async () => {
             const {
                 minter,
                 deployer,
                 moxiePass
             } = await loadFixture(deploy);
 
+
+            await moxiePass.connect(minter).mint(deployer.address);
+            await moxiePass.connect(deployer).approve(minter.address, 0);
+
+            await expect(moxiePass.connect(minter).transferFrom(deployer.address, minter.address, 0))
+            .revertedWithCustomError(moxiePass, "MoxiePass_TransferNotAllowed");
+        });
+
+    });
+
+    describe('supportsInterface', () => {
+
+        it('should return true for eip 165 ', async () => {
+            const {
+                minter,
+                moxiePass
+            } = await loadFixture(deploy);
+
             expect(await moxiePass.connect(minter).supportsInterface("0x01ffc9a7")).to.be.true;
+
+        });
+
+        it('should return false not supported interface ', async () => {
+            const {
+                minter,
+                moxiePass
+            } = await loadFixture(deploy);
+
+            expect(await moxiePass.connect(minter).supportsInterface("0x11ffc9a7")).to.be.false;
 
         });
     });
