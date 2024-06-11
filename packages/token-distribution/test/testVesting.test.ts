@@ -133,8 +133,20 @@ describe('Airdrop Contract', () => {
     })
 
     it('release 1 token and check that a Transfer event is emitted with a value of 1', async function () {
+        // Beneficiary and Contract balance before release
+        const beforeBalance = await moxie.balanceOf(beneficiary.address)
+        const beforeContractBalance = await moxie.balanceOf(tokenLock.address)
+
         const tx = tokenLock.connect(beneficiary.signer).release()
         await expect(tx).emit(tokenLock, 'TokensReleased').withArgs(beneficiary.address, toMOXIE('1'))
+
+        // Beneficiary and Contract balance after balance
+        const afterBalance = await moxie.balanceOf(beneficiary.address)
+        const afterContractBalance = await moxie.balanceOf(tokenLock.address)
+
+        // Check that the balance is updated
+        expect(afterBalance.sub(beforeBalance)).to.equal(toMOXIE('1'))
+        expect(beforeContractBalance.sub(afterContractBalance)).to.equal(toMOXIE('1'))
     })
 
     it('check that the released amount is 1', async function () {
@@ -156,8 +168,20 @@ describe('Airdrop Contract', () => {
     })
 
     it('release all releasable tokens and check that a Transfer event is emitted with a value of 179', async function () {
+        // Beneficiary and Contract balance before release
+        const beforeBalance = await moxie.balanceOf(beneficiary.address)
+        const beforeContractBalance = await moxie.balanceOf(tokenLock.address)
+
         const tx = tokenLock.connect(beneficiary.signer).release()
         await expect(tx).emit(tokenLock, 'TokensReleased').withArgs(beneficiary.address, toMOXIE('179'))
+
+        // Beneficiary and Contract balance after balance
+        const afterBalance = await moxie.balanceOf(beneficiary.address)
+        const afterContractBalance = await moxie.balanceOf(tokenLock.address)
+
+         // Check that the balance is updated
+         expect(afterBalance.sub(beforeBalance)).to.equal(toMOXIE('179'))
+         expect(beforeContractBalance.sub(afterContractBalance)).to.equal(toMOXIE('179'))
     })
 
     it('check after releasing all tokens the unvested amount is 0', async function () {
@@ -319,8 +343,20 @@ describe('Investor Contract 1 Year', () => {
     })
 
     it('release 27.78 token and check that a Transfer event is emitted with a value of 27.78', async function () {
+        // Beneficiary and Contract balance before release
+        const beforeBalance = await moxie.balanceOf(beneficiary.address)
+        const beforeContractBalance = await moxie.balanceOf(tokenLock.address)
+
         const tx = tokenLock.connect(beneficiary.signer).release()
         await expect(tx).emit(tokenLock, 'TokensReleased').withArgs(beneficiary.address, '27783333333333333330')
+
+        // Beneficiary and Contract balance after balance
+        const afterBalance = await moxie.balanceOf(beneficiary.address)
+        const afterContractBalance = await moxie.balanceOf(tokenLock.address)
+
+        // Check that the balance is updated
+        expect(afterBalance.sub(beforeBalance)).to.equal('27783333333333333330')
+        expect(beforeContractBalance.sub(afterContractBalance)).to.equal('27783333333333333330')
     })
 
     it('check that the released amount is 27.78', async function () {
@@ -342,8 +378,20 @@ describe('Investor Contract 1 Year', () => {
     })
 
     it('release all releasable tokens and check that a Transfer event is emitted with a value of 138.91', async function () {
+        // Beneficiary and Contract balance before release
+        const beforeBalance = await moxie.balanceOf(beneficiary.address)
+        const beforeContractBalance = await moxie.balanceOf(tokenLock.address)
+
         const tx = tokenLock.connect(beneficiary.signer).release()
         await expect(tx).emit(tokenLock, 'TokensReleased').withArgs(beneficiary.address, '138916666666666666670')
+
+        // Beneficiary and Contract balance after balance
+        const afterBalance = await moxie.balanceOf(beneficiary.address)
+        const afterContractBalance = await moxie.balanceOf(tokenLock.address)
+
+        // Check that the balance is updated
+        expect(afterBalance.sub(beforeBalance)).to.equal('138916666666666666670')
+        expect(beforeContractBalance.sub(afterContractBalance)).to.equal('138916666666666666670')
     })
 
     it('check after releasing all tokens the unvested amount is 0', async function () {
@@ -506,8 +554,20 @@ describe('Investor Contract 2 Year', () => {
     })
 
     it('release 12.63 token and check that a Transfer event is emitted with a value of 12.63', async function () {
+        // Beneficiary and Contract balance before release
+        const beforeBalance = await moxie.balanceOf(beneficiary.address)
+        const beforeContractBalance = await moxie.balanceOf(tokenLock.address)
+
         const tx = tokenLock.connect(beneficiary.signer).release()
         await expect(tx).emit(tokenLock, 'TokensReleased').withArgs(beneficiary.address, '12625757575757575755')
+
+        // Beneficiary and Contract balance after balance
+        const afterBalance = await moxie.balanceOf(beneficiary.address)
+        const afterContractBalance = await moxie.balanceOf(tokenLock.address)
+
+        // Check that the balance is updated
+        expect(afterBalance.sub(beforeBalance)).to.equal('12625757575757575755')
+        expect(beforeContractBalance.sub(afterContractBalance)).to.equal('12625757575757575755')
     })
 
     it('check that the released amount is 12.63', async function () {
@@ -529,8 +589,20 @@ describe('Investor Contract 2 Year', () => {
     })
 
     it('release all releasable tokens and check that a Transfer event is emitted with a value of 820.67', async function () {
+        // Beneficiary and Contract balance before release
+        const beforeBalance = await moxie.balanceOf(beneficiary.address)
+        const beforeContractBalance = await moxie.balanceOf(tokenLock.address)
+
         const tx = tokenLock.connect(beneficiary.signer).release()
         await expect(tx).emit(tokenLock, 'TokensReleased').withArgs(beneficiary.address, '820674242424242424245')
+
+        // Beneficiary and Contract balance after balance
+        const afterBalance = await moxie.balanceOf(beneficiary.address)
+        const afterContractBalance = await moxie.balanceOf(tokenLock.address)
+
+        // Check that the balance is updated
+        expect(afterBalance.sub(beforeBalance)).to.equal('820674242424242424245')
+        expect(beforeContractBalance.sub(afterContractBalance)).to.equal('820674242424242424245')
     })
 
     it('check after releasing all tokens the unvested amount is 0', async function () {
