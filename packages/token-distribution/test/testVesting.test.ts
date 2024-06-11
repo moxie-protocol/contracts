@@ -625,3 +625,237 @@ describe('Investor Contract 2 Year', () => {
   
 
 });
+
+describe('Team Contract', () => {
+
+    /*
+       * TEST SUMMARY TEAM CONTRACT
+       * deploy vesting contract (vesting schedule)
+       * create new vesting schedule (1667 tokens)
+            suppossing we are providing 10000 tokens
+       * should be able to see unvested tokens as 1667
+       * check that vested amount is 0
+       * check that releasable amount is 0
+       * check that released amount is 0
+       * wait till 200 days and check that vested amount is 913.42
+       * check that releasable amount is 0
+       * check that no tokens can be released during cliff time
+       * check that released amount is 0
+       * check that unvested amount is 753.58
+       * revoke the unvested tokens
+       * check that unvested amount is 0
+       * check that vested amount is 913.42
+       * wait till 365 days and check that vested amount is 913.42
+       * check that releasable amount is 0
+       * check that no tokens can be released during cliff time
+       * wait till 366 days and release all tokens 913.42
+       * check that the released amount is 913.42
+       * check after releasing all tokens the unvested amount is 0
+       * check after releasing all tokens the releasable amount is 0
+       * check after releasing all tokens beneficiary should not be able to release more tokens
+    */
+
+    let deployer: Account
+    let beneficiary: Account
+  
+    let moxie: MoxieTokenMock
+    let tokenLock: MoxieTokenLockWallet
+    let tokenLockManager: MoxieTokenLockManager
+    let staking: StakingMock
+  
+    let initArgs: TokenLockParameters
+
+    const initWithArgs = async (args: TokenLockParameters): Promise<MoxieTokenLockWallet> => {
+      const tx = await tokenLockManager.createTokenLockWallet(
+        args.owner,
+        args.beneficiary,
+        args.managedAmount,
+        args.startTime,
+        args.endTime,
+        args.periods,
+        args.releaseStartTime,
+        args.vestingCliffTime,
+        args.revocable,
+      )
+      const receipt = await tx.wait()
+      const contractAddress = receipt.events?.[0]?.args?.['proxy'];
+      return ethers.getContractAt('MoxieTokenLockWallet', contractAddress) as Promise<MoxieTokenLockWallet>
+    }
+  
+    before(async function () {
+        [deployer, beneficiary] = await getAccounts();
+
+        ({ moxie, tokenLockManager, staking } = await setupTest())
+  
+        // Setup authorized functions in Manager
+        await authProtocolFunctions(tokenLockManager, staking.address);
+
+        initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('1667'));
+
+        // Change the initArgs to the startTime to start at current time
+        // Current epoch time for startTime
+        const currentTime = Math.floor(Date.now() / 1000);
+        const secondsIn365Days = 365 * 24 * 60 * 60; // 365 days in seconds
+        initArgs.startTime = currentTime;
+        initArgs.endTime = currentTime + secondsIn365Days + 1;
+        initArgs.periods = 365;
+        initArgs.revocable = 1; // revocable
+        initArgs.vestingCliffTime = currentTime + secondsIn365Days; // cliff of 1 year, no tokens can be released before this time
+            
+        tokenLock = await initWithArgs(initArgs);
+    })
+
+    it('should be able to see unvested tokens as 1667', async function () {
+        const managedAmount = await tokenLock.managedAmount()
+        const availableAmount = await tokenLock.availableAmount()
+        const unVestedAmount = managedAmount.sub(availableAmount)
+        expect(unVestedAmount).to.equal(toMOXIE('1667'))
+    })
+
+    it('check that vested amount is 0', async function () {
+        const availableAmount = await tokenLock.availableAmount()
+        expect(availableAmount).to.equal(0)
+    })
+
+    it('check that releasable amount is 0', async function () {
+        const releasableAmount = await tokenLock.releasableAmount()
+        expect(releasableAmount).to.equal(0)
+    })
+
+    it('check that released amount is 0', async function () {
+        const releasedAmount = await tokenLock.releasedAmount()
+        expect(releasedAmount).to.equal(0)
+    })
+
+    it('wait till 200 days and check that vested amount is 913.42', async function () {
+        // Increase time by 200 days
+        await advancePeriods(tokenLock, 200)
+
+        const availableAmount = await tokenLock.availableAmount()
+        expect(availableAmount).to.equal('913424657534246575200')
+    })
+
+    it('check that releasable amount is 0', async function () {
+        const releasableAmount = await tokenLock.releasableAmount()
+        expect(releasableAmount).to.equal(0)
+    })
+
+    it('check that no tokens can be released during cliff time', async function () {
+        // Beneficiary and Contract balance before release
+        const beforeBalance = await moxie.balanceOf(beneficiary.address)
+        const beforeContractBalance = await moxie.balanceOf(tokenLock.address)
+
+        const tx = tokenLock.connect(beneficiary.signer).release()
+        await expect(tx).revertedWith('No available releasable amount')
+
+        // Beneficiary and Contract balance after balance
+        const afterBalance = await moxie.balanceOf(beneficiary.address)
+        const afterContractBalance = await moxie.balanceOf(tokenLock.address)
+
+        // Check that the balance is updated
+        expect(afterBalance.sub(beforeBalance)).to.equal(0)
+        expect(beforeContractBalance.sub(afterContractBalance)).to.equal(0)
+    })
+
+    it('check that released amount is 0', async function () {
+        const releasedAmount = await tokenLock.releasedAmount()
+        expect(releasedAmount).to.equal(0)
+    })
+
+    it('check that unvested amount is 753.58', async function () {
+        const managedAmount = await tokenLock.managedAmount()
+        const availableAmount = await tokenLock.availableAmount()
+        const unVestedAmount = managedAmount.sub(availableAmount)
+        expect(unVestedAmount).to.equal('753575342465753424800')
+    })
+
+    it('revoke the unvested tokens', async function () {
+        // Owner balance before revoke
+        const beforeOwnerBalance = await moxie.balanceOf(deployer.address)
+
+        const tx = tokenLock.connect(deployer.signer).revoke()
+        await expect(tx).emit(tokenLock, 'TokensRevoked').withArgs(beneficiary.address, '753575342465753424800')
+
+        // Owner balance after revoke
+        const afterOwnerBalance = await moxie.balanceOf(deployer.address)
+
+        // Check that the balance is updated
+        expect(afterOwnerBalance.sub(beforeOwnerBalance)).to.equal('753575342465753424800')
+    })
+
+    it('check that unvested amount is 0', async function () {
+        const managedAmount = await tokenLock.managedAmount()
+        const availableAmount = await tokenLock.availableAmount()
+        const unVestedAmount = managedAmount.sub(availableAmount)
+        expect(unVestedAmount).to.equal(0)
+    })
+
+    it('check that vested amount is 913.42', async function () {
+        const availableAmount = await tokenLock.availableAmount()
+        expect(availableAmount).to.equal('913424657534246575200')
+    })
+
+    it('wait till 365 days and check that vested amount is 913.42', async function () {
+        // Increase time by 165 days
+        await advancePeriods(tokenLock, 165)
+
+        const availableAmount = await tokenLock.availableAmount()
+        expect(availableAmount).to.equal('913424657534246575200')
+    })
+
+    it('check that releasable amount is 0', async function () {
+        const releasableAmount = await tokenLock.releasableAmount()
+        expect(releasableAmount).to.equal(0)
+    })
+
+    it('check that no tokens can be released during cliff time', async function () {
+        const tx = tokenLock.connect(beneficiary.signer).release()
+        await expect(tx).revertedWith('No available releasable amount')
+    })
+
+    it('wait till 366 days and release all tokens 913.42', async function () {
+        // Increase time by 1 day
+        await advancePeriods(tokenLock, 1)
+
+        // Beneficiary and Contract balance before release
+        const beforeBalance = await moxie.balanceOf(beneficiary.address)
+        const beforeContractBalance = await moxie.balanceOf(tokenLock.address)
+
+        const availableAmount = await tokenLock.availableAmount()
+        expect(availableAmount).to.equal('913424657534246575200')
+
+        // Beneficiary and Contract balance after balance
+        const afterBalance = await moxie.balanceOf(beneficiary.address)
+        const afterContractBalance = await moxie.balanceOf(tokenLock.address)
+
+        // Check that the balance is updated
+        expect(afterBalance.sub(beforeBalance)).to.equal('913424657534246575200')
+        expect(beforeContractBalance.sub(afterContractBalance)).to.equal('913424657534246575200')
+
+    })
+
+    it('check that the released amount is 913.42', async function () {
+        const releasedAmount = await tokenLock.releasedAmount()
+        expect(releasedAmount).to.equal('913424657534246575200')
+    })
+
+    it('check after releasing all tokens the unvested amount is 0', async function () {
+        const managedAmount = await tokenLock.managedAmount()
+        const availableAmount = await tokenLock.availableAmount()
+        const unVestedAmount = managedAmount.sub(availableAmount)
+        expect(unVestedAmount).to.equal(0)
+    })
+
+    it('check after releasing all tokens the releasable amount is 0', async function () {
+        const releasableAmount = await tokenLock.releasableAmount()
+        expect(releasableAmount).to.equal(0)
+    })
+
+    it('check after releasing all tokens beneficiary should not be able to release more tokens', async function () {
+        const amountToRelease = await tokenLock.releasableAmount()
+        const tx = tokenLock.connect(beneficiary.signer).release()
+        await expect(tx).revertedWith('No available releasable amount')
+    })
+
+
+});
