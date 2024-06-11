@@ -11,14 +11,15 @@ contract MoxiePass is ERC721, AccessControl {
 
     error MoxiePass_InvalidAdmin();
     error MoxiePass_InvalidMinter();
+    error MoxiePass_TransferNotAllowed();
 
-    constructor(address defaultAdmin, address minter)
-        ERC721("MoxiePass", "MOXIEPASS")
-    {
+    constructor(
+        address defaultAdmin,
+        address minter
+    ) ERC721("MoxiePass", "MOXIEPASS") {
+        if (defaultAdmin == address(0)) revert MoxiePass_InvalidAdmin();
 
-        if(defaultAdmin == address(0)) revert MoxiePass_InvalidAdmin();
-
-        if(minter == address(0)) revert MoxiePass_InvalidMinter();
+        if (minter == address(0)) revert MoxiePass_InvalidMinter();
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, minter);
@@ -32,15 +33,25 @@ contract MoxiePass is ERC721, AccessControl {
         uint256 tokenId = _nextTokenId++;
         _mint(to, tokenId);
     }
+    
+    function _update(
+        address to,
+        uint256 tokenId,
+        address auth
+    ) internal virtual override returns (address) {
+        address from = _ownerOf(tokenId);
+
+        if(from != address(0))  {
+            revert MoxiePass_TransferNotAllowed();
+        }
+        return super._update(to, tokenId, auth);
+    }
 
     // The following functions are overrides required by Solidity.
 
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721, AccessControl)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override(ERC721, AccessControl) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 }
