@@ -2,6 +2,13 @@
 pragma solidity ^0.8.24;
 
 interface IMoxieBondingCurve {
+    struct FeeInput {
+        uint256 protocolBuyFeePct;
+        uint256 protocolSellFeePct;
+        uint256 subjectBuyFeePct;
+        uint256 subjectSellFeePct;
+    }
+
     function initializeSubjectBondingCurve(
         address _subject,
         uint32 _reserveRatio,
