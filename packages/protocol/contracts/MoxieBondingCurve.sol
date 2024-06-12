@@ -93,7 +93,9 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     /// @dev Address of vault contract.
     IVault public vault;
 
-    uint256 public constant PCT_BASE = 10 ** 18; // 0% = 0; 1% = 10 ** 16; 100% = 10 ** 18
+    /// @dev Use to represeny fee percentage base 0% = 0; 1% = 10 ** 16; 100% = 10 ** 18
+    uint256 public constant PCT_BASE = 10 ** 18; 
+    /// @dev Use to represent reserve ratio, 1M is 1
     uint32 public constant PPM = 1000000;
     
     /// @dev Fee settings.
@@ -185,16 +187,16 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _feeBeneficiary,
         address _subjectFactory
     ) internal pure {
-        if (!_isNonZeroAddress(_token)) revert MoxieBondingCurve_InvalidToken();
-        if (!_formulaIsValid(_formula))
+        if (_isZeroAddress(_token)) revert MoxieBondingCurve_InvalidToken();
+        if (_isZeroAddress(_formula))
             revert MoxieBondingCurve_InvalidFormula();
-        if (!_isNonZeroAddress(_owner)) revert MoxieBondingCurve_InvalidOwner();
-        if (!_isNonZeroAddress(_tokenManager))
+        if (_isZeroAddress(_owner)) revert MoxieBondingCurve_InvalidOwner();
+        if (_isZeroAddress(_tokenManager))
             revert MoxieBondingCurve_InvalidTokenManager();
-        if (!_isNonZeroAddress(_vault)) revert MoxieBondingCurve_InvalidVault();
-        if (!_isNonZeroAddress(_subjectFactory))
+        if (_isZeroAddress(_vault)) revert MoxieBondingCurve_InvalidVault();
+        if (_isZeroAddress(_subjectFactory))
             revert MoxieBondingCurve_InvalidSubjectFactory();
-        if (!_isNonZeroAddress(_feeBeneficiary))
+        if (_isZeroAddress(_feeBeneficiary))
             revert MoxieBondingCurve_InvalidBeneficiary();
     }
 
@@ -227,19 +229,11 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     }
 
     /**
-     * @dev Internal function to validate formula.
-     * @param _formula Address of formula contract.
-     */
-    function _formulaIsValid(address _formula) internal pure returns (bool) {
-        return _formula != address(0);
-    }
-
-    /**
      * @dev Internal function to validate address.
      * @param _address  Address to validate.
      */
-    function _isNonZeroAddress(address _address) internal pure returns (bool) {
-        return _address != address(0);
+    function _isZeroAddress(address _address) internal pure returns (bool) {
+        return _address == address(0);
     }
 
     /**
@@ -457,7 +451,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     function updateFormula(
         address _formula
     ) external onlyRole(UPDATE_FORMULA_ROLE) {
-        if (!_formulaIsValid(_formula))
+        if (_isZeroAddress(_formula))
             revert MoxieBondingCurve_InvalidFormula();
 
         _updateFormula(IBancorFormula(_formula));
@@ -470,7 +464,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     function updateFeeBeneficiary(
         address _feeBeneficiary
     ) external onlyRole(UPDATE_BENEFICIARY_ROLE) {
-        if (!_isNonZeroAddress(_feeBeneficiary))
+        if (_isZeroAddress(_feeBeneficiary))
             revert MoxieBondingCurve_InvalidBeneficiary();
 
         _updateFeeBeneficiary(_feeBeneficiary);
