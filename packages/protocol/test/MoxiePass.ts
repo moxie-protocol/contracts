@@ -26,7 +26,7 @@ describe('Moxie Pass', () => {
 
             expect(await moxiePass.hasRole(await moxiePass.DEFAULT_ADMIN_ROLE(), owner.address)).to.be.true;
             expect(await moxiePass.hasRole(await moxiePass.MINTER_ROLE(), minter.address)).to.be.true;
-            expect(await moxiePass.name()).to.equal("MoxiePass");
+            expect(await moxiePass.name()).to.equal("Moxie Pass");
             expect(await moxiePass.symbol()).to.equal("MXP");
         });
 
