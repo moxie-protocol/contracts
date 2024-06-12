@@ -26,6 +26,8 @@ describe('Moxie Pass', () => {
 
             expect(await moxiePass.hasRole(await moxiePass.DEFAULT_ADMIN_ROLE(), owner.address)).to.be.true;
             expect(await moxiePass.hasRole(await moxiePass.MINTER_ROLE(), minter.address)).to.be.true;
+            expect(await moxiePass.name()).to.equal("MoxiePass");
+            expect(await moxiePass.symbol()).to.equal("MXP");
         });
 
         it('should fail for zero default admin', async () => {
@@ -55,7 +57,8 @@ describe('Moxie Pass', () => {
             const {
                 minter,
                 deployer,
-                moxiePass
+                moxiePass,
+                owner
             } = await loadFixture(deploy);
 
 
@@ -65,9 +68,20 @@ describe('Moxie Pass', () => {
             ).withArgs(ethers.ZeroAddress, deployer.address, "0");
 
             expect(await moxiePass.tokenURI("0")).to.equal("https://moxie.xyz/moxie-pass/0");
+
+            await expect(moxiePass.connect(minter).mint(minter.address)).to.emit(
+                moxiePass,
+                "Transfer"
+            ).withArgs(ethers.ZeroAddress, minter.address, "1");
+
+            await expect(moxiePass.connect(minter).mint(owner.address)).to.emit(
+                moxiePass,
+                "Transfer"
+            ).withArgs(ethers.ZeroAddress, owner.address, "2");
+
         });
 
-        it('should mint if minter doesnot has minter role ', async () => {
+        it('should not mint if minter doesnot has minter role ', async () => {
             const {
                 deployer,
                 moxiePass
@@ -95,7 +109,7 @@ describe('Moxie Pass', () => {
             await moxiePass.connect(deployer).approve(minter.address, 0);
 
             await expect(moxiePass.connect(minter).transferFrom(deployer.address, minter.address, 0))
-            .revertedWithCustomError(moxiePass, "MoxiePass_TransferNotAllowed");
+                .revertedWithCustomError(moxiePass, "MoxiePass_TransferNotAllowed");
         });
 
     });
