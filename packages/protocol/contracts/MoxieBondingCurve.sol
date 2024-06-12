@@ -84,20 +84,20 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         uint256 _buyAmount,
         address _beneficiary
     );
-    /// @dev Address of moxie token. 
+    /// @dev Address of moxie token.
     IERC20Extended public token;
     /// @dev address of Bancors formula.
     IBancorFormula public formula;
-    /// @dev Address of token manager contracts. 
+    /// @dev Address of token manager contracts.
     ITokenManager public tokenManager;
     /// @dev Address of vault contract.
     IVault public vault;
 
     /// @dev Use to represeny fee percentage base 0% = 0; 1% = 10 ** 16; 100% = 10 ** 18
-    uint256 public constant PCT_BASE = 10 ** 18; 
+    uint256 public constant PCT_BASE = 10 ** 18;
     /// @dev Use to represent reserve ratio, 1M is 1
     uint32 public constant PPM = 1000000;
-    
+
     /// @dev Fee settings.
     uint256 public protocolBuyFeePct;
     uint256 public protocolSellFeePct;
@@ -147,12 +147,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _subjectFactory
         );
 
-        if (
-            !_feeIsValid(_feeInput.protocolBuyFeePct) ||
-            !_feeIsValid(_feeInput.protocolSellFeePct) ||
-            !_feeIsValid(_feeInput.subjectBuyFeePct) ||
-            !_feeIsValid(_feeInput.subjectSellFeePct)
-        ) revert MoxieBondingCurve_InvalidFeePercentage();
+        _validateFee(_feeInput);
 
         token = IERC20Extended(_token);
         formula = IBancorFormula(_formula);
@@ -188,8 +183,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _subjectFactory
     ) internal pure {
         if (_isZeroAddress(_token)) revert MoxieBondingCurve_InvalidToken();
-        if (_isZeroAddress(_formula))
-            revert MoxieBondingCurve_InvalidFormula();
+        if (_isZeroAddress(_formula)) revert MoxieBondingCurve_InvalidFormula();
         if (_isZeroAddress(_owner)) revert MoxieBondingCurve_InvalidOwner();
         if (_isZeroAddress(_tokenManager))
             revert MoxieBondingCurve_InvalidTokenManager();
@@ -198,6 +192,19 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             revert MoxieBondingCurve_InvalidSubjectFactory();
         if (_isZeroAddress(_feeBeneficiary))
             revert MoxieBondingCurve_InvalidBeneficiary();
+    }
+
+    /**
+     * Internal function to validate Fee params.
+     * @param _feeInput Fee input struct.
+     */
+    function _validateFee(FeeInput memory _feeInput) internal pure {
+        if (
+            !_feeIsValid(_feeInput.protocolBuyFeePct) ||
+            !_feeIsValid(_feeInput.protocolSellFeePct) ||
+            !_feeIsValid(_feeInput.subjectBuyFeePct) ||
+            !_feeIsValid(_feeInput.subjectSellFeePct)
+        ) revert MoxieBondingCurve_InvalidFeePercentage();
     }
 
     /**
@@ -273,13 +280,13 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     }
 
     /**
-     * @dev Internal function to buy  shares of subject. 
+     * @dev Internal function to buy  shares of subject.
      * @param _subjectToken Address of Subject Token.
      * @param _depositAmount Amount of deposit to buy shares.
      * @param _onBehalfOf Address of beneficiary where shares will be minted. This address can be zero address too.
-     * @param _minReturnAmountAfterFee Minimum number of shares that must be recieved. 
+     * @param _minReturnAmountAfterFee Minimum number of shares that must be recieved.
      * @param _subject Address of subject.
-     * @param _subjectReserveRatio Subject Reserve ratio. 
+     * @param _subjectReserveRatio Subject Reserve ratio.
      */
     function _buyShares(
         IERC20Extended _subjectToken,
@@ -321,7 +328,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             revert MoxieBondingCurve_SlippageExceedsLimit();
 
         ///@dev Don't mint if intent is to burn
-        if (_onBehalfOf != address(0)) {
+         if (!_isZeroAddress(_onBehalfOf)) {
             tokenManager.mint(_subject, _onBehalfOf, shares_);
         }
 
@@ -336,13 +343,13 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     }
 
     /**
-     * @dev Internal function to sell  shares of subject. 
+     * @dev Internal function to sell  shares of subject.
      * @param _subjectToken Address of Subject Token.
      * @param _sellAmount Amount of shares to sell.
-     * @param _onBehalfOf Address of beneficiary where funds will be returned. 
-     * @param _minReturnAmountAfterFee Minimum amount of funds that should be returned. 
+     * @param _onBehalfOf Address of beneficiary where funds will be returned.
+     * @param _minReturnAmountAfterFee Minimum amount of funds that should be returned.
      * @param _subject Address of subject.
-     * @param _subjectReserveRatio Subject Reserve ratio. 
+     * @param _subjectReserveRatio Subject Reserve ratio.
      */
     function _sellShares(
         IERC20Extended _subjectToken,
@@ -398,7 +405,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     }
 
     /**
-     * @dev Internal function to calculate buy side fee. 
+     * @dev Internal function to calculate buy side fee.
      * @param _depositAmount Deposit amount for buy.
      * @return protocolFee_ Buy side protocol fee in PCT_BASE.
      * @return subjectFee_  Buy side subject fee in PCT_BASE.
@@ -409,9 +416,10 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         protocolFee_ = (_depositAmount * protocolBuyFeePct) / PCT_BASE;
         subjectFee_ = (_depositAmount * subjectBuyFeePct) / PCT_BASE;
     }
+
     /**
      * @dev Internal function to calculate sell side fee.
-     * @param _sellAmount Amount of subject shares to sell. 
+     * @param _sellAmount Amount of subject shares to sell.
      * @return protocolFee_ Sell side protocol fee in PCT_BASE.
      * @return subjectFee_ Sell side subject fee in PCT_BASE.
      */
@@ -429,12 +437,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     function updateFees(
         FeeInput memory _feeInput
     ) external onlyRole(UPDATE_FEES_ROLE) {
-        if (
-            !_feeIsValid(_feeInput.protocolBuyFeePct) ||
-            !_feeIsValid(_feeInput.protocolSellFeePct) ||
-            !_feeIsValid(_feeInput.subjectBuyFeePct) ||
-            !_feeIsValid(_feeInput.subjectSellFeePct)
-        ) revert MoxieBondingCurve_InvalidFeePercentage();
+        _validateFee(_feeInput);
 
         _updateFees(
             _feeInput.protocolBuyFeePct,
@@ -451,8 +454,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     function updateFormula(
         address _formula
     ) external onlyRole(UPDATE_FORMULA_ROLE) {
-        if (_isZeroAddress(_formula))
-            revert MoxieBondingCurve_InvalidFormula();
+        if (_isZeroAddress(_formula)) revert MoxieBondingCurve_InvalidFormula();
 
         _updateFormula(IBancorFormula(_formula));
     }
@@ -483,7 +485,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         uint256 _initialSupply,
         uint256 _reserveAmount
     ) external whenNotPaused returns (bool) {
-        if (_subject == address(0)) revert MoxieBondingCurve_InvalidSubject();
+        if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
 
         if (msg.sender != subjectFactory)
             revert MoxieBondingCurve_OnlySubjectFactory();
@@ -496,10 +498,10 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
 
         address subjectToken = tokenManager.tokens(_subject);
 
-        if (subjectToken == address(0))
+        if (_isZeroAddress(subjectToken))
             revert MoxieBondingCurve_InvalidSubjectToken();
 
-        uint256 supply = IERC20Extended(tokenManager.tokens(_subject))
+        uint256 supply = IERC20Extended(subjectToken)
             .totalSupply();
 
         if (_initialSupply != supply)
@@ -536,7 +538,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _onBehalfOf,
         uint256 _minReturnAmountAfterFee
     ) external whenNotPaused returns (uint256 shares_) {
-        if (_subject == address(0)) revert MoxieBondingCurve_InvalidSubject();
+        if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
         if (_depositAmount == 0)
             revert MoxieBondingCurve_InvalidDepositAmount();
 
@@ -549,7 +551,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             tokenManager.tokens(_subject)
         );
 
-        if (address(subjectToken) == address(0))
+        if (_isZeroAddress(address(subjectToken)))
             revert MoxieBondingCurve_InvalidSubjectToken();
 
         shares_ = _buyShares(
@@ -575,7 +577,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _onBehalfOf,
         uint256 _minReturnAmountAfterFee
     ) external whenNotPaused returns (uint256 returnAmount_) {
-        if (_subject == address(0)) revert MoxieBondingCurve_InvalidSubject();
+        if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
         if (_sellAmount == 0) revert MoxieBondingCurve_InvalidSellAmount();
 
         uint32 subjectReserveRatio = reserveRatio[_subject];
@@ -587,7 +589,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             tokenManager.tokens(_subject)
         );
 
-        if (address(subjectToken) == address(0))
+        if (_isZeroAddress(address(subjectToken)))
             revert MoxieBondingCurve_InvalidSubjectToken();
 
         returnAmount_ = _sellShares(
