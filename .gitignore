@@ -36,6 +36,9 @@ cached/
 /cache
 /artifacts
 
+# Do not ignore the artifacts folder inside the test directory
+!packages/protocol/test/easy-auction/artifacts
+
 # TypeChain files
 */*/typechain
 */*/typechain-types
