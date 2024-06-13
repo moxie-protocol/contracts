@@ -112,22 +112,39 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
     }
 
+    /**
+     * @dev check if fee is valid.
+     * @param _fee Fee percentage in PCT_BASE.
+     */
     function _feeIsValid(uint256 _fee) internal pure returns (bool) {
         return _fee < PCT_BASE;
     }
 
+    /**
+     * @dev Check if fee beneficiary is valid.
+     * @param _beneficiary Address of beneficiary.
+     */
     function _feeBeneficiaryIsValid(
         address _beneficiary
     ) internal pure returns (bool) {
         return _beneficiary != address(0);
     }
 
+    /**
+     * @dev update fee beneficiary
+     * @param _beneficiary Address of beneficiary.
+     */
     function _updateFeeBeneficiary(address _beneficiary) internal {
         feeBeneficiary = _beneficiary;
 
         emit UpdateBeneficiary(_beneficiary);
     }
 
+    /**
+     * @dev Update fee params
+     * @param _protocolFeePct Protocol fee in PCT.
+     * @param _subjectFeePct Subject fee in PCT.
+     */
     function _updateFees(
         uint256 _protocolFeePct,
         uint256 _subjectFeePct
@@ -138,10 +155,19 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         emit UpdateFees(protocolFeePct, subjectFeePct);
     }
 
+    /**
+     * @dev Create auction for a subject.
+     * @param _subject Address of subject.
+     * @param _subjectToken Address of subject token.
+     * @param _auctionInput Input params for auction.
+     * @param _reserveAmount Onboarding reserve amount for which subject tokens will be minted after auction is closed.
+     * @return auctionId_ Auction Id.
+     * @return auctionEndDate_ Auction end date.
+     */
     function _createAuction(
         address _subject,
         address _subjectToken,
-        SubjectAuctionInput memory auctionInput,
+        SubjectAuctionInput memory _auctionInput,
         uint256 _reserveAmount
     ) internal returns (uint256 auctionId_, uint256 auctionEndDate_) {
         auctionEndDate_ = block.timestamp + auctionDuration;
@@ -150,19 +176,181 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
             address(token),
             block.timestamp + auctionOrderCancellationDuration,
             auctionEndDate_,
-            auctionInput.initialSupply,
-            auctionInput.minBuyAmount,
-            auctionInput.minBiddingAmount,
-            auctionInput.minFundingThreshold,
-            auctionInput.isAtomicClosureAllowed,
-            auctionInput.accessManagerContract,
-            auctionInput.accessManagerContractData
+            _auctionInput.initialSupply,
+            _auctionInput.minBuyAmount,
+            _auctionInput.minBiddingAmount,
+            _auctionInput.minFundingThreshold,
+            _auctionInput.isAtomicClosureAllowed,
+            _auctionInput.accessManagerContract,
+            _auctionInput.accessManagerContractData
         );
 
         auctions[_subject].auctionId = auctionId_;
         auctions[_subject].auctionEndDate = auctionEndDate_;
         auctions[_subject].reserveAmount = _reserveAmount;
-        auctions[_subject].initialSupply = auctionInput.initialSupply;
+        auctions[_subject].initialSupply = _auctionInput.initialSupply;
+    }
+
+    /**
+     * @dev Decode the clearing order from auction.
+     * @param _orderData Orderdata returned from easy auction contract.
+     * @return userId UserId in auction contract. Not needed.
+     * @return buyAmount Amount of Moxie token.
+     * @return sellAmount Amount of Subject Token.
+     */
+    function _decodeOrder(
+        bytes32 _orderData
+    )
+        internal
+        pure
+        returns (uint64 userId, uint96 buyAmount, uint96 sellAmount)
+    {
+        // Note: converting to uint discards the binary digits that do not fit
+        // the type.
+        userId = uint64(uint256(_orderData) >> 192);
+        buyAmount = uint96(uint256(_orderData) >> 96);
+        sellAmount = uint96(uint256(_orderData));
+    }
+
+    /**
+     * @dev Close auction & burn tokens which are not sold in auction.
+     * @param _auctionId Auction Id.
+     * @param _subjectToken Address of subject token.
+     * @param _initialSupply Initial supply of auction.
+     * @return soldSupply_ Total supply that got sold.
+     * @return amountRaised_ Amount of moxie raised.
+     * @return clearingOrder Clearning order to calculate price of auction.
+     */
+    function _closeAuction(
+        uint256 _auctionId,
+        address _subjectToken,
+        uint256 _initialSupply
+    )
+        internal
+        returns (
+            uint256 soldSupply_,
+            uint256 amountRaised_,
+            bytes32 clearingOrder
+        )
+    {
+        uint256 beforeBalanceInSubjectToken = IERC20Extended(_subjectToken)
+            .balanceOf(address(this));
+        uint256 beforeBalanceInMoxieToken = IERC20Extended(token).balanceOf(
+            address(this)
+        );
+
+        clearingOrder = easyAuction.settleAuction(_auctionId);
+
+        uint256 afterBalanceInSubjectToken = IERC20Extended(_subjectToken)
+            .balanceOf(address(this));
+        uint256 afterBalanceInMoxieToken = IERC20Extended(token).balanceOf(
+            address(this)
+        );
+
+        soldSupply_ =
+            _initialSupply -
+            (afterBalanceInSubjectToken - beforeBalanceInSubjectToken);
+        amountRaised_ = afterBalanceInMoxieToken - beforeBalanceInMoxieToken;
+
+        uint256 amountToBurn = _initialSupply - soldSupply_;
+
+        // Burn subject token which are not sold in auction.
+        if (amountToBurn > 0) {
+            IERC20Extended(_subjectToken).burn(amountToBurn);
+        }
+    }
+
+    /**
+     * @dev Internal function to calculate fees.
+     * @param _amount Amount against fee should be calculated..
+     * @return protocolFee_ protocol fee in PCT_BASE.
+     * @return subjectFee_  subject fee in PCT_BASE.
+     */
+    function _calculateFee(
+        uint256 _amount
+    ) internal view returns (uint256 protocolFee_, uint256 subjectFee_) {
+        protocolFee_ = (_amount * protocolFeePct) / PCT_BASE;
+        subjectFee_ = (_amount * subjectFeePct) / PCT_BASE;
+    }
+
+    /**
+     * @dev Calculate Tokens to mint for given input amount based on auction price.
+     * @param _clearningOrder Clearing order from auction.
+     * @param _amount Amount of reserve tokens from onboarding.
+     */
+    function _calculateTokensMintAfterAuction(
+        bytes32 _clearningOrder,
+        uint256 _amount
+    ) internal pure returns (uint256) {
+        /// @dev buyAmount is moxie amount & sell amount is subject token.
+        (, uint96 buyAmount, uint96 sellAmount) = _decodeOrder(_clearningOrder);
+        return (sellAmount * _amount) / buyAmount;
+    }
+
+    /**
+     * @dev Initialize Bonding curve ,also mint bonding supply for onboarding reserve amount.
+     * @param _auctionId Auction Id from easy auction contract for subject onboarding.
+     * @param _subject Address of subject.
+     * @param _subjectToken Address of subject token.
+     * @param _amountRaised Amount raised in auction.
+     * @param _supply Total supply sold in auction.
+     * @param _reserveRatio Reserve ratio for Bonding curve.
+     * @param _clearningOrder Clearing order from auction.
+     * @param _reserveAmount Reserve amount from onboarding.
+     */
+    function _initializeBondingCurve(
+        uint256 _auctionId,
+        address _subject,
+        address _subjectToken,
+        uint256 _amountRaised,
+        uint256 _supply,
+        uint32 _reserveRatio,
+        bytes32 _clearningOrder,
+        uint256 _reserveAmount
+    ) internal {
+        uint256 newSupplyToMint = _calculateTokensMintAfterAuction(
+            _clearningOrder,
+            _reserveAmount
+        );
+
+         /// @dev this supply will always be locked in this  contract to make sure Bonding curve always have non zero price.
+        tokenManager.mint(_subject, address(this), newSupplyToMint);
+
+        (uint256 protocolFee_, uint256 subjectFee_) = _calculateFee(
+            _amountRaised + _reserveAmount // total amount is sum of auction amount + reserve amount from onboarding flow.
+        );
+
+        uint256 bondingAmount_ = _amountRaised +
+            _reserveAmount -
+            protocolFee_ -
+            subjectFee_;
+
+        // approve bonding curve to spend moxie
+        IERC20Extended(token).approve(
+            address(moxieBondingCurve),
+            bondingAmount_
+        );
+
+        uint256 bondingSupply_ = _supply + newSupplyToMint;
+        moxieBondingCurve.initializeSubjectBondingCurve(
+            _subject,
+            _reserveRatio,
+            bondingSupply_,
+            bondingAmount_
+        );
+
+        token.safeTransfer(feeBeneficiary, protocolFee_);
+        token.safeTransfer(_subject, subjectFee_);
+
+        emit SubjectOnboardingFinished(
+            _subject,
+            _subjectToken,
+            _auctionId,
+            bondingSupply_,
+            bondingAmount_,
+            protocolFee_,
+            subjectFee_
+        );
     }
 
     /**
@@ -223,143 +411,15 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         );
     }
 
-    function _decodeOrder(
-        bytes32 _orderData
-    )
-        internal
-        pure
-        returns (uint64 userId, uint96 buyAmount, uint96 sellAmount)
-    {
-        // Note: converting to uint discards the binary digits that do not fit
-        // the type.
-        userId = uint64(uint256(_orderData) >> 192);
-        buyAmount = uint96(uint256(_orderData) >> 96);
-        sellAmount = uint96(uint256(_orderData));
-    }
-
-    function _closeAuction(
-        uint256 _auctionId,
-        address _subject,
-        address _subjectToken,
-        uint256 _initialSupply
-    )
-        internal
-        returns (
-            uint256 soldSupply_,
-            uint256 amountRaised_,
-            bytes32 clearingOrder
-        )
-    {
-        uint256 beforeBalanceInSubjectToken = IERC20Extended(_subjectToken)
-            .balanceOf(address(this));
-        uint256 beforeBalanceInMoxieToken = IERC20Extended(token).balanceOf(
-            address(this)
-        );
-
-        clearingOrder = easyAuction.settleAuction(_auctionId);
-
-        uint256 afterBalanceInSubjectToken = IERC20Extended(_subjectToken)
-            .balanceOf(address(this));
-        uint256 afterBalanceInMoxieToken = IERC20Extended(token).balanceOf(
-            address(this)
-        );
-
-        soldSupply_ =
-            auctions[_subject].initialSupply -
-            (afterBalanceInSubjectToken - beforeBalanceInSubjectToken);
-        amountRaised_ = afterBalanceInMoxieToken - beforeBalanceInMoxieToken;
-
-        uint256 amountToBurn = _initialSupply - soldSupply_;
-
-        // Burn subject token which are not sold in auction.
-        if (amountToBurn > 0) {
-            IERC20Extended(_subjectToken).burn(amountToBurn);
-        }
-    }
-
     /**
-     * @dev Internal function to  buy side fee.
-     * @param _amount Amount against fee should be calculated..
-     * @return protocolFee_ protocol fee in PCT_BASE.
-     * @return subjectFee_  subject fee in PCT_BASE.
-     */
-    function _calculateFee(
-        uint256 _amount
-    ) internal view returns (uint256 protocolFee_, uint256 subjectFee_) {
-        protocolFee_ = (_amount * protocolFeePct) / PCT_BASE;
-        subjectFee_ = (_amount * subjectFeePct) / PCT_BASE;
-    }
-
-    function _initialzeBondingCurve(
-        uint256 _auctionId,
-        address _subject,
-        address _subjectToken,
-        uint256 _amountRaised,
-        uint256 _supply,
-        uint32 _reserveRatio,
-        bytes32 _clearningOrder,
-        uint256 _reserveAmount
-    )
-        internal
-        returns (
-            uint256 protocolFee_,
-            uint256 subjectFee_,
-            uint256 bondingSupply_,
-            uint256 bondingAmount_
-        )
-    {
-        /// @dev buyAmount is moxie amount & sell amount is subject token.
-        (, uint96 buyAmount, uint96 sellAmount) = _decodeOrder(_clearningOrder);
-
-        uint256 newSupplyToMint = (sellAmount * _reserveAmount) / buyAmount;
-
-        uint256 totalAmount = _amountRaised + _reserveAmount;
-        (protocolFee_, subjectFee_) = _calculateFee(totalAmount);
-
-        /// @dev this supply will always be locked in this  contract to make sure Bonding curve always have non zero price.
-        tokenManager.mint(_subject, address(this), newSupplyToMint);
-
-        bondingAmount_ = totalAmount - protocolFee_ - subjectFee_;
-        // approve bonding curve to spend moxie
-        IERC20Extended(token).approve(
-            address(moxieBondingCurve),
-            bondingAmount_
-        );
-
-        bondingSupply_ = _supply + newSupplyToMint;
-        moxieBondingCurve.initializeSubjectBondingCurve(
-            _subject,
-            _reserveRatio,
-            bondingSupply_,
-            bondingAmount_
-        );
-
-        token.safeTransfer(feeBeneficiary, protocolFee_);
-        token.safeTransfer(_subject, subjectFee_);
-
-        emit SubjectOnboardingFinished(
-            _subject,
-            _subjectToken,
-            _auctionId,
-            bondingSupply_,
-            bondingAmount_,
-            protocolFee_,
-            subjectFee_
-        );
-    }
-
-    /**
-     *
-     * settle Close auction
-     * Easy auction will send funds to auction creator during close auction
-     * Subject factory needs to following
-     *  1. Identify closing price
-     *  2. For fix amount moxie, calculate subjects token based on closing price
-     * 3. Move fix amount to reserve
-     * 4. Mint subject token calculated in step 2 for itself
-     * 5. Identify moxie tokens raised in auction & move it reserve
-     * 6. Identify subject tokens sold in auction, find remaining subject tokens which are not sold & burn them.
-     * 7. Initialize bonding curve
+     * @dev Finalize subject onboarding.
+     *  1. Close auction
+     *  2. Burn unsold supply
+     *  3. Calculate additional mint for onboarding reserve
+     *  4. Calculate & transfer fee.
+     *  5. Initiate bonding curve.
+     * @param _subject Address of subject token.
+     * @param _reserveRatio Reserve ratio of bonding curve.
      */
     function finalizeSubjectOnboarding(
         address _subject,
@@ -388,12 +448,11 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
             bytes32 clearingOrder
         ) = _closeAuction(
                 auctionId,
-                _subject,
                 subjectToken,
                 auction.initialSupply
             );
 
-        _initialzeBondingCurve(
+        _initializeBondingCurve(
             auctionId,
             _subject,
             subjectToken,
