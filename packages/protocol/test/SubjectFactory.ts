@@ -105,13 +105,18 @@ describe('Subject Factory', () => {
             subjectFactoryAddress
         );
 
+        const feeInputSubjectFactory = {
+            protocolFeePct: protocolBuyFeePct,
+            subjectFeePct: subjectBuyFeePct
+        }
+
         await subjectFactory.initialize(
             owner.address,
             tokenManagerAddress,
             moxieBondingCurveAddress,
             moxieTokenAddress,
             easyAuctionAddress,
-            feeInput,
+            feeInputSubjectFactory,
             feeBeneficiary.address,
             auctionDuration,
             auctionCancellationDuration
@@ -145,7 +150,8 @@ describe('Subject Factory', () => {
             moxiePassVerifierAddress,
             tokenManager,
             SubjectERC20,
-            moxieToken
+            moxieToken,
+            feeInputSubjectFactory
         };
 
     }
@@ -161,7 +167,7 @@ describe('Subject Factory', () => {
                 moxieBondingCurveAddress,
                 moxieTokenAddress,
                 tokenManagerAddress,
-                feeInput,
+                feeInputSubjectFactory,
                 feeBeneficiary,
                 auctionDuration,
                 auctionCancellationDuration
@@ -173,10 +179,8 @@ describe('Subject Factory', () => {
             expect(await subjectFactory.tokenManager()).to.equal(tokenManagerAddress);
             expect(await subjectFactory.moxieBondingCurve()).to.equal(moxieBondingCurveAddress);
             expect(await subjectFactory.token()).to.equal(moxieTokenAddress);
-            expect(await subjectFactory.subjectBuyFeePct()).equal(feeInput.subjectBuyFeePct);
-            expect(await subjectFactory.subjectSellFeePct()).equal(feeInput.subjectSellFeePct);
-            expect(await subjectFactory.protocolBuyFeePct()).equal(feeInput.protocolBuyFeePct);
-            expect(await subjectFactory.protocolSellFeePct()).equal(feeInput.protocolSellFeePct);
+            expect(await subjectFactory.subjectFeePct()).equal(feeInputSubjectFactory.subjectFeePct);
+            expect(await subjectFactory.protocolFeePct()).equal(feeInputSubjectFactory.protocolFeePct);
             expect(await subjectFactory.feeBeneficiary()).equal(feeBeneficiary.address);
             expect(await subjectFactory.auctionDuration()).equal(auctionDuration);
             expect(await subjectFactory.auctionOrderCancellationDuration()).equal(auctionCancellationDuration);
@@ -195,7 +199,8 @@ describe('Subject Factory', () => {
                 feeInput,
                 feeBeneficiary,
                 auctionDuration,
-                auctionCancellationDuration
+                auctionCancellationDuration,
+                feeInputSubjectFactory
             } = await loadFixture(deploy);
 
             await expect(subjectFactory.initialize(
@@ -204,7 +209,7 @@ describe('Subject Factory', () => {
                 moxieBondingCurveAddress,
                 moxieTokenAddress,
                 easyAuctionAddress,
-                feeInput,
+                feeInputSubjectFactory,
                 feeBeneficiary.address,
                 auctionDuration,
                 auctionCancellationDuration
@@ -221,7 +226,8 @@ describe('Subject Factory', () => {
                 feeInput,
                 feeBeneficiary,
                 auctionDuration,
-                auctionCancellationDuration
+                auctionCancellationDuration,
+                feeInputSubjectFactory
             } = await loadFixture(deploy);
 
             const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactory");
@@ -233,7 +239,7 @@ describe('Subject Factory', () => {
                 moxieBondingCurveAddress,
                 moxieTokenAddress,
                 easyAuctionAddress,
-                feeInput,
+                feeInputSubjectFactory,
                 feeBeneficiary.address,
                 auctionDuration,
                 auctionCancellationDuration
@@ -251,7 +257,8 @@ describe('Subject Factory', () => {
                 feeInput,
                 feeBeneficiary,
                 auctionDuration,
-                auctionCancellationDuration
+                auctionCancellationDuration,
+                feeInputSubjectFactory
             } = await loadFixture(deploy);
 
             const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactory");
@@ -263,7 +270,7 @@ describe('Subject Factory', () => {
                 moxieBondingCurveAddress,
                 moxieTokenAddress,
                 easyAuctionAddress,
-                feeInput,
+                feeInputSubjectFactory,
                 feeBeneficiary.address,
                 auctionDuration,
                 auctionCancellationDuration
@@ -280,7 +287,8 @@ describe('Subject Factory', () => {
                 feeInput,
                 feeBeneficiary,
                 auctionDuration,
-                auctionCancellationDuration
+                auctionCancellationDuration,
+                feeInputSubjectFactory
             } = await loadFixture(deploy);
 
             const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactory");
@@ -292,7 +300,7 @@ describe('Subject Factory', () => {
                 moxieBondingCurveAddress,
                 ethers.ZeroAddress,
                 easyAuctionAddress,
-                feeInput,
+                feeInputSubjectFactory,
                 feeBeneficiary.address,
                 auctionDuration,
                 auctionCancellationDuration
@@ -309,7 +317,8 @@ describe('Subject Factory', () => {
                 feeInput,
                 feeBeneficiary,
                 auctionDuration,
-                auctionCancellationDuration
+                auctionCancellationDuration,
+                feeInputSubjectFactory
             } = await loadFixture(deploy);
 
             const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactory");
@@ -321,7 +330,7 @@ describe('Subject Factory', () => {
                 ethers.ZeroAddress,
                 moxieTokenAddress,
                 easyAuctionAddress,
-                feeInput,
+                feeInputSubjectFactory,
                 feeBeneficiary.address,
                 auctionDuration,
                 auctionCancellationDuration
@@ -338,7 +347,8 @@ describe('Subject Factory', () => {
                 feeInput,
                 feeBeneficiary,
                 auctionDuration,
-                auctionCancellationDuration
+                auctionCancellationDuration,
+                feeInputSubjectFactory
             } = await loadFixture(deploy);
 
             const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactory");
@@ -350,7 +360,7 @@ describe('Subject Factory', () => {
                 moxieBondingCurveAddress,
                 moxieTokenAddress,
                 ethers.ZeroAddress,
-                feeInput,
+                feeInputSubjectFactory,
                 feeBeneficiary.address,
                 auctionDuration,
                 auctionCancellationDuration
@@ -367,7 +377,8 @@ describe('Subject Factory', () => {
                 feeInput,
                 feeBeneficiary,
                 auctionDuration,
-                auctionCancellationDuration
+                auctionCancellationDuration,
+                feeInputSubjectFactory
             } = await loadFixture(deploy);
 
             const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactory");
@@ -379,7 +390,7 @@ describe('Subject Factory', () => {
                 moxieBondingCurveAddress,
                 moxieTokenAddress,
                 easyAuctionAddress,
-                feeInput,
+                feeInputSubjectFactory,
                 ethers.ZeroAddress,
                 auctionDuration,
                 auctionCancellationDuration
@@ -396,7 +407,8 @@ describe('Subject Factory', () => {
                 feeInput,
                 feeBeneficiary,
                 auctionDuration,
-                auctionCancellationDuration
+                auctionCancellationDuration,
+                feeInputSubjectFactory
             } = await loadFixture(deploy);
 
             const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactory");
@@ -408,7 +420,7 @@ describe('Subject Factory', () => {
                 moxieBondingCurveAddress,
                 moxieTokenAddress,
                 easyAuctionAddress,
-                feeInput,
+                feeInputSubjectFactory,
                 feeBeneficiary.address,
                 0,
                 auctionCancellationDuration
@@ -425,6 +437,7 @@ describe('Subject Factory', () => {
                 feeInput,
                 feeBeneficiary,
                 auctionDuration,
+                feeInputSubjectFactory,
             } = await loadFixture(deploy);
 
             const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactory");
@@ -436,14 +449,14 @@ describe('Subject Factory', () => {
                 moxieBondingCurveAddress,
                 moxieTokenAddress,
                 easyAuctionAddress,
-                feeInput,
+                feeInputSubjectFactory,
                 feeBeneficiary.address,
                 auctionDuration,
                 0
             )).to.revertedWithCustomError(subjectFactory, "SubjectFactory_InvalidAuctionOrderCancellationDuration");
         });
 
-        it("should fail of invalid protocolBuyFeePct", async () => {
+        it("should fail of invalid protocolFeePct", async () => {
             const {
                 owner,
                 easyAuctionAddress,
@@ -453,14 +466,15 @@ describe('Subject Factory', () => {
                 feeInput,
                 feeBeneficiary,
                 auctionDuration,
-                auctionCancellationDuration
+                auctionCancellationDuration,
+                feeInputSubjectFactory
             } = await loadFixture(deploy);
 
 
-            const protocolBuyFeePct = (1e19).toString();
+            const protocolFeePct = (1e19).toString();
             const newFeeInput = {
-                ...feeInput,
-                protocolBuyFeePct,
+                ...feeInputSubjectFactory,
+                protocolFeePct,
             };
 
             const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactory");
@@ -479,49 +493,8 @@ describe('Subject Factory', () => {
             )).to.revertedWithCustomError(subjectFactory, "SubjectFactory_InvalidFeePercentage");
         });
 
-        it("should fail of invalid protocolSellFeePct", async () => {
 
-
-            const {
-
-                owner,
-                easyAuctionAddress,
-                moxieBondingCurveAddress,
-                moxieTokenAddress,
-                tokenManagerAddress,
-                feeInput,
-                feeBeneficiary,
-                auctionDuration,
-                auctionCancellationDuration
-            } = await loadFixture(deploy);
-
-
-            const protocolSellFeePct = (1e19).toString();
-            const newFeeInput = {
-                ...feeInput,
-                protocolSellFeePct,
-            };
-
-
-            const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactory");
-            const subjectFactory = await SubjectFactory.deploy();
-
-            await expect(subjectFactory.initialize(
-                owner.address,
-                tokenManagerAddress,
-                moxieBondingCurveAddress,
-                moxieTokenAddress,
-                easyAuctionAddress,
-                newFeeInput,
-                feeBeneficiary.address,
-                auctionDuration,
-                auctionCancellationDuration
-            )).to.revertedWithCustomError(subjectFactory, "SubjectFactory_InvalidFeePercentage");
-
-
-        });
-
-        it("should fail of invalid subjectBuyFeePct", async () => {
+        it("should fail of invalid subjectFeePct", async () => {
 
             const {
 
@@ -533,14 +506,15 @@ describe('Subject Factory', () => {
                 feeInput,
                 feeBeneficiary,
                 auctionDuration,
-                auctionCancellationDuration
+                auctionCancellationDuration,
+                feeInputSubjectFactory
             } = await loadFixture(deploy);
 
 
-            const subjectBuyFeePct = (1e19).toString();
+            const subjectFeePct = (1e19).toString();
             const newFeeInput = {
-                ...feeInput,
-                subjectBuyFeePct,
+                ...feeInputSubjectFactory,
+                subjectFeePct,
             };
 
             const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactory");
@@ -560,44 +534,6 @@ describe('Subject Factory', () => {
 
         });
 
-        it("should fail of invalid subjectSellFeePct", async () => {
-
-
-            const {
-
-                owner,
-                easyAuctionAddress,
-                moxieBondingCurveAddress,
-                moxieTokenAddress,
-                tokenManagerAddress,
-                feeInput,
-                feeBeneficiary,
-                auctionDuration,
-                auctionCancellationDuration
-            } = await loadFixture(deploy);
-
-
-            const subjectSellFeePct = (1e19).toString();
-            const newFeeInput = {
-                ...feeInput,
-                subjectSellFeePct,
-            };
-            const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactory");
-            const subjectFactory = await SubjectFactory.deploy();
-
-            await expect(subjectFactory.initialize(
-                owner.address,
-                tokenManagerAddress,
-                moxieBondingCurveAddress,
-                moxieTokenAddress,
-                easyAuctionAddress,
-                newFeeInput,
-                feeBeneficiary.address,
-                auctionDuration,
-                auctionCancellationDuration
-            )).to.revertedWithCustomError(subjectFactory, "SubjectFactory_InvalidFeePercentage");
-
-        });
 
     });
 
@@ -670,6 +606,9 @@ describe('Subject Factory', () => {
                 BigInt(timestamp) + BigInt(auctionDuration) + BigInt(1));
             expect(auction.reserveAmount).to.equals(
                 BigInt(reserve),
+            );
+            expect(auction.initialSupply).to.equals(
+                BigInt(auctionInput.initialSupply),
             );
 
         });
@@ -871,41 +810,31 @@ describe('Subject Factory', () => {
                     deployer.address,
                 );
 
-            const protocolBuyFeePct = (1e16).toString(); // 1%
-            const protocolSellFeePct = (2 * 1e16).toString(); // 2%
-            const subjectBuyFeePct = (3 * 1e16).toString(); // 3%
-            const subjectSellFeePct = (4 * 1e16).toString(); // 4%
+            const protocolFeePct = (1e16).toString(); // 1%
+            const subjectFeePct = (3 * 1e16).toString(); // 3%
 
             const feeInput = {
-                protocolBuyFeePct,
-                protocolSellFeePct,
-                subjectBuyFeePct,
-                subjectSellFeePct,
+                protocolFeePct,
+                subjectFeePct,
             };
 
             await expect(subjectFactory.connect(deployer).updateFees(feeInput))
                 .to.emit(subjectFactory, "UpdateFees")
                 .withArgs(
-                    feeInput.protocolBuyFeePct,
-                    feeInput.protocolSellFeePct,
-                    feeInput.subjectBuyFeePct,
-                    feeInput.subjectSellFeePct,
+                    feeInput.protocolFeePct,
+                    feeInput.subjectFeePct,
                 );
         });
 
         it("should not be able to update fee without permission", async () => {
             const { subjectFactory, deployer } = await loadFixture(deploy);
 
-            const protocolBuyFeePct = (1e16).toString(); // 1%
-            const protocolSellFeePct = (2 * 1e16).toString(); // 2%
-            const subjectBuyFeePct = (3 * 1e16).toString(); // 3%
-            const subjectSellFeePct = (4 * 1e16).toString(); // 4%
+            const protocolFeePct = (1e16).toString(); // 1%
+            const subjectFeePct = (3 * 1e16).toString(); // 3%
 
             const feeInput = {
-                protocolBuyFeePct,
-                protocolSellFeePct,
-                subjectBuyFeePct,
-                subjectSellFeePct,
+                protocolFeePct,
+                subjectFeePct,
             };
 
             await expect(subjectFactory.connect(deployer).updateFees(feeInput))
@@ -916,7 +845,7 @@ describe('Subject Factory', () => {
                 .withArgs(deployer.address, await subjectFactory.UPDATE_FEES_ROLE());
         });
 
-        it("should fail of invalid protocolBuyFeePct", async () => {
+        it("should fail of invalid protocolFeePct", async () => {
             const { owner, subjectFactory, deployer } = await loadFixture(deploy);
 
             await subjectFactory
@@ -926,16 +855,12 @@ describe('Subject Factory', () => {
                     deployer.address,
                 );
 
-            const protocolBuyFeePct = (1e19).toString(); // 1%
-            const protocolSellFeePct = (2 * 1e16).toString(); // 2%
-            const subjectBuyFeePct = (3 * 1e16).toString(); // 3%
-            const subjectSellFeePct = (4 * 1e16).toString(); // 4%
+            const protocolFeePct = (1e19).toString(); // 1%
+            const subjectFeePct = (3 * 1e16).toString(); // 3%
 
             const feeInput = {
-                protocolBuyFeePct,
-                protocolSellFeePct,
-                subjectBuyFeePct,
-                subjectSellFeePct,
+                protocolFeePct,
+                subjectFeePct,
             };
 
             await expect(
@@ -946,7 +871,8 @@ describe('Subject Factory', () => {
             );
         });
 
-        it("should fail of invalid protocolSellFeePct", async () => {
+
+        it("should fail of invalid subjectFeePct", async () => {
             const { owner, subjectFactory, deployer } = await loadFixture(deploy);
 
             await subjectFactory
@@ -956,16 +882,12 @@ describe('Subject Factory', () => {
                     deployer.address,
                 );
 
-            const protocolBuyFeePct = (1e16).toString(); // 1%
-            const protocolSellFeePct = (2 * 1e19).toString(); // 2%
-            const subjectBuyFeePct = (3 * 1e16).toString(); // 3%
-            const subjectSellFeePct = (4 * 1e16).toString(); // 4%
+            const protocolFeePct = (1e16).toString(); // 1%
+            const subjectFeePct = (3 * 1e19).toString(); // 3%
 
             const feeInput = {
-                protocolBuyFeePct,
-                protocolSellFeePct,
-                subjectBuyFeePct,
-                subjectSellFeePct,
+                protocolFeePct,
+                subjectFeePct,
             };
 
             await expect(
@@ -976,65 +898,6 @@ describe('Subject Factory', () => {
             );
         });
 
-        it("should fail of invalid subjectBuyFeePct", async () => {
-            const { owner, subjectFactory, deployer } = await loadFixture(deploy);
-
-            await subjectFactory
-                .connect(owner)
-                .grantRole(
-                    await subjectFactory.UPDATE_FEES_ROLE(),
-                    deployer.address,
-                );
-
-            const protocolBuyFeePct = (1e16).toString(); // 1%
-            const protocolSellFeePct = (2 * 1e16).toString(); // 2%
-            const subjectBuyFeePct = (3 * 1e19).toString(); // 3%
-            const subjectSellFeePct = (4 * 1e16).toString(); // 4%
-
-            const feeInput = {
-                protocolBuyFeePct,
-                protocolSellFeePct,
-                subjectBuyFeePct,
-                subjectSellFeePct,
-            };
-
-            await expect(
-                subjectFactory.connect(deployer).updateFees(feeInput),
-            ).to.revertedWithCustomError(
-                subjectFactory,
-                "SubjectFactory_InvalidFeePercentage",
-            );
-        });
-
-        it("should fail of invalid subjectSellFeePct", async () => {
-            const { owner, subjectFactory, deployer } = await loadFixture(deploy);
-
-            await subjectFactory
-                .connect(owner)
-                .grantRole(
-                    await subjectFactory.UPDATE_FEES_ROLE(),
-                    deployer.address,
-                );
-
-            const protocolBuyFeePct = (1e16).toString(); // 1%
-            const protocolSellFeePct = (2 * 1e16).toString(); // 2%
-            const subjectBuyFeePct = (3 * 1e16).toString(); // 3%
-            const subjectSellFeePct = (4 * 1e19).toString(); // 4%
-
-            const feeInput = {
-                protocolBuyFeePct,
-                protocolSellFeePct,
-                subjectBuyFeePct,
-                subjectSellFeePct,
-            };
-
-            await expect(
-                subjectFactory.connect(deployer).updateFees(feeInput),
-            ).to.revertedWithCustomError(
-                subjectFactory,
-                "SubjectFactory_InvalidFeePercentage",
-            );
-        });
     });
 
     describe("update Beneficiary", () => {
