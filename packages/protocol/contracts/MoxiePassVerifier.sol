@@ -80,14 +80,12 @@ contract MoxiePassVerifier is Ownable, IAllowListVerifier {
      *  @dev The function is a view function and does not modify state. It returns a bytes4 selector indicating whether the action is allowed.
      *  @param user The address of the user whose permission is being checked.
      *  @param auctionId The ID of the auction in which the action is to be performed.
-     *  @param callData The calldata associated with the action to be performed.
      *  @return A bytes4 selector indicating whether the user is allowed to perform the action in the auction.
      */
     function isAllowed(
         address user,
         uint256 auctionId,
-        // @solhint @ignore
-        bytes calldata callData
+        bytes calldata /*callData*/
     ) external view returns (bytes4) {
         // If the user address is 0, return 0
         if (user == address(0)) {

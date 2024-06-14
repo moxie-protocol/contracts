@@ -16,7 +16,7 @@ contract MoxiePass is ERC721, AccessControl {
     constructor(
         address defaultAdmin,
         address minter
-    ) ERC721("MoxiePass", "MXP") {
+    ) ERC721("Moxie Pass", "MXP") {
         if (defaultAdmin == address(0)) revert MoxiePass_InvalidAdmin();
 
         if (minter == address(0)) revert MoxiePass_InvalidMinter();
