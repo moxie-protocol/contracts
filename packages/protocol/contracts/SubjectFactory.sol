@@ -409,7 +409,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      *  4. Calculate & transfer fee.
      *  5. Initiate bonding curve.
      * @param _subject Address of subject token.
-     * @param _buyAmount == Amount of tokens contract will use to buy shares of subject token after auction is done.
+     * @param _buyAmount Amount of tokens contract will use to buy shares of subject token after auction is done.
      * This is to make sure there is always a supply before initiating bonding curve. Subject token against this
      * reserve will be locked in this contract forever.
      * @param _reserveRatio Reserve ratio of bonding curve.
