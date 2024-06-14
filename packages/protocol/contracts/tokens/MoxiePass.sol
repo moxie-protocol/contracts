@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
- * @title MOXIE PASS  NFT required to participate in Moxie protocol
+ * @title MOXIE PASS NFT required to participate in Moxie protocol
  * @author Moxie Team
    @notice Only allow one mint per wallet, non transferrable & token uri for each tokenId.
  */
