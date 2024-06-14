@@ -1,3 +1,4 @@
+
 module.exports = {
-    skipFiles: ["bancor/BancorFormula.sol", "bancor/SafeMath.sol"],
+    skipFiles: ["tests/MockEasyAuction.sol", "bancor/BancorFormula.sol", "bancor/SafeMath.sol"],
   };
