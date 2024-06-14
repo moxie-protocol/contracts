@@ -323,10 +323,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
             subjectFee_;
 
         // approve bonding curve to spend moxie
-        IERC20Extended(token).approve(
-            address(moxieBondingCurve),
-            bondingAmount_
-        );
+        token.approve(address(moxieBondingCurve), bondingAmount_);
 
         uint256 bondingSupply_ = _supply + newSupplyToMint;
         moxieBondingCurve.initializeSubjectBondingCurve(
@@ -337,7 +334,16 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         );
 
         token.safeTransfer(feeBeneficiary, protocolFee_);
-        token.safeTransfer(_subject, subjectFee_);
+
+        token.approve(address(moxieBondingCurve), subjectFee_);
+
+        ///@dev Instead of returning subject fee to subject, give buy subject shares for subject.
+        moxieBondingCurve.buyShares(
+            _subject,
+            subjectFee_,
+            _subject,
+            0 //slippage settings not needed as this is first buy transaaction.
+        );
 
         emit SubjectOnboardingFinished(
             _subject,

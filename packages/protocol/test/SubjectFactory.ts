@@ -130,6 +130,10 @@ describe('Subject Factory', () => {
             .connect(owner)
             .grantRole(await tokenManager.MINT_ROLE(), subjectFactoryAddress);
 
+            await tokenManager
+            .connect(owner)
+            .grantRole(await tokenManager.MINT_ROLE(), moxieBondingCurveAddress);
+
         await easyAuction.connect(owner).setSubjectFactory(subjectFactoryAddress);
 
         await moxiePass.connect(minter).mint(owner.address, "uri");
@@ -167,7 +171,8 @@ describe('Subject Factory', () => {
             bidder2,
             reserveRatio,
             PCT_BASE,
-            vaultInstance
+            vaultInstance,
+            formula
         };
 
     }
@@ -1061,7 +1066,10 @@ describe('Subject Factory', () => {
                 feeInputSubjectFactory,
                 PCT_BASE,
                 SubjectERC20,
-                vaultInstance
+                vaultInstance,
+                feeBeneficiary,
+                formula,
+                feeInput
 
 
             } = await loadFixture(deploy);
@@ -1115,7 +1123,6 @@ describe('Subject Factory', () => {
             const expectedBondingSupply = BigInt(auctionInput.initialSupply) + additionalSupplyDueToBuyAmount
             const expectedBondingAmount = BigInt(biddingAmount) + BigInt(buyAmount) - expectedProtocolFee - expectedSubjectFee;
 
-
             await moxieToken.approve(await subjectFactory.getAddress(), buyAmount);
             await expect(await subjectFactory.connect(owner).finalizeSubjectOnboarding(
                 subject.address,
@@ -1133,10 +1140,19 @@ describe('Subject Factory', () => {
                 expectedSubjectFee
             );
 
-            expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply);
-            expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount);
+            const actualBuyAmountFromSubjectFee = expectedSubjectFee * (PCT_BASE - BigInt(feeInput.protocolBuyFeePct) - BigInt(feeInput.subjectBuyFeePct)) /PCT_BASE;
+            const expectedShareMintFromBondingCurve = await formula.calculatePurchaseReturn(
+                expectedBondingSupply,
+                expectedBondingAmount,
+                reserveRatio,
+                actualBuyAmountFromSubjectFee
+            );
+            expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply + BigInt(expectedShareMintFromBondingCurve));
+            expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount+actualBuyAmountFromSubjectFee);
             const auction = await subjectFactory.auctions(subject.address);
             expect(auction.auctionEndDate).to.equal(0);
+            const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) /PCT_BASE;
+            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
 
         });
 
@@ -1158,7 +1174,10 @@ describe('Subject Factory', () => {
                 feeInputSubjectFactory,
                 PCT_BASE,
                 SubjectERC20,
-                vaultInstance
+                vaultInstance,
+                feeInput,
+                formula,
+                feeBeneficiary
 
 
             } = await loadFixture(deploy);
@@ -1243,11 +1262,19 @@ describe('Subject Factory', () => {
                 expectedProtocolFee,
                 expectedSubjectFee
             );
-
-            expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply);
-            expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount);
+            const actualBuyAmountFromSubjectFee = expectedSubjectFee * (PCT_BASE - BigInt(feeInput.protocolBuyFeePct) - BigInt(feeInput.subjectBuyFeePct)) /PCT_BASE;
+            const expectedShareMintFromBondingCurve = await formula.calculatePurchaseReturn(
+                expectedBondingSupply,
+                expectedBondingAmount,
+                reserveRatio,
+                actualBuyAmountFromSubjectFee
+            );
+            expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply + BigInt(expectedShareMintFromBondingCurve));
+            expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount+actualBuyAmountFromSubjectFee);
             const auction = await subjectFactory.auctions(subject.address);
             expect(auction.auctionEndDate).to.equal(0);
+            const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) /PCT_BASE;
+            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
 
         });
 
@@ -1269,7 +1296,10 @@ describe('Subject Factory', () => {
                 feeInputSubjectFactory,
                 PCT_BASE,
                 SubjectERC20,
-                vaultInstance
+                vaultInstance,
+                feeInput,
+                feeBeneficiary,
+                formula
 
 
             } = await loadFixture(deploy);
@@ -1328,8 +1358,19 @@ describe('Subject Factory', () => {
                 expectedSubjectFee
             );
 
-            expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply);
-            expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount);
+            const actualBuyAmountFromSubjectFee = expectedSubjectFee * (PCT_BASE - BigInt(feeInput.protocolBuyFeePct) - BigInt(feeInput.subjectBuyFeePct)) /PCT_BASE;
+            const expectedShareMintFromBondingCurve = await formula.calculatePurchaseReturn(
+                expectedBondingSupply,
+                expectedBondingAmount,
+                reserveRatio,
+                actualBuyAmountFromSubjectFee
+            );
+            expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply + BigInt(expectedShareMintFromBondingCurve));
+            expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount+actualBuyAmountFromSubjectFee);
+            const auction = await subjectFactory.auctions(subject.address);
+            expect(auction.auctionEndDate).to.equal(0);
+            const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) /PCT_BASE;
+            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
 
         });
 
@@ -1351,7 +1392,10 @@ describe('Subject Factory', () => {
                 feeInputSubjectFactory,
                 PCT_BASE,
                 SubjectERC20,
-                vaultInstance
+                vaultInstance,
+                formula,
+                feeBeneficiary,
+                feeInput
 
 
             } = await loadFixture(deploy);
@@ -1425,8 +1469,23 @@ describe('Subject Factory', () => {
                 expectedSubjectFee
             );
 
-            expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply);
-            expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount);
+            const subjectFeeOnSubjectBuyAmount  =  expectedSubjectFee * BigInt(feeInput.subjectBuyFeePct) /PCT_BASE;
+            const protocolFeeOnSubjectBuyAmount  =  expectedSubjectFee * BigInt(feeInput.protocolBuyFeePct) /PCT_BASE;
+            const actualBuyAmountFromSubjectFee = expectedSubjectFee  - subjectFeeOnSubjectBuyAmount - protocolFeeOnSubjectBuyAmount;
+            
+            
+            const expectedShareMintFromBondingCurve = await formula.calculatePurchaseReturn(
+                expectedBondingSupply,
+                expectedBondingAmount,
+                reserveRatio,
+                actualBuyAmountFromSubjectFee
+            );
+            expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply + BigInt(expectedShareMintFromBondingCurve));
+            expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount+actualBuyAmountFromSubjectFee);
+            const auction = await subjectFactory.auctions(subject.address);
+            expect(auction.auctionEndDate).to.equal(0);
+            const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) /PCT_BASE;
+            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
 
         });
 
@@ -1894,7 +1953,10 @@ describe('Subject Factory', () => {
                 feeInputSubjectFactory,
                 PCT_BASE,
                 SubjectERC20,
-                vaultInstance
+                vaultInstance,
+                formula,
+                feeInput,
+                feeBeneficiary
 
 
             } = await loadFixture(deploy);
@@ -1966,9 +2028,19 @@ describe('Subject Factory', () => {
                 expectedSubjectFee
             );
 
-            expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply);
-            expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount);
-
+            const actualBuyAmountFromSubjectFee = expectedSubjectFee * (PCT_BASE - BigInt(feeInput.protocolBuyFeePct) - BigInt(feeInput.subjectBuyFeePct)) /PCT_BASE;
+            const expectedShareMintFromBondingCurve = await formula.calculatePurchaseReturn(
+                expectedBondingSupply,
+                expectedBondingAmount,
+                reserveRatio,
+                actualBuyAmountFromSubjectFee
+            );
+            expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply + BigInt(expectedShareMintFromBondingCurve));
+            expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount+actualBuyAmountFromSubjectFee);
+            const auction = await subjectFactory.auctions(subject.address);
+            expect(auction.auctionEndDate).to.equal(0);
+            const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) /PCT_BASE;
+            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
             await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
