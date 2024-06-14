@@ -35,6 +35,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     error SubjectFactory_AuctionNotDoneYet();
     error SubjectFactory_InvalidOwner();
     error SubjectFactory_InvalidReserveRatio();
+    error SubjectFactory_BuyAmountTooLess();
 
     ITokenManager public tokenManager;
     IMoxieBondingCurve public moxieBondingCurve;
@@ -158,17 +159,14 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     /**
      * @dev Create auction for a subject.
      * @param _subject Address of subject.
-     * @param _subjectToken Address of subject token.
      * @param _auctionInput Input params for auction.
-     * @param _reserveAmount Onboarding reserve amount for which subject tokens will be minted after auction is closed.
      * @return auctionId_ Auction Id.
      * @return auctionEndDate_ Auction end date.
      */
     function _createAuction(
         address _subject,
         address _subjectToken,
-        SubjectAuctionInput memory _auctionInput,
-        uint256 _reserveAmount
+        SubjectAuctionInput memory _auctionInput
     ) internal returns (uint256 auctionId_, uint256 auctionEndDate_) {
         auctionEndDate_ = block.timestamp + auctionDuration;
         auctionId_ = easyAuction.initiateAuction(
@@ -187,7 +185,6 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
 
         auctions[_subject].auctionId = auctionId_;
         auctions[_subject].auctionEndDate = auctionEndDate_;
-        auctions[_subject].reserveAmount = _reserveAmount;
         auctions[_subject].initialSupply = _auctionInput.initialSupply;
     }
 
@@ -215,7 +212,6 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     /**
      * @dev Close auction & burn tokens which are not sold in auction.
      * @param _auctionId Auction Id.
-     * @param _subjectToken Address of subject token.
      * @param _initialSupply Initial supply of auction.
      * @return soldSupply_ Total supply that got sold.
      * @return amountRaised_ Amount of moxie raised.
@@ -223,7 +219,8 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      */
     function _closeAuction(
         uint256 _auctionId,
-        address _subjectToken,
+        // address _subjectToken,
+        address _subject,
         uint256 _initialSupply
     )
         internal
@@ -233,7 +230,8 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
             bytes32 clearingOrder
         )
     {
-        uint256 beforeBalanceInSubjectToken = IERC20Extended(_subjectToken)
+        address subjectToken = tokenManager.tokens(_subject);
+        uint256 beforeBalanceInSubjectToken = IERC20Extended(subjectToken)
             .balanceOf(address(this));
         uint256 beforeBalanceInMoxieToken = IERC20Extended(token).balanceOf(
             address(this)
@@ -241,7 +239,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
 
         clearingOrder = easyAuction.settleAuction(_auctionId);
 
-        uint256 afterBalanceInSubjectToken = IERC20Extended(_subjectToken)
+        uint256 afterBalanceInSubjectToken = IERC20Extended(subjectToken)
             .balanceOf(address(this));
         uint256 afterBalanceInMoxieToken = IERC20Extended(token).balanceOf(
             address(this)
@@ -256,7 +254,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
 
         // Burn subject token which are not sold in auction.
         if (amountToBurn > 0) {
-            IERC20Extended(_subjectToken).burn(amountToBurn);
+            IERC20Extended(subjectToken).burn(amountToBurn);
         }
     }
 
@@ -284,44 +282,44 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     ) internal pure returns (uint256) {
         /// @dev buyAmount is moxie amount & sell amount is subject token.
         (, uint96 buyAmount, uint96 sellAmount) = _decodeOrder(_clearningOrder);
-        return (sellAmount * _amount) / buyAmount;
+        return (buyAmount * _amount) / sellAmount;
     }
 
     /**
      * @dev Initialize Bonding curve ,also mint bonding supply for onboarding reserve amount.
      * @param _auctionId Auction Id from easy auction contract for subject onboarding.
      * @param _subject Address of subject.
-     * @param _subjectToken Address of subject token.
      * @param _amountRaised Amount raised in auction.
      * @param _supply Total supply sold in auction.
      * @param _reserveRatio Reserve ratio for Bonding curve.
      * @param _clearningOrder Clearing order from auction.
-     * @param _reserveAmount Reserve amount from onboarding.
+     * @param _buyAmount Amount to mint shares to this contract at auction price.
      */
     function _initializeBondingCurve(
         uint256 _auctionId,
         address _subject,
-        address _subjectToken,
         uint256 _amountRaised,
         uint256 _supply,
         uint32 _reserveRatio,
         bytes32 _clearningOrder,
-        uint256 _reserveAmount
+        uint256 _buyAmount
     ) internal {
         uint256 newSupplyToMint = _calculateTokensMintAfterAuction(
             _clearningOrder,
-            _reserveAmount
+            _buyAmount
         );
 
-         /// @dev this supply will always be locked in this  contract to make sure Bonding curve always have non zero price.
+        if (newSupplyToMint == 0) {
+            revert SubjectFactory_BuyAmountTooLess();
+        }
+        /// @dev this supply will always be locked in this  contract to make sure Bonding curve always have non zero price.
         tokenManager.mint(_subject, address(this), newSupplyToMint);
 
         (uint256 protocolFee_, uint256 subjectFee_) = _calculateFee(
-            _amountRaised + _reserveAmount // total amount is sum of auction amount + reserve amount from onboarding flow.
+            _amountRaised + _buyAmount // total amount is sum of auction amount + reserve amount from onboarding flow.
         );
-
         uint256 bondingAmount_ = _amountRaised +
-            _reserveAmount -
+            _buyAmount -
             protocolFee_ -
             subjectFee_;
 
@@ -344,7 +342,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
 
         emit SubjectOnboardingFinished(
             _subject,
-            _subjectToken,
+            tokenManager.tokens(_subject),
             _auctionId,
             bondingSupply_,
             bondingAmount_,
@@ -357,14 +355,10 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      * @dev Function to onboard & start auction of initial supply of subject.
      * @param _subject Address of subject.
      * @param _auctionInput Input for auction creation.
-     * @param _reserveAmount Amount of tokens contract will use to buy shares of subject token after auction is done.
-     * This is to make sure there is always a supply before initiating bonding curve. Subject token against this
-     * reserve will be locked in this contract forever.
      */
     function initiateSubjectOnboarding(
         address _subject,
-        SubjectAuctionInput memory _auctionInput,
-        uint256 _reserveAmount
+        SubjectAuctionInput memory _auctionInput
     )
         external
         whenNotPaused
@@ -375,9 +369,6 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
 
         if (auctions[_subject].auctionId != 0)
             revert SubjectFactory_AuctionAlreadyCreated();
-
-        // transfer reserve from caller to contract.
-        token.safeTransferFrom(msg.sender, address(this), _reserveAmount);
 
         address subjectToken = tokenManager.create(
             _subject,
@@ -395,8 +386,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         (uint256 auctionId, uint256 auctionEndDate) = _createAuction(
             _subject,
             subjectToken,
-            _auctionInput,
-            _reserveAmount
+            _auctionInput
         );
 
         auctionId_ = auctionId;
@@ -419,10 +409,14 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      *  4. Calculate & transfer fee.
      *  5. Initiate bonding curve.
      * @param _subject Address of subject token.
+     * @param _buyAmount == Amount of tokens contract will use to buy shares of subject token after auction is done.
+     * This is to make sure there is always a supply before initiating bonding curve. Subject token against this
+     * reserve will be locked in this contract forever.
      * @param _reserveRatio Reserve ratio of bonding curve.
      */
     function finalizeSubjectOnboarding(
         address _subject,
+        uint256 _buyAmount,
         uint32 _reserveRatio
     ) external whenNotPaused onlyRole(ONBOARDING_ROLE) {
         if (_subject == address(0)) revert SubjectFactory_InvalidSubject();
@@ -436,31 +430,24 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         if (block.timestamp < auction.auctionEndDate)
             revert SubjectFactory_AuctionNotDoneYet();
 
-        address subjectToken = tokenManager.tokens(_subject);
-
-        if (subjectToken == address(0)) revert SubjectFactory_InvalidSubject();
-
+        // transfer buy amount from caller to contract.
+        token.safeTransferFrom(msg.sender, address(this), _buyAmount);
         delete auctions[_subject];
 
         (
             uint256 soldSupply,
             uint256 amountRaised,
             bytes32 clearingOrder
-        ) = _closeAuction(
-                auctionId,
-                subjectToken,
-                auction.initialSupply
-            );
+        ) = _closeAuction(auctionId, _subject, auction.initialSupply);
 
         _initializeBondingCurve(
             auctionId,
             _subject,
-            subjectToken,
             amountRaised,
             soldSupply,
             _reserveRatio,
             clearingOrder,
-            auction.reserveAmount
+            _buyAmount
         );
     }
 

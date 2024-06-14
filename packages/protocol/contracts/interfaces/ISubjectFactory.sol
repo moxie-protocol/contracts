@@ -36,7 +36,6 @@ contract ISubjectFactory {
     struct Auction {
         uint256 auctionId;
         uint256 auctionEndDate;
-        uint256 reserveAmount;
         uint256 initialSupply;
     }
 

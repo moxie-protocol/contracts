@@ -1,7 +1,9 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import hre, { ethers } from "hardhat";
 import { SubjectERC20 } from "../typechain-types";
+import EasyAuctionArtifact from "../test-artifact/easy-auction/artifacts/contracts/EasyAuction.sol/EasyAuction.json";
+import { EasyAuction } from "../test-artifact/easy-auction/typechain/EasyAuction";
 
 
 describe('Subject Factory', () => {
@@ -9,7 +11,7 @@ describe('Subject Factory', () => {
 
     const deploy = async () => {
 
-        const [deployer, owner, minter, feeBeneficiary, subject] = await ethers.getSigners();
+        const [deployer, owner, minter, feeBeneficiary, subject, bidder1, bidder2] = await ethers.getSigners();
 
 
         const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactory");
@@ -20,15 +22,14 @@ describe('Subject Factory', () => {
 
         const MoxiePass = await hre.ethers.getContractFactory("MoxiePass");
         const MoxiePassVerifier = await hre.ethers.getContractFactory(
-            "MockMoxiePassVerifier",
+            "MoxiePassVerifier",
         );
         const TokenManager = await hre.ethers.getContractFactory("TokenManager");
 
         const MoxieBondingCurve =
             await hre.ethers.getContractFactory("MoxieBondingCurve");
 
-        const MockEasyAuction = await hre.ethers.getContractFactory("MockEasyAuction");;
-
+        const EasyAuction = await hre.ethers.getContractFactoryFromArtifact(EasyAuctionArtifact);;
 
         // moxie Token
         const moxieToken = await MoxieToken.connect(owner).deploy();
@@ -60,7 +61,7 @@ describe('Subject Factory', () => {
 
         // easy auction 
 
-        const easyAuction = await MockEasyAuction.deploy();
+        const easyAuction: EasyAuction = (await EasyAuction.connect(owner).deploy()) as unknown as EasyAuction;
 
         // subject factory 
         const subjectFactory = await SubjectFactory.deploy({ from: deployer.address });
@@ -86,6 +87,7 @@ describe('Subject Factory', () => {
         const auctionDuration = 10;
         const auctionCancellationDuration = 5;
         const moxiePassVerifierAddress = await moxiePassVerifier.getAddress();
+        const reserveRatio = 660000;
 
         const feeInput = {
             protocolBuyFeePct,
@@ -124,6 +126,11 @@ describe('Subject Factory', () => {
 
 
         await tokenManager.connect(owner).grantRole(await tokenManager.CREATE_ROLE(), subjectFactoryAddress);
+        await tokenManager
+            .connect(owner)
+            .grantRole(await tokenManager.MINT_ROLE(), subjectFactoryAddress);
+
+        await easyAuction.connect(owner).setSubjectFactory(subjectFactoryAddress);
 
         await moxiePass.connect(minter).mint(owner.address);
         await moxiePass.connect(minter).mint(subject.address);
@@ -131,7 +138,11 @@ describe('Subject Factory', () => {
         await moxiePass.connect(minter).mint(await moxieBondingCurve.getAddress());
         await moxiePass.connect(minter).mint(await tokenManager.getAddress());
         await moxiePass.connect(minter).mint(subjectFactoryAddress);
+        await moxiePass.connect(minter).mint(easyAuctionAddress);
+        await moxiePass.connect(minter).mint(bidder1.address);
+        await moxiePass.connect(minter).mint(bidder2.address);
 
+        const PCT_BASE = BigInt(10 ** 18);
         return {
             subjectFactory,
             owner,
@@ -151,7 +162,12 @@ describe('Subject Factory', () => {
             tokenManager,
             SubjectERC20,
             moxieToken,
-            feeInputSubjectFactory
+            feeInputSubjectFactory,
+            bidder1,
+            bidder2,
+            reserveRatio,
+            PCT_BASE,
+            vaultInstance
         };
 
     }
@@ -537,7 +553,7 @@ describe('Subject Factory', () => {
 
     });
 
-    describe('initiateSubjectOnboarding', () => {
+    describe('initiate subject onboarding', () => {
 
         it('should initiate Subject Onboarding', async () => {
 
@@ -555,9 +571,6 @@ describe('Subject Factory', () => {
                 moxieToken
             } = await loadFixture(deploy);
 
-
-            const auctionId = 1;
-            await easyAuction.setAuctionId(auctionId);
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
             const auctionInput = {
                 name: 'fid-3761',
@@ -579,10 +592,10 @@ describe('Subject Factory', () => {
 
             let subjectTokenAddress;
 
+            const auctionId = BigInt(1);
             await expect(await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
-                reserve
 
             )).to.emit(subjectFactory, "SubjectOnboardingInitiated")
                 .withArgs(
@@ -596,17 +609,14 @@ describe('Subject Factory', () => {
 
             const subjectToken = SubjectERC20.attach(subjectTokenAddress) as SubjectERC20;
             expect(await subjectToken.totalSupply()).to.equal(auctionInput.initialSupply);
-            expect(await subjectToken.allowance(await subjectFactory.getAddress(), easyAuctionAddress)).to.equal(auctionInput.initialSupply);
+            expect(await subjectToken.balanceOf(easyAuctionAddress)).to.equal(auctionInput.initialSupply);
             expect(await subjectToken.name()).to.equal(auctionInput.name);
             expect(await subjectToken.symbol()).to.equal(auctionInput.symbol);
-            expect(await moxieToken.balanceOf(await subjectFactory.getAddress())).to.equal(reserve);
             const auction = await subjectFactory.auctions(subject);
             expect(auction.auctionId).to.equals(BigInt(auctionId));
             expect(auction.auctionEndDate).to.equals(
                 BigInt(timestamp) + BigInt(auctionDuration) + BigInt(1));
-            expect(auction.reserveAmount).to.equals(
-                BigInt(reserve),
-            );
+
             expect(auction.initialSupply).to.equals(
                 BigInt(auctionInput.initialSupply),
             );
@@ -624,7 +634,6 @@ describe('Subject Factory', () => {
 
 
             const auctionId = 1;
-            await easyAuction.setAuctionId(auctionId);
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
             const auctionInput = {
                 name: 'fid-3761',
@@ -642,7 +651,6 @@ describe('Subject Factory', () => {
             await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
                 ethers.ZeroAddress,
                 auctionInput,
-                reserve
 
             )).to.revertedWithCustomError(subjectFactory, "SubjectFactory_InvalidSubject");
         });
@@ -665,7 +673,6 @@ describe('Subject Factory', () => {
 
 
             const auctionId = 1;
-            await easyAuction.setAuctionId(auctionId);
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
             const auctionInput = {
                 name: 'fid-3761',
@@ -690,7 +697,6 @@ describe('Subject Factory', () => {
             await expect(await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
-                reserve
 
             )).to.emit(subjectFactory, "SubjectOnboardingInitiated")
                 .withArgs(
@@ -706,7 +712,6 @@ describe('Subject Factory', () => {
             await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
-                reserve
 
             )).revertedWithCustomError(subjectFactory, "SubjectFactory_AuctionAlreadyCreated");
 
@@ -722,10 +727,6 @@ describe('Subject Factory', () => {
                 easyAuction,
                 moxieToken
             } = await loadFixture(deploy);
-
-
-            const auctionId = 1;
-            await easyAuction.setAuctionId(auctionId);
 
             const auctionInput = {
                 name: 'fid-3761',
@@ -745,7 +746,6 @@ describe('Subject Factory', () => {
             await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
-                reserve
 
             )).to.revertedWithCustomError(subjectFactory, "AccessControlUnauthorizedAccount",
             )
@@ -763,10 +763,6 @@ describe('Subject Factory', () => {
                 easyAuction,
                 moxieToken
             } = await loadFixture(deploy);
-
-
-            const auctionId = 1;
-            await easyAuction.setAuctionId(auctionId);
 
             const auctionInput = {
                 name: 'fid-3761',
@@ -789,7 +785,6 @@ describe('Subject Factory', () => {
             await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
-                reserve
 
             )).to.revertedWithCustomError(subjectFactory, "EnforcedPause")
 
@@ -1043,6 +1038,754 @@ describe('Subject Factory', () => {
                     subjectFactory,
                     "SubjectFactory_InvalidAuctionOrderCancellationDuration",
                 );
+        });
+
+    });
+
+    describe('finalize subject onboarding', () => {
+
+        it('should finalize subject onboarding when there are bids in auction', async () => {
+            const {
+                subjectFactory,
+                owner,
+                moxieTokenAddress,
+                auctionDuration,
+                moxiePassVerifierAddress,
+                moxieToken,
+                subject,
+                tokenManager,
+                easyAuction,
+                bidder1,
+                bidder2,
+                easyAuctionAddress,
+                reserveRatio,
+                feeInputSubjectFactory,
+                PCT_BASE,
+                SubjectERC20,
+                vaultInstance
+
+
+            } = await loadFixture(deploy);
+
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
+            const auctionInput = {
+                name: 'fid-3761',
+                symbol: 'fid-3761',
+                initialSupply: '1000',
+                minBuyAmount: '1000',// in moxie token
+                minBiddingAmount: '1000', // in subject token
+                minFundingThreshold: '0', // amount of auction funding in moxie token below which auction will be cancelled.
+                isAtomicClosureAllowed: false, // false can be hardcoded
+                accessManagerContract: moxiePassVerifierAddress, //
+                accessManagerContractData: '0x' //0x00 can be hardcoded
+
+            }
+
+            const auctionId = BigInt(1);
+            await subjectFactory.connect(owner).initiateSubjectOnboarding(
+                subject.address,
+                auctionInput,
+            );
+
+            let subjectTokenAddress = await tokenManager.tokens(subject.address);
+            let subjectToken = SubjectERC20.attach(subjectTokenAddress) as SubjectERC20;
+
+            // fund bidder
+            const biddingAmount = '1000000'; //moxie
+            await moxieToken.connect(owner).transfer(bidder1.address, biddingAmount);
+
+            await moxieToken.connect(bidder1).approve(easyAuctionAddress, biddingAmount);
+            const queueStartElement =
+                "0x0000000000000000000000000000000000000000000000000000000000000001";
+            await easyAuction.connect(bidder1).placeSellOrders(
+                auctionId,
+                [auctionInput.initialSupply],//subject token
+                [biddingAmount], // moxie token
+                [queueStartElement],
+                '0x',
+            );
+
+            await time.increase(auctionDuration);
+
+
+            const buyAmount = "1000000";
+            const additionalSupplyDueToBuyAmount = BigInt(buyAmount) * BigInt(auctionInput.initialSupply) / BigInt(biddingAmount);
+
+            const expectedProtocolFee = (BigInt(biddingAmount) + BigInt(buyAmount)) * BigInt(feeInputSubjectFactory.protocolFeePct) / PCT_BASE;
+            const expectedSubjectFee = (BigInt(biddingAmount) + BigInt(buyAmount)) * BigInt(feeInputSubjectFactory.subjectFeePct) / PCT_BASE;;
+            const expectedBondingSupply = BigInt(auctionInput.initialSupply) + additionalSupplyDueToBuyAmount
+            const expectedBondingAmount = BigInt(biddingAmount) + BigInt(buyAmount) - expectedProtocolFee - expectedSubjectFee;
+
+
+            await moxieToken.approve(await subjectFactory.getAddress(), buyAmount);
+            await expect(await subjectFactory.connect(owner).finalizeSubjectOnboarding(
+                subject.address,
+                buyAmount,
+                reserveRatio,
+            )).to.emit(
+                subjectFactory, "SubjectOnboardingFinished"
+            ).withArgs(
+                subject.address,
+                subjectTokenAddress,
+                auctionId,
+                expectedBondingSupply,
+                expectedBondingAmount,
+                expectedProtocolFee,
+                expectedSubjectFee
+            );
+
+            expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply);
+            expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount);
+            const auction = await subjectFactory.auctions(subject.address);
+            expect(auction.auctionEndDate).to.equal(0);
+
+        });
+
+        it('should finalize subject onboarding when there are no bids in auction', async () => {
+            const {
+                subjectFactory,
+                owner,
+                moxieTokenAddress,
+                auctionDuration,
+                moxiePassVerifierAddress,
+                moxieToken,
+                subject,
+                tokenManager,
+                easyAuction,
+                bidder1,
+                bidder2,
+                easyAuctionAddress,
+                reserveRatio,
+                feeInputSubjectFactory,
+                PCT_BASE,
+                SubjectERC20,
+                vaultInstance
+
+
+            } = await loadFixture(deploy);
+
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
+            const auctionInput = {
+                name: 'fid-3761',
+                symbol: 'fid-3761',
+                initialSupply: '1000',
+                minBuyAmount: '1000',// in moxie token
+                minBiddingAmount: '1000', // in subject token
+                minFundingThreshold: '0', // amount of auction funding in moxie token below which auction will be cancelled.
+                isAtomicClosureAllowed: false, // false can be hardcoded
+                accessManagerContract: moxiePassVerifierAddress, //
+                accessManagerContractData: '0x' //0x00 can be hardcoded
+
+            }
+
+            const auctionId = BigInt(1);
+            await subjectFactory.connect(owner).initiateSubjectOnboarding(
+                subject.address,
+                auctionInput,
+            );
+
+            let subjectTokenAddress = await tokenManager.tokens(subject.address);
+            let subjectToken = SubjectERC20.attach(subjectTokenAddress) as SubjectERC20;
+
+
+
+            await time.increase(auctionDuration);
+
+
+            const buyAmount = "1000000";
+            const additionalSupplyDueToBuyAmount = BigInt(buyAmount) * BigInt(auctionInput.initialSupply) / BigInt(auctionInput.minBuyAmount);
+
+            const expectedProtocolFee = (BigInt(buyAmount)) * BigInt(feeInputSubjectFactory.protocolFeePct) / PCT_BASE;
+            const expectedSubjectFee = (BigInt(buyAmount)) * BigInt(feeInputSubjectFactory.subjectFeePct) / PCT_BASE;;
+            const expectedBondingSupply = additionalSupplyDueToBuyAmount;
+            const expectedBondingAmount = BigInt(buyAmount) - expectedProtocolFee - expectedSubjectFee;
+
+
+            await moxieToken.approve(await subjectFactory.getAddress(), buyAmount);
+            await expect(await subjectFactory.connect(owner).finalizeSubjectOnboarding(
+                subject.address,
+                buyAmount,
+                reserveRatio,
+            )).to.emit(
+                subjectFactory, "SubjectOnboardingFinished"
+            ).withArgs(
+                subject.address,
+                subjectTokenAddress,
+                auctionId,
+                expectedBondingSupply,
+                expectedBondingAmount,
+                expectedProtocolFee,
+                expectedSubjectFee
+            );
+
+            expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply);
+            expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount);
+
+        });
+
+        // it('should finalize subject onboarding when there are  bids for half of initial auction amout', async () => {
+        //     const {
+        //         subjectFactory,
+        //         owner,
+        //         moxieTokenAddress,
+        //         auctionDuration,
+        //         moxiePassVerifierAddress,
+        //         moxieToken,
+        //         subject,
+        //         tokenManager,
+        //         easyAuction,
+        //         bidder1,
+        //         bidder2,
+        //         easyAuctionAddress,
+        //         reserveRatio,
+        //         feeInputSubjectFactory,
+        //         PCT_BASE,
+        //         SubjectERC20,
+        //         vaultInstance
+
+
+        //     } = await loadFixture(deploy);
+
+        //     await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
+        //     const auctionInput = {
+        //         name: 'fid-3761',
+        //         symbol: 'fid-3761',
+        //         initialSupply: '1000',
+        //         minBuyAmount: '1000',// in moxie token
+        //         minBiddingAmount: '200', // in subject token
+        //         minFundingThreshold: '0', // amount of auction funding in moxie token below which auction will be cancelled.
+        //         isAtomicClosureAllowed: false, // false can be hardcoded
+        //         accessManagerContract: moxiePassVerifierAddress, //
+        //         accessManagerContractData: '0x' //0x00 can be hardcoded
+
+        //     }
+
+        //     const auctionId = BigInt(1);
+        //     await subjectFactory.connect(owner).initiateSubjectOnboarding(
+        //         subject.address,
+        //         auctionInput,
+        //     );
+
+        //     let subjectTokenAddress = await tokenManager.tokens(subject.address);
+        //     let subjectToken = SubjectERC20.attach(subjectTokenAddress) as SubjectERC20;
+
+        //     // fund bidder
+        //     const biddingAmount = '1000'; //moxie
+        //     await moxieToken.connect(owner).transfer(bidder1.address, biddingAmount);
+
+        //     await moxieToken.connect(bidder1).approve(easyAuctionAddress, biddingAmount);
+        //     const queueStartElement =
+        //         "0x0000000000000000000000000000000000000000000000000000000000000001";
+
+        //     const auctionBuyAmount = "500";
+        //     await easyAuction.connect(bidder1).placeSellOrders(
+        //         auctionId,
+        //         [auctionBuyAmount],//subject token
+        //         [biddingAmount], // moxie token
+        //         [queueStartElement],
+        //         '0x',
+        //     );
+
+        //     await time.increase(auctionDuration);
+
+
+        //     const buyAmount = "1000000";
+        //     const additionalSupplyDueToBuyAmount = BigInt(buyAmount) * BigInt(auctionInput.initialSupply) / BigInt(auctionInput.minBuyAmount);
+        //     console.log({ additionalSupplyDueToBuyAmount })
+
+        //     const expectedProtocolFee = (BigInt(biddingAmount) + BigInt(buyAmount)) * BigInt(feeInputSubjectFactory.protocolFeePct) / PCT_BASE;
+        //     const expectedSubjectFee = (BigInt(biddingAmount) + BigInt(buyAmount)) * BigInt(feeInputSubjectFactory.subjectFeePct) / PCT_BASE;;
+        //     const expectedBondingSupply = BigInt(auctionBuyAmount) + additionalSupplyDueToBuyAmount
+        //     const expectedBondingAmount = BigInt(biddingAmount) + BigInt(buyAmount) - expectedProtocolFee - expectedSubjectFee;
+
+
+        //     await moxieToken.approve(await subjectFactory.getAddress(), buyAmount);
+        //     await expect(await subjectFactory.connect(owner).finalizeSubjectOnboarding(
+        //         subject.address,
+        //         buyAmount,
+        //         reserveRatio,
+        //     )).to.emit(
+        //         subjectFactory, "SubjectOnboardingFinished"
+        //     ).withArgs(
+        //         subject.address,
+        //         subjectTokenAddress,
+        //         auctionId,
+        //         expectedBondingSupply,
+        //         expectedBondingAmount,
+        //         expectedProtocolFee,
+        //         expectedSubjectFee
+        //     );
+
+        //     expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply);
+        //     expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount);
+
+        // });
+
+        it('should not finalize subject onboarding when buy amount is too less', async () => {
+            const {
+                subjectFactory,
+                owner,
+                moxieTokenAddress,
+                auctionDuration,
+                moxiePassVerifierAddress,
+                moxieToken,
+                subject,
+                tokenManager,
+                easyAuction,
+                bidder1,
+                bidder2,
+                easyAuctionAddress,
+                reserveRatio,
+                feeInputSubjectFactory,
+                PCT_BASE,
+                SubjectERC20,
+                vaultInstance
+
+
+            } = await loadFixture(deploy);
+
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
+            const auctionInput = {
+                name: 'fid-3761',
+                symbol: 'fid-3761',
+                initialSupply: '1000',
+                minBuyAmount: '1000',// in moxie token
+                minBiddingAmount: '1000', // in subject token
+                minFundingThreshold: '0', // amount of auction funding in moxie token below which auction will be cancelled.
+                isAtomicClosureAllowed: false, // false can be hardcoded
+                accessManagerContract: moxiePassVerifierAddress, //
+                accessManagerContractData: '0x' //0x00 can be hardcoded
+
+            }
+
+            const auctionId = BigInt(1);
+            await subjectFactory.connect(owner).initiateSubjectOnboarding(
+                subject.address,
+                auctionInput,
+            );
+
+            let subjectTokenAddress = await tokenManager.tokens(subject.address);
+            let subjectToken = SubjectERC20.attach(subjectTokenAddress) as SubjectERC20;
+
+            // fund bidder
+            const biddingAmount = '1000000'; //moxie
+            await moxieToken.connect(owner).transfer(bidder1.address, biddingAmount);
+
+            await moxieToken.connect(bidder1).approve(easyAuctionAddress, biddingAmount);
+            const queueStartElement =
+                "0x0000000000000000000000000000000000000000000000000000000000000001";
+            await easyAuction.connect(bidder1).placeSellOrders(
+                auctionId,
+                [auctionInput.initialSupply],//subject token
+                [biddingAmount], // moxie token
+                [queueStartElement],
+                '0x',
+            );
+
+            await time.increase(auctionDuration);
+
+
+            const buyAmount = "10";
+
+            await moxieToken.approve(await subjectFactory.getAddress(), buyAmount);
+            await expect(subjectFactory.connect(owner).finalizeSubjectOnboarding(
+                subject.address,
+                buyAmount,
+                reserveRatio,
+            )).to.revertedWithCustomError(subjectFactory, "SubjectFactory_BuyAmountTooLess");
+
+        });
+
+        it('should not finalize subject onboarding when subject is zero', async () => {
+            const {
+                subjectFactory,
+                owner,
+                moxieTokenAddress,
+                auctionDuration,
+                moxiePassVerifierAddress,
+                moxieToken,
+                subject,
+                tokenManager,
+                easyAuction,
+                bidder1,
+                bidder2,
+                easyAuctionAddress,
+                reserveRatio,
+                feeInputSubjectFactory,
+                PCT_BASE,
+                SubjectERC20,
+                vaultInstance
+
+
+            } = await loadFixture(deploy);
+
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
+            const auctionInput = {
+                name: 'fid-3761',
+                symbol: 'fid-3761',
+                initialSupply: '1000',
+                minBuyAmount: '1000',// in moxie token
+                minBiddingAmount: '1000', // in subject token
+                minFundingThreshold: '0', // amount of auction funding in moxie token below which auction will be cancelled.
+                isAtomicClosureAllowed: false, // false can be hardcoded
+                accessManagerContract: moxiePassVerifierAddress, //
+                accessManagerContractData: '0x' //0x00 can be hardcoded
+
+            }
+
+            const auctionId = BigInt(1);
+            await subjectFactory.connect(owner).initiateSubjectOnboarding(
+                subject.address,
+                auctionInput,
+            );
+
+            let subjectTokenAddress = await tokenManager.tokens(subject.address);
+            let subjectToken = SubjectERC20.attach(subjectTokenAddress) as SubjectERC20;
+
+            // fund bidder
+            const biddingAmount = '1000000'; //moxie
+            await moxieToken.connect(owner).transfer(bidder1.address, biddingAmount);
+
+            await moxieToken.connect(bidder1).approve(easyAuctionAddress, biddingAmount);
+            const queueStartElement =
+                "0x0000000000000000000000000000000000000000000000000000000000000001";
+            await easyAuction.connect(bidder1).placeSellOrders(
+                auctionId,
+                [auctionInput.initialSupply],//subject token
+                [biddingAmount], // moxie token
+                [queueStartElement],
+                '0x',
+            );
+
+            await time.increase(auctionDuration);
+
+
+            const buyAmount = "10000";
+
+            await moxieToken.approve(await subjectFactory.getAddress(), buyAmount);
+            await expect(subjectFactory.connect(owner).finalizeSubjectOnboarding(
+                ethers.ZeroAddress,
+                buyAmount,
+                reserveRatio,
+            )).to.revertedWithCustomError(subjectFactory, "SubjectFactory_InvalidSubject");
+
+        });
+
+
+        it('should not finalize subject onboarding when reserve ratio is zero', async () => {
+            const {
+                subjectFactory,
+                owner,
+                moxieTokenAddress,
+                auctionDuration,
+                moxiePassVerifierAddress,
+                moxieToken,
+                subject,
+                tokenManager,
+                easyAuction,
+                bidder1,
+                bidder2,
+                easyAuctionAddress,
+                reserveRatio,
+                feeInputSubjectFactory,
+                PCT_BASE,
+                SubjectERC20,
+                vaultInstance
+
+
+            } = await loadFixture(deploy);
+
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
+            const auctionInput = {
+                name: 'fid-3761',
+                symbol: 'fid-3761',
+                initialSupply: '1000',
+                minBuyAmount: '1000',// in moxie token
+                minBiddingAmount: '1000', // in subject token
+                minFundingThreshold: '0', // amount of auction funding in moxie token below which auction will be cancelled.
+                isAtomicClosureAllowed: false, // false can be hardcoded
+                accessManagerContract: moxiePassVerifierAddress, //
+                accessManagerContractData: '0x' //0x00 can be hardcoded
+
+            }
+
+            const auctionId = BigInt(1);
+            await subjectFactory.connect(owner).initiateSubjectOnboarding(
+                subject.address,
+                auctionInput,
+            );
+
+            // fund bidder
+            const biddingAmount = '1000000'; //moxie
+            await moxieToken.connect(owner).transfer(bidder1.address, biddingAmount);
+
+            await moxieToken.connect(bidder1).approve(easyAuctionAddress, biddingAmount);
+            const queueStartElement =
+                "0x0000000000000000000000000000000000000000000000000000000000000001";
+            await easyAuction.connect(bidder1).placeSellOrders(
+                auctionId,
+                [auctionInput.initialSupply],//subject token
+                [biddingAmount], // moxie token
+                [queueStartElement],
+                '0x',
+            );
+
+            await time.increase(auctionDuration);
+
+
+            const buyAmount = "10000";
+
+            await moxieToken.approve(await subjectFactory.getAddress(), buyAmount);
+            await expect(subjectFactory.connect(owner).finalizeSubjectOnboarding(
+                subject.address,
+                buyAmount,
+                0,
+            )).to.revertedWithCustomError(subjectFactory, "SubjectFactory_InvalidReserveRatio");
+
+        });
+
+        it('should fail when auction doesnot exists', async () => {
+            const {
+                subjectFactory,
+                owner,
+                moxieTokenAddress,
+                auctionDuration,
+                moxiePassVerifierAddress,
+                moxieToken,
+                subject,
+                tokenManager,
+                easyAuction,
+                bidder1,
+                bidder2,
+                easyAuctionAddress,
+                reserveRatio,
+                feeInputSubjectFactory,
+                PCT_BASE,
+                SubjectERC20,
+                vaultInstance
+
+
+            } = await loadFixture(deploy);
+
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
+            const auctionInput = {
+                name: 'fid-3761',
+                symbol: 'fid-3761',
+                initialSupply: '1000',
+                minBuyAmount: '1000',// in moxie token
+                minBiddingAmount: '1000', // in subject token
+                minFundingThreshold: '0', // amount of auction funding in moxie token below which auction will be cancelled.
+                isAtomicClosureAllowed: false, // false can be hardcoded
+                accessManagerContract: moxiePassVerifierAddress, //
+                accessManagerContractData: '0x' //0x00 can be hardcoded
+
+            }
+
+            const auctionId = BigInt(1);
+            await subjectFactory.connect(owner).initiateSubjectOnboarding(
+                subject.address,
+                auctionInput,
+            );
+
+            // fund bidder
+            const biddingAmount = '1000000'; //moxie
+            await moxieToken.connect(owner).transfer(bidder1.address, biddingAmount);
+
+            await moxieToken.connect(bidder1).approve(easyAuctionAddress, biddingAmount);
+            const queueStartElement =
+                "0x0000000000000000000000000000000000000000000000000000000000000001";
+            await easyAuction.connect(bidder1).placeSellOrders(
+                auctionId,
+                [auctionInput.initialSupply],//subject token
+                [biddingAmount], // moxie token
+                [queueStartElement],
+                '0x',
+            );
+
+            await time.increase(auctionDuration);
+
+
+            const buyAmount = "10000";
+
+            await moxieToken.approve(await subjectFactory.getAddress(), buyAmount);
+            await expect(subjectFactory.connect(owner).finalizeSubjectOnboarding(
+                owner.address,
+                buyAmount,
+                reserveRatio,
+            )).to.revertedWithCustomError(subjectFactory, "SubjectFactory_AuctionNotCreated");
+
+        });
+
+        it('should not be able to re-create auction for same subject', async () => {
+            const {
+                subjectFactory,
+                owner,
+                moxieTokenAddress,
+                auctionDuration,
+                moxiePassVerifierAddress,
+                moxieToken,
+                subject,
+                tokenManager,
+                easyAuction,
+                bidder1,
+                bidder2,
+                easyAuctionAddress,
+                reserveRatio,
+                feeInputSubjectFactory,
+                PCT_BASE,
+                SubjectERC20,
+                vaultInstance
+
+
+            } = await loadFixture(deploy);
+
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
+            const auctionInput = {
+                name: 'fid-3761',
+                symbol: 'fid-3761',
+                initialSupply: '1000',
+                minBuyAmount: '1000',// in moxie token
+                minBiddingAmount: '1000', // in subject token
+                minFundingThreshold: '0', // amount of auction funding in moxie token below which auction will be cancelled.
+                isAtomicClosureAllowed: false, // false can be hardcoded
+                accessManagerContract: moxiePassVerifierAddress, //
+                accessManagerContractData: '0x' //0x00 can be hardcoded
+
+            }
+
+            const auctionId = BigInt(1);
+            await subjectFactory.connect(owner).initiateSubjectOnboarding(
+                subject.address,
+                auctionInput,
+            );
+
+            let subjectTokenAddress = await tokenManager.tokens(subject.address);
+            let subjectToken = SubjectERC20.attach(subjectTokenAddress) as SubjectERC20;
+
+            // fund bidder
+            const biddingAmount = '1000000'; //moxie
+            await moxieToken.connect(owner).transfer(bidder1.address, biddingAmount);
+
+            await moxieToken.connect(bidder1).approve(easyAuctionAddress, biddingAmount);
+            const queueStartElement =
+                "0x0000000000000000000000000000000000000000000000000000000000000001";
+            await easyAuction.connect(bidder1).placeSellOrders(
+                auctionId,
+                [auctionInput.initialSupply],//subject token
+                [biddingAmount], // moxie token
+                [queueStartElement],
+                '0x',
+            );
+
+            await time.increase(auctionDuration);
+
+
+            const buyAmount = "1000000";
+            const additionalSupplyDueToBuyAmount = BigInt(buyAmount) * BigInt(auctionInput.initialSupply) / BigInt(biddingAmount);
+
+            const expectedProtocolFee = (BigInt(biddingAmount) + BigInt(buyAmount)) * BigInt(feeInputSubjectFactory.protocolFeePct) / PCT_BASE;
+            const expectedSubjectFee = (BigInt(biddingAmount) + BigInt(buyAmount)) * BigInt(feeInputSubjectFactory.subjectFeePct) / PCT_BASE;;
+            const expectedBondingSupply = BigInt(auctionInput.initialSupply) + additionalSupplyDueToBuyAmount
+            const expectedBondingAmount = BigInt(biddingAmount) + BigInt(buyAmount) - expectedProtocolFee - expectedSubjectFee;
+
+
+            await moxieToken.approve(await subjectFactory.getAddress(), buyAmount);
+            await expect(await subjectFactory.connect(owner).finalizeSubjectOnboarding(
+                subject.address,
+                buyAmount,
+                reserveRatio,
+            )).to.emit(
+                subjectFactory, "SubjectOnboardingFinished"
+            ).withArgs(
+                subject.address,
+                subjectTokenAddress,
+                auctionId,
+                expectedBondingSupply,
+                expectedBondingAmount,
+                expectedProtocolFee,
+                expectedSubjectFee
+            );
+
+            expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply);
+            expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount);
+
+            await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
+                subject.address,
+                auctionInput,
+            )).to.revertedWithCustomError(tokenManager, "TokenManager_SubjectExists");
+
+        });
+
+        it('should not finalize subject onboarding when auction end date is not passed', async () => {
+            const {
+                subjectFactory,
+                owner,
+                moxieTokenAddress,
+                auctionDuration,
+                moxiePassVerifierAddress,
+                moxieToken,
+                subject,
+                tokenManager,
+                easyAuction,
+                bidder1,
+                bidder2,
+                easyAuctionAddress,
+                reserveRatio,
+                feeInputSubjectFactory,
+                PCT_BASE,
+                SubjectERC20,
+                vaultInstance
+
+
+            } = await loadFixture(deploy);
+
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
+            const auctionInput = {
+                name: 'fid-3761',
+                symbol: 'fid-3761',
+                initialSupply: '1000',
+                minBuyAmount: '1000',// in moxie token
+                minBiddingAmount: '1000', // in subject token
+                minFundingThreshold: '0', // amount of auction funding in moxie token below which auction will be cancelled.
+                isAtomicClosureAllowed: false, // false can be hardcoded
+                accessManagerContract: moxiePassVerifierAddress, //
+                accessManagerContractData: '0x' //0x00 can be hardcoded
+
+            }
+
+            const auctionId = BigInt(1);
+            await subjectFactory.connect(owner).initiateSubjectOnboarding(
+                subject.address,
+                auctionInput,
+            );
+
+            let subjectTokenAddress = await tokenManager.tokens(subject.address);
+            let subjectToken = SubjectERC20.attach(subjectTokenAddress) as SubjectERC20;
+
+            // fund bidder
+            const biddingAmount = '1000000'; //moxie
+            await moxieToken.connect(owner).transfer(bidder1.address, biddingAmount);
+
+            await moxieToken.connect(bidder1).approve(easyAuctionAddress, biddingAmount);
+            const queueStartElement =
+                "0x0000000000000000000000000000000000000000000000000000000000000001";
+            await easyAuction.connect(bidder1).placeSellOrders(
+                auctionId,
+                [auctionInput.initialSupply],//subject token
+                [biddingAmount], // moxie token
+                [queueStartElement],
+                '0x',
+            );
+
+            const buyAmount = "10";
+
+            await moxieToken.approve(await subjectFactory.getAddress(), buyAmount);
+            await expect(subjectFactory.connect(owner).finalizeSubjectOnboarding(
+                subject.address,
+                buyAmount,
+                reserveRatio,
+            )).to.revertedWithCustomError(subjectFactory, "SubjectFactory_AuctionNotDoneYet");
+
         });
 
     });
