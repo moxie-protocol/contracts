@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 /**
  * @title MOXIE PASS  NFT required to participate in Moxie protocol
  * @author Moxie Team
- * @notice Only allow one mint per wallet, non transferrable , & token uri for each tokenId. 
+   @notice Only allow one mint per wallet, non transferrable & token uri for each tokenId.
  */
 contract MoxiePass is ERC721, ERC721URIStorage, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
