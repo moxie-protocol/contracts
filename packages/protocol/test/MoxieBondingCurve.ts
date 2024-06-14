@@ -96,12 +96,12 @@ describe("MoxieBondingCurve", () => {
             subjectFactory.address,
         );
 
-        await moxiePass.connect(minter).mint(owner.address);
-        await moxiePass.connect(minter).mint(subject.address);
-        await moxiePass.connect(minter).mint(deployer.address);
-        await moxiePass.connect(minter).mint(subjectFactory.address);
-        await moxiePass.connect(minter).mint(await moxieBondingCurve.getAddress());
-        await moxiePass.connect(minter).mint(await tokenManager.getAddress());
+        await moxiePass.connect(minter).mint(owner.address,"uri");
+        await moxiePass.connect(minter).mint(subject.address, "uri");
+        await moxiePass.connect(minter).mint(deployer.address, "uri");
+        await moxiePass.connect(minter).mint(subjectFactory.address, "uri");
+        await moxiePass.connect(minter).mint(await moxieBondingCurve.getAddress(), "uri");
+        await moxiePass.connect(minter).mint(await tokenManager.getAddress(), "uri");
 
         const reserveRatio = 660000;
         const initialSupply = "10000000000000000000000";
@@ -1104,7 +1104,7 @@ describe("MoxieBondingCurve", () => {
                 .connect(buyer)
                 .approve(moxieBondingCurveAddress, buyAmount);
 
-            await moxiePass.connect(minter).mint(buyer.address);
+            await moxiePass.connect(minter).mint(buyer.address, "uri");
 
             await expect(
                 moxieBondingCurve
@@ -1136,7 +1136,7 @@ describe("MoxieBondingCurve", () => {
                 .connect(buyer2)
                 .approve(moxieBondingCurveAddress, buyAmount);
 
-            await moxiePass.connect(minter).mint(buyer2.address);
+            await moxiePass.connect(minter).mint(buyer2.address, "uri");
 
             const reserveBeforeBuy2 = await vaultInstance.balanceOf(
                 subjectTokenAddress,
@@ -1243,7 +1243,7 @@ describe("MoxieBondingCurve", () => {
                 .connect(buyer)
                 .approve(moxieBondingCurveAddress, buyAmount);
 
-            await moxiePass.connect(minter).mint(buyer.address);
+            await moxiePass.connect(minter).mint(buyer.address, "uri");
 
             await expect(
                 moxieBondingCurve
@@ -1292,7 +1292,7 @@ describe("MoxieBondingCurve", () => {
                 .connect(buyer)
                 .approve(moxieBondingCurveAddress, buyAmount);
 
-            await moxiePass.connect(minter).mint(buyer.address);
+            await moxiePass.connect(minter).mint(buyer.address, "uri");
 
             await expect(
                 moxieBondingCurve
@@ -1324,7 +1324,7 @@ describe("MoxieBondingCurve", () => {
                 .connect(buyer)
                 .approve(moxieBondingCurveAddress, buyAmount);
 
-            await moxiePass.connect(minter).mint(buyer.address);
+            await moxiePass.connect(minter).mint(buyer.address, "uri");
 
             await expect(
                 moxieBondingCurve
@@ -1354,7 +1354,7 @@ describe("MoxieBondingCurve", () => {
 
             moxieToken.connect(buyer).approve(moxieBondingCurveAddress, buyAmount);
 
-            await moxiePass.connect(minter).mint(buyer.address);
+            await moxiePass.connect(minter).mint(buyer.address, "uri");
 
             await expect(
                 moxieBondingCurve
@@ -1417,7 +1417,7 @@ describe("MoxieBondingCurve", () => {
                 .connect(buyer)
                 .approve(moxieBondingCurveAddress, buyAmount);
 
-            await moxiePass.connect(minter).mint(buyer.address);
+            await moxiePass.connect(minter).mint(buyer.address, "uri");
 
             await expect(
                 moxieBondingCurve
@@ -1479,7 +1479,7 @@ describe("MoxieBondingCurve", () => {
                 effectiveBuyAmount,
             );
 
-            await moxiePass.connect(minter).mint(buyer.address);
+            await moxiePass.connect(minter).mint(buyer.address, "uri");
 
             await expect(
                 moxieBondingCurve
@@ -1534,7 +1534,7 @@ describe("MoxieBondingCurve", () => {
                 effectiveBuyAmount,
             );
 
-            await moxiePass.connect(minter).mint(buyer.address);
+            await moxiePass.connect(minter).mint(buyer.address, "uri");
 
             await moxieToken
                 .connect(buyer)
@@ -1577,7 +1577,7 @@ describe("MoxieBondingCurve", () => {
                 .connect(buyer)
                 .approve(moxieBondingCurveAddress, buyAmount);
 
-            await moxiePass.connect(minter).mint(buyer.address);
+            await moxiePass.connect(minter).mint(buyer.address, "uri");
 
             await expect(
                 moxieBondingCurve
@@ -1639,8 +1639,8 @@ describe("MoxieBondingCurve", () => {
 
             const buyAmount = (1 * 1e19).toString();
 
-            await moxiePass.connect(minter).mint(seller.address);
-            await moxiePass.connect(minter).mint(seller2.address);
+            await moxiePass.connect(minter).mint(seller.address, "url");
+            await moxiePass.connect(minter).mint(seller2.address, "url");
 
             await moxieToken
                 .connect(seller)

@@ -26,7 +26,7 @@ describe('Moxie Pass', () => {
 
             expect(await moxiePass.hasRole(await moxiePass.DEFAULT_ADMIN_ROLE(), owner.address)).to.be.true;
             expect(await moxiePass.hasRole(await moxiePass.MINTER_ROLE(), minter.address)).to.be.true;
-            expect(await moxiePass.name()).to.equal("MoxiePass");
+            expect(await moxiePass.name()).to.equal("Moxie Pass");
             expect(await moxiePass.symbol()).to.equal("MXP");
         });
 
@@ -61,23 +61,53 @@ describe('Moxie Pass', () => {
                 owner
             } = await loadFixture(deploy);
 
+            const uri = "uri-1";
 
-            await expect(moxiePass.connect(minter).mint(deployer.address)).to.emit(
+            await expect(moxiePass.connect(minter).mint(deployer.address, uri)).to.emit(
                 moxiePass,
                 "Transfer"
             ).withArgs(ethers.ZeroAddress, deployer.address, "0");
 
-            expect(await moxiePass.tokenURI("0")).to.equal("https://moxie.xyz/moxie-pass/0");
+            expect(await moxiePass.tokenURI("0")).to.equal("uri-1");
 
-            await expect(moxiePass.connect(minter).mint(minter.address)).to.emit(
+            await expect(moxiePass.connect(minter).mint(minter.address, "uri-2")).to.emit(
                 moxiePass,
                 "Transfer"
             ).withArgs(ethers.ZeroAddress, minter.address, "1");
 
-            await expect(moxiePass.connect(minter).mint(owner.address)).to.emit(
+            expect(await moxiePass.tokenURI("1")).to.equal("uri-2");
+
+            await expect(moxiePass.connect(minter).mint(owner.address, "uri-3")).to.emit(
                 moxiePass,
                 "Transfer"
             ).withArgs(ethers.ZeroAddress, owner.address, "2");
+
+            expect(await moxiePass.tokenURI("2")).to.equal("uri-3");
+
+        });
+
+        it('should not allow mint more than once', async () => {
+            const {
+                minter,
+                deployer,
+                moxiePass,
+                owner
+            } = await loadFixture(deploy);
+
+            const uri = "uri-1";
+
+            await expect(moxiePass.connect(minter).mint(deployer.address, uri)).to.emit(
+                moxiePass,
+                "Transfer"
+            ).withArgs(ethers.ZeroAddress, deployer.address, "0");
+
+            expect(await moxiePass.tokenURI("0")).to.equal("uri-1");
+
+
+            await expect(moxiePass.connect(minter).mint(deployer.address, "uri")).to.revertedWithCustomError(
+                moxiePass,
+                "MoxiePass_OnlyOneMintAllowed"
+            );
 
         });
 
@@ -88,7 +118,7 @@ describe('Moxie Pass', () => {
             } = await loadFixture(deploy);
 
 
-            await expect(moxiePass.connect(deployer).mint(deployer.address)).to.revertedWithCustomError(
+            await expect(moxiePass.connect(deployer).mint(deployer.address, "uri")).to.revertedWithCustomError(
                 moxiePass,
                 "AccessControlUnauthorizedAccount"
             ).withArgs(deployer.address, await moxiePass.MINTER_ROLE());
@@ -105,7 +135,7 @@ describe('Moxie Pass', () => {
             } = await loadFixture(deploy);
 
 
-            await moxiePass.connect(minter).mint(deployer.address);
+            await moxiePass.connect(minter).mint(deployer.address, "uri");
             await moxiePass.connect(deployer).approve(minter.address, 0);
 
             await expect(moxiePass.connect(minter).transferFrom(deployer.address, minter.address, 0))
