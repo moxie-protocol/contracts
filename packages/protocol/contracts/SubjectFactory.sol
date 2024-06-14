@@ -219,7 +219,6 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      */
     function _closeAuction(
         uint256 _auctionId,
-        // address _subjectToken,
         address _subject,
         uint256 _initialSupply
     )

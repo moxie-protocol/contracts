@@ -1401,7 +1401,6 @@ describe('Subject Factory', () => {
 
             const buyAmount = "1000000";
             const additionalSupplyDueToBuyAmount = BigInt(buyAmount) * BigInt(auctionInput.initialSupply) / BigInt(auctionInput.minBuyAmount);
-            console.log({ additionalSupplyDueToBuyAmount })
 
             const expectedProtocolFee = (BigInt(biddingAmount) + BigInt(buyAmount)) * BigInt(feeInputSubjectFactory.protocolFeePct) / PCT_BASE;
             const expectedSubjectFee = (BigInt(biddingAmount) + BigInt(buyAmount)) * BigInt(feeInputSubjectFactory.subjectFeePct) / PCT_BASE;;
