@@ -132,15 +132,15 @@ describe('Subject Factory', () => {
 
         await easyAuction.connect(owner).setSubjectFactory(subjectFactoryAddress);
 
-        await moxiePass.connect(minter).mint(owner.address);
-        await moxiePass.connect(minter).mint(subject.address);
-        await moxiePass.connect(minter).mint(deployer.address);
-        await moxiePass.connect(minter).mint(await moxieBondingCurve.getAddress());
-        await moxiePass.connect(minter).mint(await tokenManager.getAddress());
-        await moxiePass.connect(minter).mint(subjectFactoryAddress);
-        await moxiePass.connect(minter).mint(easyAuctionAddress);
-        await moxiePass.connect(minter).mint(bidder1.address);
-        await moxiePass.connect(minter).mint(bidder2.address);
+        await moxiePass.connect(minter).mint(owner.address, "uri");
+        await moxiePass.connect(minter).mint(subject.address, "uri");
+        await moxiePass.connect(minter).mint(deployer.address, "uri");
+        await moxiePass.connect(minter).mint(await moxieBondingCurve.getAddress(), "uri");
+        await moxiePass.connect(minter).mint(await tokenManager.getAddress(), "uri");
+        await moxiePass.connect(minter).mint(subjectFactoryAddress, "uri");
+        await moxiePass.connect(minter).mint(easyAuctionAddress, "uri");
+        await moxiePass.connect(minter).mint(bidder1.address, "uri");
+        await moxiePass.connect(minter).mint(bidder2.address, "uri");
 
         const PCT_BASE = BigInt(10 ** 18);
         return {
