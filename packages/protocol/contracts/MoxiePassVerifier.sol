@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./interface/IAllowListVerifier.sol";
+import "./interfaces/IAllowListVerifier.sol";
 
 /**
  * @title Whitelisting Contract with ERC-721 Address Setter
