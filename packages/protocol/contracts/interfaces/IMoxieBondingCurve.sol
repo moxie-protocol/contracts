@@ -15,4 +15,11 @@ interface IMoxieBondingCurve {
         uint256 _initialSupply,
         uint256 _reserveAmount
     ) external returns (bool);
+
+    function buyShares(
+        address _subject,
+        uint256 _depositAmount,
+        address _onBehalfOf,
+        uint256 _minReturnAmountAfterFee
+    ) external returns (uint256 shares_);
 }
