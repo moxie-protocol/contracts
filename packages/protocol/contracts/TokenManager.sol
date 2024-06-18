@@ -20,7 +20,7 @@ contract TokenManager is ITokenManager, SecurityModule {
     address public subjectImplementation;
 
     /// @dev Mapping of subject & its Token
-    mapping(address => address) public tokens;
+    mapping(address subject=> address token) public tokens;
 
     /**
      * @notice Initialize the contract.
