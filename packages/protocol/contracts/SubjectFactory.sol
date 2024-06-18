@@ -51,7 +51,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
 
     IERC20Extended public token;
 
-    mapping(address => Auction) public auctions;
+    mapping(address subject=> Auction auction) public auctions;
 
     /**
      * @dev Initialize the contract.

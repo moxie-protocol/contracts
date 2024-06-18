@@ -111,7 +111,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     address public subjectFactory;
 
     /// @dev subject address vs reserve ratio
-    mapping(address => uint32) public reserveRatio;
+    mapping(address subject=> uint32 _reserveRatio) public reserveRatio;
 
     /**
      * Initialize the contract.
