@@ -13,7 +13,7 @@ contract Vault is SecurityModule, IVault {
     bytes32 public constant TRANSFER_ROLE = keccak256("TRANSFER_ROLE");
 
     // subjectToken =>  moxie => amount
-    mapping(address => mapping(address => uint256)) public reserves;
+    mapping(address subjectToken => mapping(address moxie => uint256 amount)) public reserves;
 
     /**
      * @dev Intialize contract.
