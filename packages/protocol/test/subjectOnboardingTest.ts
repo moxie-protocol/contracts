@@ -180,10 +180,63 @@ describe('Subject Onboarding Test', () => {
             reserveRatio,
             PCT_BASE,
             vaultInstance,
-            formula
+            formula,
         };
 
     }
+
+    it('Assertions for initiateSubjectOnboarding', async () => {
+        const {
+            subjectFactory,
+            owner,
+            moxiePassVerifierAddress,
+            subject,
+            tokenManager,
+            SubjectERC20,
+            feeInputSubjectFactory,
+            PCT_BASE
+        } = await loadFixture(deploy);
+
+        await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
+        const auctionInput = {
+            name: 'fid-1536',
+            symbol: 'fid-1536',
+            initialSupply: '10000',
+            minBuyAmount: '10000',// in moxie token
+            minBiddingAmount: '10000', // in subject token
+            minFundingThreshold: '0', // amount of auction funding in moxie token below which auction will be cancelled.
+            isAtomicClosureAllowed: false, // false can be hardcoded
+            accessManagerContract: moxiePassVerifierAddress, //
+            accessManagerContractData: '0x' //0x00 can be hardcoded
+
+        }
+
+        await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
+            subject.address,
+            auctionInput,
+        )).to.emit(subjectFactory, "SubjectOnboardingInitiated");
+
+        // Assertions for initiateSubjectOnboarding
+        // Verify that subject is created
+        expect(await tokenManager.tokens(subject.address)).exist;
+        let subjectTokenAddress = await tokenManager.tokens(subject.address);
+        let subjectToken = SubjectERC20.attach(subjectTokenAddress) as SubjectERC20;
+
+        // Verify that subject token has correct name, symbol and subject.address, easyAuction.address
+        expect(await subjectToken.name()).to.equal(auctionInput.name);
+        expect(await subjectToken.symbol()).to.equal(auctionInput.symbol);
+        expect(await subjectToken.totalSupply()).to.equal(auctionInput.initialSupply);
+
+        // Verify that subject token has correct owner
+        expect(await subjectToken.owner()).to.equal(tokenManager);
+        
+        // Verify feees
+        const buyAmount = "1000000";
+        const biddingAmount = '1000000'; //moxie
+        expect((BigInt(biddingAmount) + BigInt(buyAmount)) * BigInt(feeInputSubjectFactory.protocolFeePct) / PCT_BASE).to.equal(20000)
+        expect((BigInt(biddingAmount) + BigInt(buyAmount)) * BigInt(feeInputSubjectFactory.subjectFeePct) / PCT_BASE).to.equal(60000)
+
+    });
 
     it('verify deployment', async () => {
         const {
