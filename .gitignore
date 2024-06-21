@@ -37,7 +37,7 @@ cached/
 /artifacts
 
 # Do not ignore the artifacts folder inside the test directory
-!packages/protocol/test/easy-auction/artifacts
+!packages/protocol/test-artifact/easy-auction/artifacts
 
 # TypeChain files
 */*/typechain
@@ -69,3 +69,4 @@ coverage
 # Coverage and other reports
 reports/
 coverage.json
+venv

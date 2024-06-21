@@ -1,7 +1,7 @@
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import hre, { ethers } from "hardhat";
-import EasyAuctionArtifact from "../test-artifact/easy-auction/artifacts/contracts/EasyAuction.sol/EasyAuction.json";
+import EasyAuctionArtifact from "../test-artifact/easy-auction/artifacts/EasyAuction.json";
 import { EasyAuction } from "../test-artifact/easy-auction/typechain/EasyAuction";
 import { SubjectERC20 } from "../typechain-types";
 

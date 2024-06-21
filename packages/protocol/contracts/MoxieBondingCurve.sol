@@ -2,16 +2,15 @@
 
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IBancorFormula} from "./interfaces/IBancorFormula.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import "./SecurityModule.sol";
-import "./interfaces/ITokenManager.sol";
-import "./interfaces/IERC20Extended.sol";
-import "./interfaces/IVault.sol";
-import "./interfaces/IMoxieBondingCurve.sol";
+import {SecurityModule} from "./SecurityModule.sol";
+import {ITokenManager} from "./interfaces/ITokenManager.sol";
+import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
+import {IVault} from "./interfaces/IVault.sol";
+import {IMoxieBondingCurve} from "./interfaces/IMoxieBondingCurve.sol";
 
 /**
  * @title Moxie Bonding curve
@@ -38,7 +37,6 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     error MoxieBondingCurve_OnlySubjectFactory();
     error MoxieBondingCurve_InvalidReserveFactory();
     error MoxieBondingCurve_InvalidReserveRation();
-    error MoxieBondingCurve_TransferFailed();
     error MoxieBondingCurve_SubjectAlreadyInitialized();
     error MoxieBondingCurve_SubjectNotInitialized();
     error MoxieBondingCurve_InvalidSubjectSupply();
@@ -111,7 +109,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     address public subjectFactory;
 
     /// @dev subject address vs reserve ratio
-    mapping(address subject=> uint32 _reserveRatio) public reserveRatio;
+    mapping(address subject => uint32 _reserveRatio) public reserveRatio;
 
     /**
      * Initialize the contract.
@@ -328,7 +326,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             revert MoxieBondingCurve_SlippageExceedsLimit();
 
         ///@dev Don't mint if intent is to burn
-         if (!_isZeroAddress(_onBehalfOf)) {
+        if (!_isZeroAddress(_onBehalfOf)) {
             tokenManager.mint(_subject, _onBehalfOf, shares_);
         }
 
@@ -371,6 +369,23 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _subjectReserveRatio,
             _sellAmount
         );
+
+        (uint256 protocolFee, uint256 subjectFee) = _calculateSellSideFee(
+            returnAmountWithoutFee
+        );
+
+        returnedAmount_ = returnAmountWithoutFee - subjectFee - protocolFee;
+        if (returnedAmount_ < _minReturnAmountAfterFee)
+            revert MoxieBondingCurve_SlippageExceedsLimit();
+        emit SubjectShareSold(
+            _subject,
+            address(_subjectToken),
+            _sellAmount,
+            address(token),
+            returnedAmount_,
+            _onBehalfOf
+        );
+
         // burn subjectToken
         _subjectToken.safeTransferFrom(msg.sender, address(this), _sellAmount);
         _subjectToken.burn(_sellAmount);
@@ -381,27 +396,10 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             address(this),
             returnAmountWithoutFee
         );
-        (uint256 protocolFee, uint256 subjectFee) = _calculateSellSideFee(
-            returnAmountWithoutFee
-        );
 
         token.safeTransfer(_subject, subjectFee);
         token.safeTransfer(feeBeneficiary, protocolFee);
-        returnedAmount_ = returnAmountWithoutFee - subjectFee - protocolFee;
-
-        if (returnedAmount_ < _minReturnAmountAfterFee)
-            revert MoxieBondingCurve_SlippageExceedsLimit();
-
-        token.transfer(_onBehalfOf, returnedAmount_);
-
-        emit SubjectShareSold(
-            _subject,
-            address(_subjectToken),
-            _sellAmount,
-            address(token),
-            returnedAmount_,
-            _onBehalfOf
-        );
+        token.safeTransfer(_onBehalfOf, returnedAmount_);
     }
 
     /**
@@ -495,22 +493,12 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
 
         if (reserveRatio[_subject] != 0)
             revert MoxieBondingCurve_SubjectAlreadyInitialized();
+        reserveRatio[_subject] = _reserveRatio;
 
         address subjectToken = tokenManager.tokens(_subject);
 
         if (_isZeroAddress(subjectToken))
             revert MoxieBondingCurve_InvalidSubjectToken();
-
-        uint256 supply = IERC20Extended(subjectToken)
-            .totalSupply();
-
-        if (_initialSupply != supply)
-            revert MoxieBondingCurve_InvalidSubjectSupply();
-
-        reserveRatio[_subject] = _reserveRatio;
-        token.safeTransferFrom(msg.sender, address(this), _reserveAmount);
-        token.approve(address(vault), _reserveAmount);
-        vault.deposit(subjectToken, address(token), _reserveAmount);
 
         emit BondingCurveInitialized(
             _subject,
@@ -519,6 +507,13 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _reserveAmount,
             _reserveRatio
         );
+        uint256 supply = IERC20Extended(subjectToken).totalSupply();
+        if (_initialSupply != supply)
+            revert MoxieBondingCurve_InvalidSubjectSupply();
+
+        token.safeTransferFrom(msg.sender, address(this), _reserveAmount);
+        token.approve(address(vault), _reserveAmount);
+        vault.deposit(subjectToken, address(token), _reserveAmount);
 
         return true;
     }

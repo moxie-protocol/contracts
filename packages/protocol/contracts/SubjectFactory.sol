@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./SecurityModule.sol";
-import "./interfaces/ISubjectFactory.sol";
-import "./interfaces/ITokenManager.sol";
-import "./interfaces/IMoxieBondingCurve.sol";
-import "./interfaces/IEasyAuction.sol";
+import {SecurityModule} from "./SecurityModule.sol";
+import {ISubjectFactory} from "./interfaces/ISubjectFactory.sol";
+import {ITokenManager} from "./interfaces/ITokenManager.sol";
+import {IMoxieBondingCurve} from "./interfaces/IMoxieBondingCurve.sol";
+import {IEasyAuction} from "./interfaces/IEasyAuction.sol";
+import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
+
 
 contract SubjectFactory is SecurityModule, ISubjectFactory {
     using SafeERC20 for IERC20Extended;
@@ -43,7 +45,6 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     uint256 public subjectFeePct;
 
     address public feeBeneficiary;
-    address public subjectFactory;
     IEasyAuction public easyAuction;
 
     uint256 public auctionDuration;
@@ -51,7 +52,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
 
     IERC20Extended public token;
 
-    mapping(address subject=> Auction auction) public auctions;
+    mapping(address subject => Auction auction) public auctions;
 
     /**
      * @dev Initialize the contract.
@@ -167,8 +168,13 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         address _subject,
         address _subjectToken,
         SubjectAuctionInput memory _auctionInput
-    ) internal returns (uint256 auctionId_, uint256 auctionEndDate_) {
+    )
+        internal
+        returns (uint256 auctionId_, uint256 auctionEndDate_)
+    {
         auctionEndDate_ = block.timestamp + auctionDuration;
+        auctions[_subject].auctionEndDate = auctionEndDate_;
+        auctions[_subject].initialSupply = _auctionInput.initialSupply;
         auctionId_ = easyAuction.initiateAuction(
             _subjectToken,
             address(token),
@@ -184,8 +190,6 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         );
 
         auctions[_subject].auctionId = auctionId_;
-        auctions[_subject].auctionEndDate = auctionEndDate_;
-        auctions[_subject].initialSupply = _auctionInput.initialSupply;
     }
 
     /**
@@ -368,7 +372,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         external
         whenNotPaused
         onlyRole(ONBOARDING_ROLE)
-        returns (uint256 auctionId_)
+        returns (uint256)
     {
         if (_subject == address(0)) revert SubjectFactory_InvalidSubject();
 
@@ -394,16 +398,15 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
             _auctionInput
         );
 
-        auctionId_ = auctionId;
-
         emit SubjectOnboardingInitiated(
             _subject,
             subjectToken,
             _auctionInput.initialSupply,
             address(token),
             auctionEndDate,
-            auctionId_
+            auctionId
         );
+        return auctionId;
     }
 
     /**
@@ -428,6 +431,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         if (_reserveRatio == 0) revert SubjectFactory_InvalidReserveRatio();
 
         Auction memory auction = auctions[_subject];
+        delete auctions[_subject];
         uint256 auctionId = auction.auctionId;
 
         if (auctionId == 0) revert SubjectFactory_AuctionNotCreated();
@@ -435,15 +439,13 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         if (block.timestamp < auction.auctionEndDate)
             revert SubjectFactory_AuctionNotDoneYet();
 
-        // transfer buy amount from caller to contract.
-        token.safeTransferFrom(msg.sender, address(this), _buyAmount);
-        delete auctions[_subject];
-
         (
             uint256 soldSupply,
             uint256 amountRaised,
             bytes32 clearingOrder
         ) = _closeAuction(auctionId, _subject, auction.initialSupply);
+        // transfer buy amount from caller to contract.
+        token.safeTransferFrom(msg.sender, address(this), _buyAmount);
 
         _initializeBondingCurve(
             auctionId,
