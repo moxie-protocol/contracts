@@ -10,9 +10,8 @@ import {IMoxieBondingCurve} from "./interfaces/IMoxieBondingCurve.sol";
 import {IEasyAuction} from "./interfaces/IEasyAuction.sol";
 import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
 
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract SubjectFactory is SecurityModule, ISubjectFactory, ReentrancyGuard {
+contract SubjectFactory is SecurityModule, ISubjectFactory {
     using SafeERC20 for IERC20Extended;
 
     bytes32 public constant ONBOARDING_ROLE = keccak256("ONBOARDING_ROLE");
@@ -46,7 +45,6 @@ contract SubjectFactory is SecurityModule, ISubjectFactory, ReentrancyGuard {
     uint256 public subjectFeePct;
 
     address public feeBeneficiary;
-    // address public subjectFactory; TODO: check this
     IEasyAuction public easyAuction;
 
     uint256 public auctionDuration;
@@ -172,7 +170,6 @@ contract SubjectFactory is SecurityModule, ISubjectFactory, ReentrancyGuard {
         SubjectAuctionInput memory _auctionInput
     )
         internal
-        nonReentrant
         returns (uint256 auctionId_, uint256 auctionEndDate_)
     {
         auctionEndDate_ = block.timestamp + auctionDuration;
@@ -375,7 +372,6 @@ contract SubjectFactory is SecurityModule, ISubjectFactory, ReentrancyGuard {
         external
         whenNotPaused
         onlyRole(ONBOARDING_ROLE)
-        nonReentrant
         returns (uint256)
     {
         if (_subject == address(0)) revert SubjectFactory_InvalidSubject();

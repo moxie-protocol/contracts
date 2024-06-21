@@ -37,7 +37,6 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     error MoxieBondingCurve_OnlySubjectFactory();
     error MoxieBondingCurve_InvalidReserveFactory();
     error MoxieBondingCurve_InvalidReserveRation();
-    error MoxieBondingCurve_TransferFailed();
     error MoxieBondingCurve_SubjectAlreadyInitialized();
     error MoxieBondingCurve_SubjectNotInitialized();
     error MoxieBondingCurve_InvalidSubjectSupply();
@@ -400,8 +399,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
 
         token.safeTransfer(_subject, subjectFee);
         token.safeTransfer(feeBeneficiary, protocolFee);
-        if (!token.transfer(_onBehalfOf, returnedAmount_))
-            revert MoxieBondingCurve_TransferFailed();
+        token.safeTransfer(_onBehalfOf, returnedAmount_);
     }
 
     /**
