@@ -64,6 +64,8 @@ contract TokenManager is ITokenManager, SecurityModule {
             subjectImplementation,
             keccak256(abi.encodePacked(_subject))
         );
+        tokens[_subject] = token_;
+        emit TokenDeployed(_subject, token_, _initialSupply);
 
         //Initialize & mint initial supply.
         ISubjectErc20(token_).initialize(
@@ -74,11 +76,8 @@ contract TokenManager is ITokenManager, SecurityModule {
             _moxiePassVerifier
         );
 
-        tokens[_subject] = token_;
         // Transfer initial supply to creator.
         IERC20Extended(token_).safeTransfer(msg.sender, _initialSupply);
-
-        emit TokenDeployed(_subject, token_, _initialSupply);
     }
 
     /**
