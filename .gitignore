@@ -69,3 +69,4 @@ coverage
 # Coverage and other reports
 reports/
 coverage.json
+venv

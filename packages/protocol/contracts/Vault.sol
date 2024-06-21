@@ -3,9 +3,10 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./interfaces/IERC20Extended.sol";
-import "./SecurityModule.sol";
-import "./interfaces/IVault.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
+import {SecurityModule} from "./SecurityModule.sol";
+import {IVault} from "./interfaces/IVault.sol";
 
 contract Vault is SecurityModule, IVault {
     using SafeERC20 for IERC20Extended;

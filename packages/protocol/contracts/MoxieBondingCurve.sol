@@ -2,16 +2,15 @@
 
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IBancorFormula} from "./interfaces/IBancorFormula.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import "./SecurityModule.sol";
-import "./interfaces/ITokenManager.sol";
-import "./interfaces/IERC20Extended.sol";
-import "./interfaces/IVault.sol";
-import "./interfaces/IMoxieBondingCurve.sol";
+import {SecurityModule} from "./SecurityModule.sol";
+import {ITokenManager} from "./interfaces/ITokenManager.sol";
+import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
+import {IVault} from "./interfaces/IVault.sol";
+import {IMoxieBondingCurve} from "./interfaces/IMoxieBondingCurve.sol";
 
 /**
  * @title Moxie Bonding curve
@@ -111,7 +110,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     address public subjectFactory;
 
     /// @dev subject address vs reserve ratio
-    mapping(address subject=> uint32 _reserveRatio) public reserveRatio;
+    mapping(address subject => uint32 _reserveRatio) public reserveRatio;
 
     /**
      * Initialize the contract.
@@ -328,7 +327,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             revert MoxieBondingCurve_SlippageExceedsLimit();
 
         ///@dev Don't mint if intent is to burn
-         if (!_isZeroAddress(_onBehalfOf)) {
+        if (!_isZeroAddress(_onBehalfOf)) {
             tokenManager.mint(_subject, _onBehalfOf, shares_);
         }
 
@@ -392,7 +391,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         if (returnedAmount_ < _minReturnAmountAfterFee)
             revert MoxieBondingCurve_SlippageExceedsLimit();
 
-        token.transfer(_onBehalfOf, returnedAmount_);
+        if (!token.transfer(_onBehalfOf, returnedAmount_))
+            revert MoxieBondingCurve_TransferFailed();
 
         emit SubjectShareSold(
             _subject,
@@ -501,8 +501,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         if (_isZeroAddress(subjectToken))
             revert MoxieBondingCurve_InvalidSubjectToken();
 
-        uint256 supply = IERC20Extended(subjectToken)
-            .totalSupply();
+        uint256 supply = IERC20Extended(subjectToken).totalSupply();
 
         if (_initialSupply != supply)
             revert MoxieBondingCurve_InvalidSubjectSupply();

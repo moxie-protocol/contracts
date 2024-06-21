@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./SecurityModule.sol";
-import "./interfaces/ISubjectFactory.sol";
-import "./interfaces/ITokenManager.sol";
-import "./interfaces/IMoxieBondingCurve.sol";
-import "./interfaces/IEasyAuction.sol";
+import {SecurityModule} from "./SecurityModule.sol";
+import {ISubjectFactory} from "./interfaces/ISubjectFactory.sol";
+import {ITokenManager} from "./interfaces/ITokenManager.sol";
+import {IMoxieBondingCurve} from "./interfaces/IMoxieBondingCurve.sol";
+import {IEasyAuction} from "./interfaces/IEasyAuction.sol";
+import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
 
 contract SubjectFactory is SecurityModule, ISubjectFactory {
     using SafeERC20 for IERC20Extended;
@@ -43,7 +44,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     uint256 public subjectFeePct;
 
     address public feeBeneficiary;
-    address public subjectFactory;
+    // address public subjectFactory; TODO: check this
     IEasyAuction public easyAuction;
 
     uint256 public auctionDuration;
@@ -51,7 +52,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
 
     IERC20Extended public token;
 
-    mapping(address subject=> Auction auction) public auctions;
+    mapping(address subject => Auction auction) public auctions;
 
     /**
      * @dev Initialize the contract.

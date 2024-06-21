@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
-import "./SecurityModule.sol";
-import "./interfaces/ITokenManager.sol";
-import "./interfaces/IERC20Extended.sol";
-import "./interfaces/ISubjectErc20.sol";
+import {SecurityModule} from "./SecurityModule.sol";
+import {ITokenManager} from "./interfaces/ITokenManager.sol";
+import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
+import {ISubjectErc20} from "./interfaces/ISubjectErc20.sol";
 
 contract TokenManager is ITokenManager, SecurityModule {
     using SafeERC20 for IERC20Extended;
@@ -20,7 +20,7 @@ contract TokenManager is ITokenManager, SecurityModule {
     address public subjectImplementation;
 
     /// @dev Mapping of subject & its Token
-    mapping(address subject=> address token) public tokens;
+    mapping(address subject => address token) public tokens;
 
     /**
      * @notice Initialize the contract.
