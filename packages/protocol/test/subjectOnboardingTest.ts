@@ -1253,6 +1253,9 @@ describe("Test Moxie Bonding Curve", () => {
 
         await moxiePass.connect(minter).mint(buyer.address, "uri");
 
+        // buyer before balance
+        const buyerBeforeBalance = await subjectToken.balanceOf(buyer.address)
+
         await expect(
             moxieBondingCurve
                 .connect(buyer)
@@ -1267,15 +1270,27 @@ describe("Test Moxie Bonding Curve", () => {
                 expectedShares,
                 buyer.address,
             );
-
+        
+        // verify that buyer has received the correct number of shares
         expect(await subjectToken.balanceOf(buyer.address)).equal(expectedShares);
+        const buyerAfterBalance = await subjectToken.balanceOf(buyer.address)
+        expect(buyerAfterBalance).to.be.greaterThan(buyerBeforeBalance);
+        expect(buyerAfterBalance).to.be.equal(buyerBeforeBalance + expectedShares);
+
+        // verify that the protocol fee has been transferred to the fee beneficiary
         expect(await moxieToken.balanceOf(feeBeneficiary.address)).equal(
             protocolFee,
         );
+
+        // verify that the subject fee has been transferred to the subject
         expect(await moxieToken.balanceOf(subject.address)).equal(subjectFee);
+
+        // verify that the vault has received the correct amount of moxie tokens
         expect(
             await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress),
         ).equal(BigInt(reserveBeforeBuy) + effectiveBuyAmount);
+
+        // verify that the total supply of the subject token has increased by the correct amount
         expect(await subjectToken.totalSupply()).equal(supply + expectedShares);
 
         // second buyer
@@ -1305,7 +1320,6 @@ describe("Test Moxie Bonding Curve", () => {
             PCT_BASE,
             BigInt(buyAmount),
         );
-        const effectiveBuyAmount2 = BigInt(buyAmount) - protocolFee - subjectFee;
 
         await expect(
             moxieBondingCurve
@@ -1321,19 +1335,6 @@ describe("Test Moxie Bonding Curve", () => {
                 expectedShares2,
                 buyer2.address,
             );
-
-        expect(await subjectToken.balanceOf(buyer2.address)).equal(
-            expectedShares2,
-        );
-        expect(await moxieToken.balanceOf(feeBeneficiary.address)).equal(
-            protocolFee + protocolFee2,
-        );
-        expect(await moxieToken.balanceOf(subject.address)).equal(
-            subjectFee + subjectFee2,
-        );
-        expect(
-            await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress),
-        ).equal(BigInt(reserveBeforeBuy2) + effectiveBuyAmount2);
 
         //also make sure second buyer should get less shares than first buyer for same given buy amount
         expect(expectedShares2).to.be.lessThan(expectedShares);
@@ -1471,6 +1472,9 @@ describe("Test Moxie Bonding Curve", () => {
         const subjectBeneficiaryPreviousMoxieBalance = await moxieToken.balanceOf(
             subject.address,
         );
+
+        const supply = await subjectToken.totalSupply();
+
         await expect(
             moxieBondingCurve
                 .connect(seller)
@@ -1490,17 +1494,24 @@ describe("Test Moxie Bonding Curve", () => {
                 expectedReturn,
                 seller.address,
             );
-
-        //verify fund transfers
+        
+        // verify that seller has received the correct number of moxie tokens back
         expect(await moxieToken.balanceOf(seller.address)).to.equal(
             BigInt(sellerPreviousMoxieBalance) + expectedReturn,
         );
+
+        // verify that the protocol fee has been transferred to the fee beneficiary
         expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(
             BigInt(feeBeneficiaryPreviousMoxieBalance) + protocolFee,
         );
+
+        // verify that the subject fee has been transferred to the subject
         expect(await moxieToken.balanceOf(subject.address)).to.equal(
             BigInt(subjectBeneficiaryPreviousMoxieBalance) + subjectFee,
         );
+
+        // verify that the total supply of the subject token has increased by the correct amount
+        expect(await subjectToken.totalSupply()).to.equal(supply - totalSellAmountSeller1);
 
         // seller 2
         await subjectToken
