@@ -3,6 +3,7 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 import ProtocolContract from "./ProtocolContracts";
 import MoxiePass from "./MoxiePass";
 import MoxieToken from "./MoxieToken";
+import { id } from "ethers";
 
 const protocolBuyFeePct = (1e16).toString(); // 1%
 const protocolSellFeePct = (2 * 1e16).toString(); // 2%
@@ -110,6 +111,8 @@ export default buildModule("ProtocolContractsProxy", (m) => {
         AUCTION_ORDER_CANCELLATION_DURATION
     ], { from: deployer, })
 
+
+    m.call(easyAuction, "setSubjectFactory", [subjectFactoryProxy], {from: deployer, id: "easyAuction_setSubjectFactory"});
 
     return { vaultProxy, tokenManagerProxy, subjectFactoryProxy, moxieBondingCurveProxy, factoryInstanceSubjectFactory }
 
