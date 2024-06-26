@@ -4,16 +4,28 @@ pragma solidity ^0.8.24;
 import "./IERC20Extended.sol";
 
 interface ITokenManager {
-    event TokenDeployed(address subject, address token, uint256 initialSupply);
-    event TokenMinted(address subject, address token, uint256 amount);
+    error InvalidSubjectImplementation();
+    error SubjectExists();
+    error InvalidSubject();
+    error TokenNotFound();
+    error InvalidOwner();
+    error InvalidAmount();
+    
+    event TokenDeployed(
+        address _beneficiary,
+        address _token,
+        uint256 _initialSupply
+    );
+    event TokenMinted(address _subject, address _token, uint256 _amount);
 
-    function tokens(address _subject) external returns(IERC20Extended token_address);
+    function tokens(address _subject) external returns (address token_);
 
     function create(
-        address _subject,
+        address _beneficiary,
         string memory _name,
         string memory _symbol,
-        uint256 _initialSupply
+        uint256 _initialSupply,
+        address _moxiePassVerifier
     ) external returns (address token_);
 
     function mint(
