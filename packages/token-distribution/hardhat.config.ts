@@ -19,11 +19,10 @@ import 'solidity-coverage'
 
 // Tasks
 
-// import './ops/create'
-// import './ops/delete'
-// import './ops/info'
-// import './ops/manager'
-// import './ops/beneficiary'
+import './tasks/create'
+import './tasks/delete'
+import './tasks/manager'
+import './tasks/beneficiary'
 
 // Networks
 
