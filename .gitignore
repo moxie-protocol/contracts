@@ -66,5 +66,7 @@ reports/
 coverage.json
 coverage/
 
-*.html
+*.html/
+
+deployments
 
