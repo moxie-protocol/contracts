@@ -332,7 +332,7 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
      * @notice Sets the MoxiePassToken contract address to mint on every token lock creation
      * @param _moxiePassTokenUri Address of the MoxiePassToken contract
      */
-    function setMoxiePassToken(address _moxiePassToken, string memory _moxiePassTokenUri) external onlyOwner {
+    function setMoxiePassTokenAndUri(address _moxiePassToken, string memory _moxiePassTokenUri) external onlyOwner {
         require(_moxiePassToken != address(0), "MoxiePassToken cannot be zero");
         moxiePassToken = IMoxiePass(_moxiePassToken);
         moxiePassTokenUri = _moxiePassTokenUri;
