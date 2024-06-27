@@ -43,7 +43,7 @@ export const setupTest = deployments.createFixture(async ({ deployments }) => {
     // Deploy moxie pass token
     await deploy('MoxiePassTokenMock', {
       from: deployer.address,
-      args: ['Moxie Pass', 'MOXIEPASS'],
+      args: ['Moxie Pass Mock', 'MPX-Mock'],
     })
     const moxiePassToken = await getContract('MoxiePassTokenMock')
   
@@ -54,8 +54,8 @@ export const setupTest = deployments.createFixture(async ({ deployments }) => {
     })
     const tokenLockManager = await getContract('MoxieTokenLockManager')
     
-    // set the moxie pass token in the token lock wallet
-    await tokenLockManager.connect(deployer.signer).setMoxiePassToken(moxiePassToken.address)
+    // set the moxie pass token address and uri in the token lock wallet
+    await tokenLockManager.connect(deployer.signer).setMoxiePassTokenAndUri(moxiePassToken.address, "uri.json")
   
     // Protocol contracts
     await deployments.deploy('StakingMock', { from: deployer.address, args: [moxie.address] })
