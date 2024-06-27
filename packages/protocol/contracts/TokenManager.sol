@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
-import "./SecurityModule.sol";
-import "./interfaces/ITokenManager.sol";
-import "./interfaces/IERC20Extended.sol";
-import "./interfaces/ISubjectErc20.sol";
+import {SecurityModule} from "./SecurityModule.sol";
+import {ITokenManager} from "./interfaces/ITokenManager.sol";
+import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
+import {ISubjectErc20} from "./interfaces/ISubjectErc20.sol";
 
 contract TokenManager is ITokenManager, SecurityModule {
     using SafeERC20 for IERC20Extended;
@@ -17,27 +17,27 @@ contract TokenManager is ITokenManager, SecurityModule {
     bytes32 public constant CREATE_ROLE = keccak256("CREATE_ROLE");
 
     /// @dev Address of subject implementation.
-    address subjectImplementation;
+    address public subjectImplementation;
 
     /// @dev Mapping of subject & its Token
-    mapping(address => address) public tokens;
+    mapping(address subject => address token) public tokens;
 
     /**
      * @notice Initialize the contract.
-     * @param _owner Owner of contract which gets admin role.
+     * @param _admin Admin of contract which gets admin role.
      * @param _subjectImplementation Implemetation of subject ERC20 contract.
      */
     function initialize(
-        address _owner,
+        address _admin,
         address _subjectImplementation
     ) public initializer {
         if (_subjectImplementation == address(0))
-            revert InvalidSubjectImplementation();
-        if (_owner == address(0)) revert InvalidOwner();
+            revert TokenManager_InvalidSubjectImplementation();
+        if (_admin == address(0)) revert TokenManager_InvalidOwner();
 
         __AccessControl_init();
         __Pausable_init();
-        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
 
         subjectImplementation = _subjectImplementation;
     }
@@ -48,7 +48,7 @@ contract TokenManager is ITokenManager, SecurityModule {
      * @param _name Name of token getting deployed.
      * @param _symbol Symbol of token getting deployed
      * @param _initialSupply Initial supply of token getting deployed.
-     * @param _moxiePassVerifier Address of moxie pass verifier contract. 
+     * @param _moxiePassVerifier Address of moxie pass verifier contract.
      */
     function create(
         address _subject,
@@ -57,28 +57,27 @@ contract TokenManager is ITokenManager, SecurityModule {
         uint256 _initialSupply,
         address _moxiePassVerifier
     ) external whenNotPaused onlyRole(CREATE_ROLE) returns (address token_) {
-        if (_subject == address(0)) revert InvalidSubject();
-        if (tokens[_subject] != address(0)) revert SubjectExists();
+        if (_subject == address(0)) revert TokenManager_InvalidSubject();
+        if (tokens[_subject] != address(0)) revert TokenManager_SubjectExists();
 
         token_ = Clones.cloneDeterministic(
             subjectImplementation,
             keccak256(abi.encodePacked(_subject))
         );
+        tokens[_subject] = token_;
+        emit TokenDeployed(_subject, token_, _initialSupply);
 
-       //create initialize & mint initial supply.
+        //Initialize & mint initial supply.
         ISubjectErc20(token_).initialize(
-        address(this),
-        _name,
-        _symbol,
-        _initialSupply,
-        _moxiePassVerifier
+            address(this),
+            _name,
+            _symbol,
+            _initialSupply,
+            _moxiePassVerifier
         );
 
-        tokens[_subject] = token_;
         // Transfer initial supply to creator.
         IERC20Extended(token_).safeTransfer(msg.sender, _initialSupply);
-
-        emit TokenDeployed(_subject, token_, _initialSupply);
     }
 
     /**
@@ -92,9 +91,12 @@ contract TokenManager is ITokenManager, SecurityModule {
         address _beneficiary,
         uint256 _amount
     ) public whenNotPaused onlyRole(MINT_ROLE) returns (bool) {
-        if (tokens[_subject] == address(0)) revert TokenNotFound();
+        address token = tokens[_subject];
+        if (token == address(0)) revert TokenManager_TokenNotFound();
 
-        IERC20Extended(tokens[_subject]).mint(_beneficiary, _amount);
+        if (_amount == 0) revert TokenManager_InvalidAmount();
+
+        IERC20Extended(token).mint(_beneficiary, _amount);
         return true;
     }
 }

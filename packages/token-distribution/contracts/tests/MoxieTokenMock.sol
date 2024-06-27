@@ -15,7 +15,7 @@ contract MoxieTokenMock is Ownable, ERC20 {
      * @param _initialSupply Initial supply
      * @param _mintTo Address to whitch to mint the initial supply
      */
-    constructor(uint256 _initialSupply, address _mintTo) ERC20("Moxie Token Mock", "MOX-Mock") {
+    constructor(uint256 _initialSupply, address _mintTo) ERC20("Moxie Token Mock", "MOXIE-Mock") {
         // Deploy to mint address
         _mint(_mintTo, _initialSupply);
     }

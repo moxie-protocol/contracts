@@ -47,23 +47,26 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     contract: 'MoxieTokenLockManager',
   })
 
-  // // -- Fund --
+  logger.info(`MoxieTokenLockManager deployed at ${managerDeploy.address}`)
 
-  //   const fundAmount = parseEther('100000000')
-  //   logger.info(`Funding ${managerDeploy.address} with ${formatEther(fundAmount)} MOXIE...`)
 
-  //   // Approve
-  //   const moxie = (await hre.ethers.getContractAt('MoxieToken', tokenAddress)) as MoxieTokenMock
-  //   await moxie.approve(managerDeploy.address, fundAmount)
+   // Get the token address we will use
+   const moxiePassTokenAddress = await promptContractAddress('MoxiePass Token (MXP)', logger)
+   if (!moxiePassTokenAddress) {
+     logger.warn('No moxiePassTokenAddress  provided')
+     process.exit(1)
+   }
 
-  //   // Deposit
-  //   const manager = (await hre.ethers.getContractAt(
-  //     'MoxieTokenLockManager',
-  //     managerDeploy.address,
-  //   )) as MoxieTokenLockManager
-  //   await manager.deposit(fundAmount)
+  // set up moxie pass token address and uri
+  const manager = (await hre.ethers.getContractAt(
+        'MoxieTokenLockManager',
+        managerDeploy.address,
+      )) as MoxieTokenLockManager
 
-  //   logger.success('Deposit Done!')
+  await manager.setMoxiePassTokenAndUri(moxiePassTokenAddress, "")
+
+  logger.info(`MoxieTokenLockManager set up with moxie pass token address and uri`)
+
 }
 
 func.tags = ['manager']

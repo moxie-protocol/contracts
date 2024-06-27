@@ -14,9 +14,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // -- Mock Moxie Token --
 
-  logger.info('Deploying MoxieTokenMock...')
+  logger.info('Deploying Moxie-Mock...')
 
-  const deployResult = await deploy('MoxieTokenMock', {
+  await deploy('MoxieTokenMock', {
     from: deployer,
     args: [
       parseEther('10000000000'), // 10B

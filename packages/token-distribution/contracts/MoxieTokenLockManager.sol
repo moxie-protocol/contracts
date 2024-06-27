@@ -12,7 +12,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import "./MinimalProxyFactory.sol";
 import "./IMoxieTokenLockManager.sol";
 import { MoxieTokenLockWallet } from "./MoxieTokenLockWallet.sol";
-import "./IERC721Mintable.sol";
+import "./IMoxiePass.sol";
 
 /**
  * @title MoxieTokenLockManager
@@ -37,7 +37,8 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
 
     address public masterCopy;
     IERC20 internal _token;
-    IERC721Mintable internal _moxiePassToken;
+    IMoxiePass public moxiePassToken;
+    string public moxiePassTokenUri;
 
     // -- Events --
 
@@ -132,7 +133,7 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
 
         // mint MoxiePassToken to the newly created token lock wallet contract
         // this will ensure that token lock wallet is whitelisted and can interact with in Moxie protocol contracts.
-        _moxiePassToken.mint(contractAddress) ;
+        moxiePassToken.mint(contractAddress, moxiePassTokenUri);
 
         emit TokenLockCreated(
             contractAddress,
@@ -329,11 +330,12 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
 
      /**
      * @notice Sets the MoxiePassToken contract address to mint on every token lock creation
-     * @param moxiePassToken_ Address of the MoxiePassToken contract
+     * @param _moxiePassTokenUri Address of the MoxiePassToken contract
      */
-    function setMoxiePassToken(address moxiePassToken_) public onlyOwner{
-        require(moxiePassToken_ != address(0), "MoxiePassToken cannot be zero");
-        _moxiePassToken = IERC721Mintable(moxiePassToken_);
-        emit MoxiePassTokenUpdated(moxiePassToken_);
+    function setMoxiePassTokenAndUri(address _moxiePassToken, string memory _moxiePassTokenUri) external onlyOwner {
+        require(_moxiePassToken != address(0), "MoxiePassToken cannot be zero");
+        moxiePassToken = IMoxiePass(_moxiePassToken);
+        moxiePassTokenUri = _moxiePassTokenUri;
+        emit MoxiePassTokenUpdated(_moxiePassToken);
     }
 }
