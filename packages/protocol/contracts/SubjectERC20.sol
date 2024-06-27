@@ -2,14 +2,14 @@
 
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "./interfaces/IMoxiePassVerifier.sol";
-import "./interfaces/ISubjectErc20.sol";
+import {IMoxiePassVerifier} from "./interfaces/IMoxiePassVerifier.sol";
+import {ISubjectErc20} from "./interfaces/ISubjectErc20.sol";
 
 contract SubjectERC20 is
     ISubjectErc20,
@@ -21,8 +21,8 @@ contract SubjectERC20 is
 {
     IMoxiePassVerifier public moxiePassVerifier;
 
-    error NotAMoxiePassHolder();
-    error InvalidOwner();
+    error SubjectERC20_NotAMoxiePassHolder();
+    error SubjectERC20_InvalidOwner();
 
     /**
      * @notice Initialize contract
@@ -39,7 +39,7 @@ contract SubjectERC20 is
         uint256 _initialSupply,
         address _moxiePassVerifier
     ) public initializer {
-        if (_owner == address(0)) revert InvalidOwner();
+        if (_owner == address(0)) revert SubjectERC20_InvalidOwner();
 
         __ERC20_init(_name, _symbol);
         __ERC20Burnable_init();
@@ -65,7 +65,7 @@ contract SubjectERC20 is
         uint256 value
     ) internal virtual override {
         if (to != address(0) && !moxiePassVerifier.isMoxiePassHolder(to))
-            revert NotAMoxiePassHolder();
+            revert SubjectERC20_NotAMoxiePassHolder();
 
         super._update(from, to, value);
     }

@@ -3,9 +3,10 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./interfaces/IERC20Extended.sol";
-import "./SecurityModule.sol";
-import "./interfaces/IVault.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
+import {SecurityModule} from "./SecurityModule.sol";
+import {IVault} from "./interfaces/IVault.sol";
 
 contract Vault is SecurityModule, IVault {
     using SafeERC20 for IERC20Extended;
@@ -13,7 +14,7 @@ contract Vault is SecurityModule, IVault {
     bytes32 public constant TRANSFER_ROLE = keccak256("TRANSFER_ROLE");
 
     // subjectToken =>  moxie => amount
-    mapping(address => mapping(address => uint256)) public reserves;
+    mapping(address subjectToken => mapping(address moxie => uint256 amount)) public reserves;
 
     /**
      * @dev Intialize contract.
@@ -54,16 +55,16 @@ contract Vault is SecurityModule, IVault {
         if (_subjectToken == address(0)) revert InvalidSubjectToken();
         if (_token == address(0)) revert InvalidToken();
         if (_value == 0) revert InvalidAmount();
+        reserves[_subjectToken][_token] += _value;
+        
+        emit VaultDeposit(_subjectToken, _token, msg.sender, _value, reserves[_subjectToken][_token]);
 
         IERC20Extended(_token).safeTransferFrom(
             msg.sender,
             address(this),
             _value
         );
-
-        reserves[_subjectToken][_token] += _value;
-
-        emit VaultDeposit(_subjectToken, _token, msg.sender, _value, reserves[_subjectToken][_token]);
+        
     }
 
     /**
@@ -90,9 +91,11 @@ contract Vault is SecurityModule, IVault {
         uint256 balance = reserves[_subjectToken][_token];
 
         if (balance < _value) revert InvalidReserveBalance();
+
         reserves[_subjectToken][_token] -= _value;
+        emit VaultTransfer(_subjectToken, _token, _to, _value, reserves[_subjectToken][_token]);
+        
         IERC20Extended(_token).safeTransfer(_to, _value);
 
-        emit VaultTransfer(_subjectToken, _token, _to, _value, reserves[_subjectToken][_token]);
     }
 }

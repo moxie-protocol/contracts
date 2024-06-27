@@ -36,6 +36,9 @@ cached/
 /cache
 /artifacts
 
+# Do not ignore the artifacts folder inside the test directory
+!packages/protocol/test-artifact/easy-auction/artifacts
+
 # TypeChain files
 */*/typechain
 */*/typechain-types
@@ -61,6 +64,8 @@ bin/
 .DS_Store
 .vscode
 
+coverage
+
 # Coverage and other reports
 reports/
 coverage.json
@@ -70,3 +75,4 @@ coverage/
 
 deployments
 
+venv
