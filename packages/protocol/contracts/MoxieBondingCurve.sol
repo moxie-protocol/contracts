@@ -369,7 +369,6 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _subjectReserveRatio,
             _sellAmount
         );
-        
         (uint256 protocolFee, uint256 subjectFee) = _calculateSellSideFee(
             returnAmountWithoutFee
         );
