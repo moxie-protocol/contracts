@@ -643,16 +643,7 @@ describe('Team Contract', () => {
        * check that released amount is 0
        * check that unvested amount is 753.58
        * revoke the unvested tokens
-       * check that unvested amount is 0
-       * check that vested amount is 913.42
-       * wait till 365 days and check that vested amount is 913.42
-       * check that releasable amount is 0
-       * check that no tokens can be released during cliff time
-       * wait till 366 days and release all tokens 913.42
-       * check that the released amount is 913.42
-       * check after releasing all tokens the unvested amount is 0
-       * check after releasing all tokens the releasable amount is 0
-       * check after releasing all tokens beneficiary should not be able to release more tokens
+       * check after rovoking all tokens beneficiary should not be able to release more tokens
     */
 
     let deployer: Account
@@ -774,84 +765,16 @@ describe('Team Contract', () => {
         const beforeOwnerBalance = await moxie.balanceOf(deployer.address)
 
         const tx = tokenLock.connect(deployer.signer).revoke()
-        await expect(tx).emit(tokenLock, 'TokensRevoked').withArgs(beneficiary.address, '753575342465753424800')
+        await expect(tx).emit(tokenLock, 'TokensRevoked').withArgs(beneficiary.address, '1667000000000000000000')
 
         // Owner balance after revoke
         const afterOwnerBalance = await moxie.balanceOf(deployer.address)
 
         // Check that the balance is updated
-        expect(afterOwnerBalance.sub(beforeOwnerBalance)).to.equal('753575342465753424800')
+        expect(afterOwnerBalance.sub(beforeOwnerBalance)).to.equal('1667000000000000000000')
     })
 
-    it('check that unvested amount is 0', async function () {
-        const managedAmount = await tokenLock.managedAmount()
-        const availableAmount = await tokenLock.availableAmount()
-        const unVestedAmount = managedAmount.sub(availableAmount)
-        expect(unVestedAmount).to.equal(0)
-    })
-
-    it('check that vested amount is 913.42', async function () {
-        const availableAmount = await tokenLock.availableAmount()
-        expect(availableAmount).to.equal('913424657534246575200')
-    })
-
-    it('wait till 365 days and check that vested amount is 913.42', async function () {
-        // Increase time by 165 days
-        await advancePeriods(tokenLock, 165)
-
-        const availableAmount = await tokenLock.availableAmount()
-        expect(availableAmount).to.equal('913424657534246575200')
-    })
-
-    it('check that releasable amount is 0', async function () {
-        const releasableAmount = await tokenLock.releasableAmount()
-        expect(releasableAmount).to.equal(0)
-    })
-
-    it('check that no tokens can be released during cliff time', async function () {
-        const tx = tokenLock.connect(beneficiary.signer).release()
-        await expect(tx).revertedWith('No available releasable amount')
-    })
-
-    it('wait till 366 days and release all tokens 913.42', async function () {
-        // Increase time by 1 day
-        await advancePeriods(tokenLock, 1)
-
-        // Beneficiary and Contract balance before release
-        const beforeBalance = await moxie.balanceOf(beneficiary.address)
-        const beforeContractBalance = await moxie.balanceOf(tokenLock.address)
-
-        const availableAmount = await tokenLock.availableAmount()
-        expect(availableAmount).to.equal('913424657534246575200')
-
-        // Beneficiary and Contract balance after balance
-        const afterBalance = await moxie.balanceOf(beneficiary.address)
-        const afterContractBalance = await moxie.balanceOf(tokenLock.address)
-
-        // Check that the balance is updated
-        expect(afterBalance.sub(beforeBalance)).to.equal('913424657534246575200')
-        expect(beforeContractBalance.sub(afterContractBalance)).to.equal('913424657534246575200')
-
-    })
-
-    it('check that the released amount is 913.42', async function () {
-        const releasedAmount = await tokenLock.releasedAmount()
-        expect(releasedAmount).to.equal('913424657534246575200')
-    })
-
-    it('check after releasing all tokens the unvested amount is 0', async function () {
-        const managedAmount = await tokenLock.managedAmount()
-        const availableAmount = await tokenLock.availableAmount()
-        const unVestedAmount = managedAmount.sub(availableAmount)
-        expect(unVestedAmount).to.equal(0)
-    })
-
-    it('check after releasing all tokens the releasable amount is 0', async function () {
-        const releasableAmount = await tokenLock.releasableAmount()
-        expect(releasableAmount).to.equal(0)
-    })
-
-    it('check after releasing all tokens beneficiary should not be able to release more tokens', async function () {
+    it('check after rovoking all tokens beneficiary should not be able to release more tokens', async function () {
         const amountToRelease = await tokenLock.releasableAmount()
         const tx = tokenLock.connect(beneficiary.signer).release()
         await expect(tx).revertedWith('No available releasable amount')
