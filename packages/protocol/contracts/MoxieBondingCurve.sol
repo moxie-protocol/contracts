@@ -90,7 +90,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     /// @dev Address of vault contract.
     IVault public vault;
 
-    /// @dev Use to represeny fee percentage base 0% = 0; 1% = 10 ** 16; 100% = 10 ** 18
+    /// @dev Use to represent fee percentage base 0% = 0; 1% = 10 ** 16; 100% = 10 ** 18
     uint256 public constant PCT_BASE = 10 ** 18;
     /// @dev Use to represent reserve ratio, 1M is 1
     uint32 public constant PPM = 1000000;
@@ -281,7 +281,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
      * @param _subjectToken Address of Subject Token.
      * @param _depositAmount Amount of deposit to buy shares.
      * @param _onBehalfOf Address of beneficiary where shares will be minted. This address can be zero address too.
-     * @param _minReturnAmountAfterFee Minimum number of shares that must be recieved.
+     * @param _minReturnAmountAfterFee Minimum number of shares that must be received.
      * @param _subject Address of subject.
      * @param _subjectReserveRatio Subject Reserve ratio.
      */
@@ -474,7 +474,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
      * @param _subject Address of subject.
      * @param _initialSupply Initial supply of subjects tokens at the time of bonding curve initialization.
      * @param _reserveRatio reserve ratio of subject for bonding curve.
-     * @param _reserveAmount Initial reseve amount.
+     * @param _reserveAmount Initial reserve amount.
      */
     function initializeSubjectBondingCurve(
         address _subject,

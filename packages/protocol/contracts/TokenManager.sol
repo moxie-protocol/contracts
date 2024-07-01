@@ -25,7 +25,7 @@ contract TokenManager is ITokenManager, SecurityModule {
     /**
      * @notice Initialize the contract.
      * @param _admin Admin of contract which gets admin role.
-     * @param _subjectImplementation Implemetation of subject ERC20 contract.
+     * @param _subjectImplementation Implementation of subject ERC20 contract.
      */
     function initialize(
         address _admin,

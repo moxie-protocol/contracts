@@ -18,7 +18,7 @@ contract Vault is SecurityModule, IVault {
     mapping(address subjectToken => mapping(address moxie => uint256 amount)) public reserves;
 
     /**
-     * @dev Intialize contract.
+     * @dev Initialize contract.
      * @param _owner Owner of contract.
      */
     function initialize(address _owner) public initializer {

@@ -276,15 +276,15 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
 
     /**
      * @dev Calculate Tokens to mint for given input amount based on auction price.
-     * @param _clearningOrder Clearing order from auction.
+     * @param _clearingOrder Clearing order from auction.
      * @param _amount Amount of reserve tokens from onboarding.
      */
     function _calculateTokensMintAfterAuction(
-        bytes32 _clearningOrder,
+        bytes32 _clearingOrder,
         uint256 _amount
     ) internal pure returns (uint256) {
         /// @dev buyAmount is moxie amount & sell amount is subject token.
-        (, uint96 buyAmount, uint96 sellAmount) = _decodeOrder(_clearningOrder);
+        (, uint96 buyAmount, uint96 sellAmount) = _decodeOrder(_clearingOrder);
         return (buyAmount * _amount) / sellAmount;
     }
 
@@ -346,7 +346,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
             _subject,
             subjectFee_,
             _subject,
-            0 //slippage settings not needed as this is first buy transaaction.
+            0 //slippage settings not needed as this is first buy transaction.
         );
 
         emit SubjectOnboardingFinished(
