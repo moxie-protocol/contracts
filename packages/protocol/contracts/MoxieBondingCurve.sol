@@ -35,7 +35,6 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     error MoxieBondingCurve_InvalidOwner();
     error MoxieBondingCurve_InvalidSubjectFactory();
     error MoxieBondingCurve_OnlySubjectFactory();
-    error MoxieBondingCurve_InvalidReserveFactory();
     error MoxieBondingCurve_InvalidReserveRation();
     error MoxieBondingCurve_SubjectAlreadyInitialized();
     error MoxieBondingCurve_SubjectNotInitialized();
@@ -518,8 +517,6 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         return true;
     }
 
-    //todo add moxie pass check
-    //todo decide if onBehalfOf can be address(0)
     /**
      * @dev Buy shares of subject.
      * @param _subject Address of subject.
