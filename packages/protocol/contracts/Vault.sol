@@ -12,6 +12,7 @@ contract Vault is SecurityModule, IVault {
     using SafeERC20 for IERC20Extended;
 
     bytes32 public constant TRANSFER_ROLE = keccak256("TRANSFER_ROLE");
+    bytes32 public constant DEPOSIT_ROLE = keccak256("DEPOSIT_ROLE");
 
     // subjectToken =>  moxie => amount
     mapping(address subjectToken => mapping(address moxie => uint256 amount)) public reserves;
@@ -51,7 +52,7 @@ contract Vault is SecurityModule, IVault {
         address _subjectToken,
         address _token,
         uint256 _value
-    ) external override {
+    ) external override onlyRole(DEPOSIT_ROLE) {
         if (_subjectToken == address(0)) revert InvalidSubjectToken();
         if (_token == address(0)) revert InvalidToken();
         if (_value == 0) revert InvalidAmount();
