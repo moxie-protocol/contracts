@@ -197,10 +197,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
      */
     function _validateFee(FeeInput memory _feeInput) internal pure {
         if (
-            !_feeIsValid(_feeInput.protocolBuyFeePct) ||
-            !_feeIsValid(_feeInput.protocolSellFeePct) ||
-            !_feeIsValid(_feeInput.subjectBuyFeePct) ||
-            !_feeIsValid(_feeInput.subjectSellFeePct)
+            !_feeIsValid(_feeInput.protocolBuyFeePct + _feeInput.subjectBuyFeePct) ||
+            !_feeIsValid(_feeInput.protocolSellFeePct + _feeInput.subjectSellFeePct)
         ) revert MoxieBondingCurve_InvalidFeePercentage();
     }
 

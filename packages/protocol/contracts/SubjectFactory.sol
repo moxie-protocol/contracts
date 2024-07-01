@@ -10,7 +10,6 @@ import {IMoxieBondingCurve} from "./interfaces/IMoxieBondingCurve.sol";
 import {IEasyAuction} from "./interfaces/IEasyAuction.sol";
 import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
 
-
 contract SubjectFactory is SecurityModule, ISubjectFactory {
     using SafeERC20 for IERC20Extended;
 
@@ -18,7 +17,8 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     bytes32 public constant UPDATE_BENEFICIARY_ROLE =
         keccak256("UPDATE_BENEFICIARY_ROLE");
     bytes32 public constant UPDATE_FEES_ROLE = keccak256("UPDATE_FEES_ROLE");
-    bytes32 public constant UPDATE_AUCTION_ROLE = keccak256("UPDATE_AUCTION_ROLE");
+    bytes32 public constant UPDATE_AUCTION_ROLE =
+        keccak256("UPDATE_AUCTION_ROLE");
 
     /// @dev Represent Percentage for fee 0% = 0; 1% = 10 ** 16; 100% = 10 ** 18
     uint256 public constant PCT_BASE = 10 ** 18;
@@ -87,19 +87,17 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         if (_easyAuction == address(0))
             revert SubjectFactory_InvalidAuctionContract();
 
-        if (
-            !_feeIsValid(_feeInput.protocolFeePct) ||
-            !_feeIsValid(_feeInput.subjectFeePct)
-        ) revert SubjectFactory_InvalidFeePercentage();
+        if (!_feeIsValid(_feeInput.protocolFeePct + _feeInput.subjectFeePct))
+            revert SubjectFactory_InvalidFeePercentage();
 
         if (!_feeBeneficiaryIsValid(_feeBeneficiary))
             revert SubjectFactory_InvalidBeneficiary();
 
-        if (_auctionDuration == 0)
-            revert SubjectFactory_InvalidAuctionDuration();
-
         if (_auctionOrderCancellationDuration == 0)
             revert SubjectFactory_InvalidAuctionOrderCancellationDuration();
+
+        if (_auctionDuration < _auctionOrderCancellationDuration)
+            revert SubjectFactory_InvalidAuctionDuration();
 
         protocolFeePct = _feeInput.protocolFeePct;
         subjectFeePct = _feeInput.subjectFeePct;
@@ -168,10 +166,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         address _subject,
         address _subjectToken,
         SubjectAuctionInput memory _auctionInput
-    )
-        internal
-        returns (uint256 auctionId_, uint256 auctionEndDate_)
-    {
+    ) internal returns (uint256 auctionId_, uint256 auctionEndDate_) {
         auctionEndDate_ = block.timestamp + auctionDuration;
         auctions[_subject].auctionEndDate = auctionEndDate_;
         auctions[_subject].initialSupply = _auctionInput.initialSupply;
@@ -368,12 +363,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     function initiateSubjectOnboarding(
         address _subject,
         SubjectAuctionInput memory _auctionInput
-    )
-        external
-        whenNotPaused
-        onlyRole(ONBOARDING_ROLE)
-        returns (uint256)
-    {
+    ) external whenNotPaused onlyRole(ONBOARDING_ROLE) returns (uint256) {
         if (_subject == address(0)) revert SubjectFactory_InvalidSubject();
 
         if (auctions[_subject].auctionId != 0)
@@ -478,10 +468,8 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     function updateFees(
         FeeInput memory _feeInput
     ) external onlyRole(UPDATE_FEES_ROLE) {
-        if (
-            !_feeIsValid(_feeInput.protocolFeePct) ||
-            !_feeIsValid(_feeInput.subjectFeePct)
-        ) revert SubjectFactory_InvalidFeePercentage();
+        if (!_feeIsValid(_feeInput.protocolFeePct + _feeInput.subjectFeePct))
+            revert SubjectFactory_InvalidFeePercentage();
 
         _updateFees(_feeInput.protocolFeePct, _feeInput.subjectFeePct);
     }
@@ -495,11 +483,11 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         uint256 _auctionDuration,
         uint256 _auctionOrderCancellationDuration
     ) external onlyRole(UPDATE_AUCTION_ROLE) {
-        if (_auctionDuration == 0)
-            revert SubjectFactory_InvalidAuctionDuration();
-
         if (_auctionOrderCancellationDuration == 0)
             revert SubjectFactory_InvalidAuctionOrderCancellationDuration();
+
+        if (_auctionDuration < _auctionOrderCancellationDuration)
+            revert SubjectFactory_InvalidAuctionDuration();
 
         auctionDuration = _auctionDuration;
         auctionOrderCancellationDuration = _auctionOrderCancellationDuration;
