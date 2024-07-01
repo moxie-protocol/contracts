@@ -18,7 +18,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     bytes32 public constant UPDATE_BENEFICIARY_ROLE =
         keccak256("UPDATE_BENEFICIARY_ROLE");
     bytes32 public constant UPDATE_FEES_ROLE = keccak256("UPDATE_FEES_ROLE");
-    bytes32 public constant AUCTION_ROLE = keccak256("AUCTION_ROLE");
+    bytes32 public constant UPDATE_AUCTION_ROLE = keccak256("UPDATE_AUCTION_ROLE");
 
     /// @dev Represent Percentage for fee 0% = 0; 1% = 10 ** 16; 100% = 10 ** 18
     uint256 public constant PCT_BASE = 10 ** 18;
@@ -494,7 +494,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     function updateAuctionTime(
         uint256 _auctionDuration,
         uint256 _auctionOrderCancellationDuration
-    ) external onlyRole(AUCTION_ROLE) {
+    ) external onlyRole(UPDATE_AUCTION_ROLE) {
         if (_auctionDuration == 0)
             revert SubjectFactory_InvalidAuctionDuration();
 

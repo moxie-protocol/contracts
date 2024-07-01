@@ -946,7 +946,7 @@ describe('Subject Factory', () => {
             const auctionDuration = 100;
             const auctionOrderCancellationDuration = 50;
 
-            await subjectFactory.connect(owner).grantRole(await subjectFactory.AUCTION_ROLE(), deployer.address);
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.UPDATE_AUCTION_ROLE(), deployer.address);
             await expect(
                 await subjectFactory.connect(deployer).updateAuctionTime(
                     auctionDuration,
@@ -981,14 +981,14 @@ describe('Subject Factory', () => {
                 )
                 .withArgs(
                     deployer.address,
-                    await subjectFactory.AUCTION_ROLE(),
+                    await subjectFactory.UPDATE_AUCTION_ROLE(),
                 );
         });
         it('should not be able to update auction time with zero auction duration', async () => {
 
             const { subjectFactory, deployer, owner } = await loadFixture(deploy);
 
-            await subjectFactory.connect(owner).grantRole(await subjectFactory.AUCTION_ROLE(), deployer.address);
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.UPDATE_AUCTION_ROLE(), deployer.address);
 
             const auctionDuration = 0;
             const auctionOrderCancellationDuration = 50;
@@ -1008,7 +1008,7 @@ describe('Subject Factory', () => {
         it('should not be able to update auction time with zero auction cancel duration', async () => {
             const { subjectFactory, deployer, owner } = await loadFixture(deploy);
 
-            await subjectFactory.connect(owner).grantRole(await subjectFactory.AUCTION_ROLE(), deployer.address);
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.UPDATE_AUCTION_ROLE(), deployer.address);
 
             const auctionDuration = 100;
             const auctionOrderCancellationDuration = 0;
