@@ -197,8 +197,12 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
      */
     function _validateFee(FeeInput memory _feeInput) internal pure {
         if (
-            !_feeIsValid(_feeInput.protocolBuyFeePct + _feeInput.subjectBuyFeePct) ||
-            !_feeIsValid(_feeInput.protocolSellFeePct + _feeInput.subjectSellFeePct)
+            !_feeIsValid(
+                _feeInput.protocolBuyFeePct + _feeInput.subjectBuyFeePct
+            ) ||
+            !_feeIsValid(
+                _feeInput.protocolSellFeePct + _feeInput.subjectSellFeePct
+            )
         ) revert MoxieBondingCurve_InvalidFeePercentage();
     }
 
@@ -384,8 +388,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         );
 
         // burn subjectToken
-        _subjectToken.safeTransferFrom(msg.sender, address(this), _sellAmount);
-        _subjectToken.burn(_sellAmount);
+        _subjectToken.burnFrom(msg.sender, _sellAmount);
 
         vault.transfer(
             address(_subjectToken),
