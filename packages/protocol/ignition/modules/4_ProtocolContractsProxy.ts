@@ -1,9 +1,8 @@
 
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import ProtocolContract from "./ProtocolContracts";
-import MoxiePass from "./MoxiePass";
-import MoxieToken from "./MoxieToken";
-import { id } from "ethers";
+import ProtocolContract from "./3_ProtocolContracts";
+import MoxiePass from "./1_MoxiePass";
+import MoxieToken from "./2_MoxieToken";
 
 const protocolBuyFeePct = (1e16).toString(); // 1%
 const protocolSellFeePct = (2 * 1e16).toString(); // 2%
@@ -24,11 +23,11 @@ const feeInputSubjectFactory = {
 
 const AUCTION_DURATION = 60; // 2 sec block time so total 2 mins
 const AUCTION_ORDER_CANCELLATION_DURATION = 60; // 2 sec block time so total 2 mins
+
 export default buildModule("ProtocolContractsProxy", (m) => {
 
     const deployer = m.getAccount(0);
     const owner = m.getAccount(1);
-    const minter = m.getAccount(2);
     const feeBeneficiary = m.getAccount(3);
 
     const { moxiePass } = m.useModule(MoxiePass);
