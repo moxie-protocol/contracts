@@ -337,12 +337,15 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         token.approve(address(moxieBondingCurve), subjectFee_);
 
         ///@dev Instead of returning subject fee to subject, give buy subject shares for subject.
-        moxieBondingCurve.buyShares(
-            _subject,
-            subjectFee_,
-            _subject,
-            0 //slippage settings not needed as this is first buy transaction.
-        );
+
+        if (subjectFee_ > 0) {
+            moxieBondingCurve.buyShares(
+                _subject,
+                subjectFee_,
+                _subject,
+                0 //slippage settings not needed as this is first buy transaction.
+            );
+        }
 
         emit SubjectOnboardingFinished(
             _subject,
