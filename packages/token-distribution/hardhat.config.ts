@@ -60,6 +60,7 @@ const networkConfigs: NetworkConfig[] = [
     network: 'base-sepolia',
     chainId: 84532,
     url: 'https://sepolia.base.org',
+    gas: 3500000,
   },
 ]
 

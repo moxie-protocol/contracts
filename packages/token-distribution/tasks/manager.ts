@@ -3,6 +3,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { askConfirm, getTokenLockManagerOrFail, isValidAddressOrFail, prettyEnv, waitTransaction } from './create'
 import consola from 'consola'
 import { formatEther, parseEther } from 'ethers/lib/utils'
+import { ethers, getNamedAccounts } from 'hardhat'
 
 const logger = consola.create({})
 
@@ -62,6 +63,10 @@ task('manager-deposit', 'Deposit fund into the manager')
     // Get contracts
     const manager = await getTokenLockManagerOrFail(hre, taskArgs.managerName)
 
+    // Get the address who owns MOXIE tokens
+    const privateKey = process.env.TEMPORARY_MOXIE_HOLDING_WALLET_PRIVATE_KEY
+    const wallet = new hre.ethers.Wallet(privateKey, hre.ethers.provider)
+
     // Prepare
     logger.log(await prettyEnv(hre))
 
@@ -79,11 +84,11 @@ task('manager-deposit', 'Deposit fund into the manager')
 
       logger.log('Approve...')
       const MOXIE = await hre.ethers.getContractAt('ERC20', tokenAddress)
-      const tx1 = await MOXIE.approve(manager.address, weiAmount)
+      const tx1 = await MOXIE.connect(wallet).approve(manager.address, weiAmount)
       await waitTransaction(tx1)
 
       logger.log('Deposit...')
-      const tx2 = await manager.deposit(weiAmount)
+      const tx2 = await manager.connect(wallet).deposit(weiAmount)
       await waitTransaction(tx2)
     }
   })
