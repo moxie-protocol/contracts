@@ -782,3 +782,93 @@ describe('Team Contract', () => {
 
 
 });
+
+describe('Beneficiary Change', () => {
+
+    /*
+       * TEST BENEFICIARY CHANGE
+       * deploy vesting contract (vesting schedule)
+       * create new vesting schedule (180 tokens) vesting for 6 months
+       * change the beneficiary to a new address
+       * check the old beneficiary should not be able to release tokens
+       * check the new beneficiary should be able to release tokens
+    */
+
+    let deployer: Account
+    let beneficiary: Account
+    let beneficiary1: Account
+  
+    let moxie: MoxieTokenMock
+    let tokenLock: MoxieTokenLockWallet
+    let tokenLockManager: MoxieTokenLockManager
+    let staking: StakingMock
+  
+    let initArgs: TokenLockParameters
+
+    const initWithArgs = async (args: TokenLockParameters): Promise<MoxieTokenLockWallet> => {
+      const tx = await tokenLockManager.createTokenLockWallet(
+        args.owner,
+        args.beneficiary,
+        args.managedAmount,
+        args.startTime,
+        args.endTime,
+        args.periods,
+        args.releaseStartTime,
+        args.vestingCliffTime,
+        args.revocable,
+      )
+      const receipt = await tx.wait()
+      const contractAddress = receipt.events?.[0]?.args?.['proxy'];
+      return ethers.getContractAt('MoxieTokenLockWallet', contractAddress) as Promise<MoxieTokenLockWallet>
+    }
+  
+    before(async function () {
+        [deployer, beneficiary, beneficiary1] = await getAccounts();
+
+        ({ moxie, tokenLockManager, staking } = await setupTest())
+  
+        // Setup authorized functions in Manager
+        await authProtocolFunctions(tokenLockManager, staking.address);
+
+        initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('180'));
+        const currentTime = Math.floor(Date.now() / 1000);
+        initArgs.startTime = currentTime;
+        initArgs.endTime = currentTime + 15768000;
+        initArgs.periods = 180;
+            
+        tokenLock = await initWithArgs(initArgs);
+    })
+
+    it('change the beneficiary to a new address', async function () {
+        // Change beneficiary to a new address
+        const tx = tokenLock.connect(beneficiary.signer).changeBeneficiary(beneficiary1.address)
+        await expect(tx).emit(tokenLock, 'BeneficiaryChanged').withArgs(beneficiary1.address)
+
+        // verify that the beneficiary has changed
+        const afterBeneficiary = await tokenLock.beneficiary()
+        expect(afterBeneficiary).eq(beneficiary1.address)
+    })
+
+    it('check the old beneficiary should not be able to release tokens', async function () {
+        const tx = tokenLock.connect(beneficiary.signer).release()
+        await expect(tx).revertedWith('!auth')
+    })
+
+    it('check the new beneficiary should be able to release tokens', async function () {
+        // increase time
+        await advancePeriods(tokenLock, 325)
+
+        const tx = tokenLock.connect(beneficiary1.signer).release()
+        await expect(tx).emit(tokenLock, 'TokensReleased').withArgs(beneficiary1.address, toMOXIE('180'))
+
+        // Beneficiary and Contract balance after balance
+        const afterBalance = await moxie.balanceOf(beneficiary1.address)
+        const afterContractBalance = await moxie.balanceOf(tokenLock.address)
+
+        // Check that the balance is updated
+        expect(afterBalance).to.equal(toMOXIE('180'))
+        expect(afterContractBalance).to.equal(0)
+    })
+
+});
+
