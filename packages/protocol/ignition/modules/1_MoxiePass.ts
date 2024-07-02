@@ -1,5 +1,4 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import keys from './testnet/key.json'
 export default buildModule("MoxiePass", (m) => {
 
 
