@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
-import "./SecurityModule.sol";
-import "./interfaces/ITokenManager.sol";
-import "./interfaces/IERC20Extended.sol";
-import "./interfaces/ISubjectErc20.sol";
+import {SecurityModule} from "./SecurityModule.sol";
+import {ITokenManager} from "./interfaces/ITokenManager.sol";
+import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
+import {ISubjectErc20} from "./interfaces/ISubjectErc20.sol";
 
 contract TokenManager is ITokenManager, SecurityModule {
     using SafeERC20 for IERC20Extended;
@@ -20,12 +20,12 @@ contract TokenManager is ITokenManager, SecurityModule {
     address public subjectImplementation;
 
     /// @dev Mapping of subject & its Token
-    mapping(address => address) public tokens;
+    mapping(address subject => address token) public tokens;
 
     /**
      * @notice Initialize the contract.
      * @param _admin Admin of contract which gets admin role.
-     * @param _subjectImplementation Implemetation of subject ERC20 contract.
+     * @param _subjectImplementation Implementation of subject ERC20 contract.
      */
     function initialize(
         address _admin,
@@ -64,6 +64,8 @@ contract TokenManager is ITokenManager, SecurityModule {
             subjectImplementation,
             keccak256(abi.encodePacked(_subject))
         );
+        tokens[_subject] = token_;
+        emit TokenDeployed(_subject, token_, _initialSupply);
 
         //Initialize & mint initial supply.
         ISubjectErc20(token_).initialize(
@@ -74,11 +76,8 @@ contract TokenManager is ITokenManager, SecurityModule {
             _moxiePassVerifier
         );
 
-        tokens[_subject] = token_;
         // Transfer initial supply to creator.
         IERC20Extended(token_).safeTransfer(msg.sender, _initialSupply);
-
-        emit TokenDeployed(_subject, token_, _initialSupply);
     }
 
     /**

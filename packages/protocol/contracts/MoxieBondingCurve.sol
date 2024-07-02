@@ -2,16 +2,15 @@
 
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IBancorFormula} from "./interfaces/IBancorFormula.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import "./SecurityModule.sol";
-import "./interfaces/ITokenManager.sol";
-import "./interfaces/IERC20Extended.sol";
-import "./interfaces/IVault.sol";
-import "./interfaces/IMoxieBondingCurve.sol";
+import {SecurityModule} from "./SecurityModule.sol";
+import {ITokenManager} from "./interfaces/ITokenManager.sol";
+import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
+import {IVault} from "./interfaces/IVault.sol";
+import {IMoxieBondingCurve} from "./interfaces/IMoxieBondingCurve.sol";
 
 /**
  * @title Moxie Bonding curve
@@ -36,9 +35,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     error MoxieBondingCurve_InvalidOwner();
     error MoxieBondingCurve_InvalidSubjectFactory();
     error MoxieBondingCurve_OnlySubjectFactory();
-    error MoxieBondingCurve_InvalidReserveFactory();
     error MoxieBondingCurve_InvalidReserveRation();
-    error MoxieBondingCurve_TransferFailed();
     error MoxieBondingCurve_SubjectAlreadyInitialized();
     error MoxieBondingCurve_SubjectNotInitialized();
     error MoxieBondingCurve_InvalidSubjectSupply();
@@ -93,7 +90,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     /// @dev Address of vault contract.
     IVault public vault;
 
-    /// @dev Use to represeny fee percentage base 0% = 0; 1% = 10 ** 16; 100% = 10 ** 18
+    /// @dev Use to represent fee percentage base 0% = 0; 1% = 10 ** 16; 100% = 10 ** 18
     uint256 public constant PCT_BASE = 10 ** 18;
     /// @dev Use to represent reserve ratio, 1M is 1
     uint32 public constant PPM = 1000000;
@@ -111,7 +108,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     address public subjectFactory;
 
     /// @dev subject address vs reserve ratio
-    mapping(address => uint32) public reserveRatio;
+    mapping(address subject => uint32 _reserveRatio) public reserveRatio;
 
     /**
      * Initialize the contract.
@@ -200,10 +197,12 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
      */
     function _validateFee(FeeInput memory _feeInput) internal pure {
         if (
-            !_feeIsValid(_feeInput.protocolBuyFeePct) ||
-            !_feeIsValid(_feeInput.protocolSellFeePct) ||
-            !_feeIsValid(_feeInput.subjectBuyFeePct) ||
-            !_feeIsValid(_feeInput.subjectSellFeePct)
+            !_feeIsValid(
+                _feeInput.protocolBuyFeePct + _feeInput.subjectBuyFeePct
+            ) ||
+            !_feeIsValid(
+                _feeInput.protocolSellFeePct + _feeInput.subjectSellFeePct
+            )
         ) revert MoxieBondingCurve_InvalidFeePercentage();
     }
 
@@ -284,7 +283,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
      * @param _subjectToken Address of Subject Token.
      * @param _depositAmount Amount of deposit to buy shares.
      * @param _onBehalfOf Address of beneficiary where shares will be minted. This address can be zero address too.
-     * @param _minReturnAmountAfterFee Minimum number of shares that must be recieved.
+     * @param _minReturnAmountAfterFee Minimum number of shares that must be received.
      * @param _subject Address of subject.
      * @param _subjectReserveRatio Subject Reserve ratio.
      */
@@ -328,7 +327,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             revert MoxieBondingCurve_SlippageExceedsLimit();
 
         ///@dev Don't mint if intent is to burn
-         if (!_isZeroAddress(_onBehalfOf)) {
+        if (!_isZeroAddress(_onBehalfOf)) {
             tokenManager.mint(_subject, _onBehalfOf, shares_);
         }
 
@@ -371,29 +370,14 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _subjectReserveRatio,
             _sellAmount
         );
-        // burn subjectToken
-        _subjectToken.safeTransferFrom(msg.sender, address(this), _sellAmount);
-        _subjectToken.burn(_sellAmount);
 
-        vault.transfer(
-            address(_subjectToken),
-            address(token),
-            address(this),
-            returnAmountWithoutFee
-        );
         (uint256 protocolFee, uint256 subjectFee) = _calculateSellSideFee(
             returnAmountWithoutFee
         );
 
-        token.safeTransfer(_subject, subjectFee);
-        token.safeTransfer(feeBeneficiary, protocolFee);
         returnedAmount_ = returnAmountWithoutFee - subjectFee - protocolFee;
-
         if (returnedAmount_ < _minReturnAmountAfterFee)
             revert MoxieBondingCurve_SlippageExceedsLimit();
-
-        token.transfer(_onBehalfOf, returnedAmount_);
-
         emit SubjectShareSold(
             _subject,
             address(_subjectToken),
@@ -402,6 +386,20 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             returnedAmount_,
             _onBehalfOf
         );
+
+        // burn subjectToken
+        _subjectToken.burnFrom(msg.sender, _sellAmount);
+
+        vault.transfer(
+            address(_subjectToken),
+            address(token),
+            address(this),
+            returnAmountWithoutFee
+        );
+
+        token.safeTransfer(_subject, subjectFee);
+        token.safeTransfer(feeBeneficiary, protocolFee);
+        token.safeTransfer(_onBehalfOf, returnedAmount_);
     }
 
     /**
@@ -477,7 +475,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
      * @param _subject Address of subject.
      * @param _initialSupply Initial supply of subjects tokens at the time of bonding curve initialization.
      * @param _reserveRatio reserve ratio of subject for bonding curve.
-     * @param _reserveAmount Initial reseve amount.
+     * @param _reserveAmount Initial reserve amount.
      */
     function initializeSubjectBondingCurve(
         address _subject,
@@ -495,22 +493,12 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
 
         if (reserveRatio[_subject] != 0)
             revert MoxieBondingCurve_SubjectAlreadyInitialized();
+        reserveRatio[_subject] = _reserveRatio;
 
         address subjectToken = tokenManager.tokens(_subject);
 
         if (_isZeroAddress(subjectToken))
             revert MoxieBondingCurve_InvalidSubjectToken();
-
-        uint256 supply = IERC20Extended(subjectToken)
-            .totalSupply();
-
-        if (_initialSupply != supply)
-            revert MoxieBondingCurve_InvalidSubjectSupply();
-
-        reserveRatio[_subject] = _reserveRatio;
-        token.safeTransferFrom(msg.sender, address(this), _reserveAmount);
-        token.approve(address(vault), _reserveAmount);
-        vault.deposit(subjectToken, address(token), _reserveAmount);
 
         emit BondingCurveInitialized(
             _subject,
@@ -519,12 +507,17 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _reserveAmount,
             _reserveRatio
         );
+        uint256 supply = IERC20Extended(subjectToken).totalSupply();
+        if (_initialSupply != supply)
+            revert MoxieBondingCurve_InvalidSubjectSupply();
+
+        token.safeTransferFrom(msg.sender, address(this), _reserveAmount);
+        token.approve(address(vault), _reserveAmount);
+        vault.deposit(subjectToken, address(token), _reserveAmount);
 
         return true;
     }
 
-    //todo add moxie pass check
-    //todo decide if onBehalfOf can be address(0)
     /**
      * @dev Buy shares of subject.
      * @param _subject Address of subject.
