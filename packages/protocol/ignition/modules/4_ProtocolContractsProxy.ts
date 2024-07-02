@@ -3,11 +3,12 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 import ProtocolContract from "./3_ProtocolContracts";
 import MoxiePass from "./1_MoxiePass";
 import MoxieToken from "./2_MoxieToken";
+import config from "..//config/config.json";
 
-const protocolBuyFeePct = (1e16).toString(); // 1%
-const protocolSellFeePct = (2 * 1e16).toString(); // 2%
-const subjectBuyFeePct = (3 * 1e16).toString(); // 3%
-const subjectSellFeePct = (4 * 1e16).toString(); // 4%
+const protocolBuyFeePct = config.protocolBuyFeePctForBC; // 1%
+const protocolSellFeePct = config.protocolSellFeePctForBC; // 2%
+const subjectBuyFeePct = config.subjectBuyFeePctForBC; // 3%
+const subjectSellFeePct = config.subjectSellFeePctForBC; // 4%
 
 const feeInputBondingCurve = {
     protocolBuyFeePct,
@@ -17,14 +18,16 @@ const feeInputBondingCurve = {
 };
 
 const feeInputSubjectFactory = {
-    protocolFeePct: protocolBuyFeePct,
-    subjectFeePct: subjectBuyFeePct
-}
+    protocolFeePct: config.protocolFeePctForSF,
+    subjectFeePct: config.subjectFeePctForSF
+};
 
-const AUCTION_DURATION = 60; // 2 sec block time so total 2 mins
-const AUCTION_ORDER_CANCELLATION_DURATION = 60; // 2 sec block time so total 2 mins
+const AUCTION_DURATION = config.auctionDuration; // 2 sec block time so total 2 mins
+const AUCTION_ORDER_CANCELLATION_DURATION = config.auctionOrderCancellationDuration; // 2 sec block time so total 2 mins
 
 export default buildModule("ProtocolContractsProxy", (m) => {
+
+    const proxyAdminOwner = config.proxyAdminOwner;
 
     const deployer = m.getAccount(0);
     const owner = m.getAccount(1);
@@ -40,24 +43,43 @@ export default buildModule("ProtocolContractsProxy", (m) => {
     // deploy vault proxy
     const vaultProxy = m.contract("TransparentUpgradeableProxy", [
         vault,
-        owner,
+        proxyAdminOwner,
         vaultCallData,
     ], {
         id: "vaultProxy",
         from: deployer
     });
 
+
+    const vaultProxyAdminAddress = m.readEventArgument(
+        vaultProxy,
+        "AdminChanged",
+        "newAdmin",
+        { id: 'vaultProxyAdminAddress' }
+    );
+
+    const vaultProxyAdmin = m.contractAt("ProxyAdmin", vaultProxyAdminAddress, { id: 'vaultProxyAdmin' });
+
     const tokenManagerCallData = m.encodeFunctionCall(tokenManager, "initialize", [owner, subjectERC20]);
 
     // deploy token manager proxy
     const tokenManagerProxy = m.contract("TransparentUpgradeableProxy", [
         tokenManager,
-        owner,
+        proxyAdminOwner,
         tokenManagerCallData,
     ], {
         id: "tokenManagerProxy",
         from: deployer
     });
+
+    const tokenManagerProxyAdminAddress = m.readEventArgument(
+        tokenManagerProxy,
+        "AdminChanged",
+        "newAdmin",
+        { id: 'tokenManagerProxyAdminAddress' }
+    );
+
+    const tokenManagerProxyAdmin = m.contractAt("ProxyAdmin", tokenManagerProxyAdminAddress, { id: 'tokenManagerProxyAdmin' });
 
 
     // set moxie pass in moxie pass verifier 
@@ -66,12 +88,22 @@ export default buildModule("ProtocolContractsProxy", (m) => {
     // deploy subject factory
     const subjectFactoryProxy = m.contract("TransparentUpgradeableProxy", [
         subjectFactory,
-        owner,
+        proxyAdminOwner,
         '0x',
     ], {
         id: "subjectFactoryProxy",
         from: deployer
     });
+
+
+    const subjectFactoryProxyAdminAddress = m.readEventArgument(
+        subjectFactoryProxy,
+        "AdminChanged",
+        "newAdmin",
+        { id: 'subjectFactoryProxyAdminAddress' }
+    );
+
+    const subjectFactoryProxyAdmin = m.contractAt("ProxyAdmin", subjectFactoryProxyAdminAddress, { id: 'subjectFactoryProxyAdmin' });
 
     //
     const moxieBondingCurveProxyData = m.encodeFunctionCall(moxieBondingCurve, "initialize", [
@@ -88,17 +120,26 @@ export default buildModule("ProtocolContractsProxy", (m) => {
     // deploy moxie bonding curve
     const moxieBondingCurveProxy = m.contract("TransparentUpgradeableProxy", [
         moxieBondingCurve,
-        owner,
+        proxyAdminOwner,
         moxieBondingCurveProxyData,
     ], {
         id: "moxieBondingCurveProxy",
         from: deployer
     });
 
-    const factoryInstanceSubjectFactory = m.contractAt("SubjectFactory", subjectFactoryProxy);
+    const moxieBondingCurveProxyAdminAddress = m.readEventArgument(
+        moxieBondingCurveProxy,
+        "AdminChanged",
+        "newAdmin",
+        { id: 'moxieBondingCurveProxyAdminAddress', }
+    );
+
+    const moxieBondingCurveProxyAdmin = m.contractAt("ProxyAdmin", moxieBondingCurveProxyAdminAddress, { id: 'moxieBondingCurveProxyAdmin' });
+
+    const subjectFactoryInstance = m.contractAt("SubjectFactory", subjectFactoryProxy, { id: 'subjectFactoryInstance' });
 
     // initialize subject factory
-    m.call(factoryInstanceSubjectFactory, "initialize", [
+    m.call(subjectFactoryInstance, "initialize", [
         owner,
         tokenManagerProxy,
         moxieBondingCurveProxy,
@@ -110,9 +151,25 @@ export default buildModule("ProtocolContractsProxy", (m) => {
         AUCTION_ORDER_CANCELLATION_DURATION
     ], { from: deployer, })
 
+    m.call(easyAuction, "setSubjectFactory", [subjectFactoryProxy], { from: deployer, id: "easyAuction_setSubjectFactory" });
 
-    m.call(easyAuction, "setSubjectFactory", [subjectFactoryProxy], {from: deployer, id: "easyAuction_setSubjectFactory"});
+    const moxieBondingCurveInstance = m.contractAt('MoxieBondingCurve', moxieBondingCurveProxy, { id: 'moxieBondingCurveInstance' });
+    const vaultInstance = m.contractAt('Vault', vaultProxy, { id: 'vaultInstance' });
+    const tokenManagerInstance = m.contractAt('TokenManager', tokenManagerProxy, { id: 'tokenManagerInstance' });
 
-    return { vaultProxy, tokenManagerProxy, subjectFactoryProxy, moxieBondingCurveProxy, factoryInstanceSubjectFactory }
+    // const vaultProxyAdminOwner = m.staticCall(vaultProxyAdmin, "owner", [], undefined, { id: 'vaultProxyAdminOwner' });
+    // const tokenManagerProxyAdminOwner = m.staticCall(tokenManagerProxyAdmin, "owner", [], undefined, { id: 'tokenManagerProxyAdminOwner' });
+    // const subjectFactoryProxyAdminOwner = m.staticCall(subjectFactoryProxyAdmin, "owner", [], undefined, { id: 'subjectFactoryProxyAdminOwner' });
+    // const moxielBondingCurveProxyAdminOwner = m.staticCall(moxieBondingCurveProxyAdmin, "owner", [], undefined, { id: 'moxielBondingCurveProxyAdminOwner' });
 
+    return {
+        vaultInstance,
+        vaultProxyAdmin,
+        tokenManagerInstance,
+        tokenManagerProxyAdmin,
+        subjectFactoryInstance,
+        subjectFactoryProxyAdmin,
+        moxieBondingCurveInstance,
+        moxieBondingCurveProxyAdmin,
+    }
 });

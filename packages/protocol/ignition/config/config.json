@@ -1,0 +1,11 @@
+{
+  "protocolBuyFeePctForBC": "10000000000000000",
+  "protocolSellFeePctForBC": "20000000000000000",
+  "subjectBuyFeePctForBC": "30000000000000000",
+  "subjectSellFeePctForBC": "40000000000000000",
+  "protocolFeePctForSF": "10000000000000000",
+  "subjectFeePctForSF": "20000000000000000",
+  "auctionDuration": 60,
+  "auctionOrderCancellationDuration": 60,
+  "proxyAdminOwner": "0x6F7Cd88a97bE12604aA67B0F38c27558EB192f27"
+}
