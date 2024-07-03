@@ -14,7 +14,6 @@ export default buildModule("ProtocolContracts", (m) => {
   const moxiePassVerifier = m.contract("MoxiePassVerifier", [owner], { from: deployer })
   const tokenManager = m.contract("TokenManager", [], { from: deployer })
   const moxieBondingCurve = m.contract("MoxieBondingCurve", [], { from: deployer })
-  const easyAuction = m.contract("EasyAuction", EasyAuction, [], { from: deployer });
 
-  return { subjectFactory, formula, vault, subjectERC20, moxiePassVerifier, tokenManager, moxieBondingCurve, easyAuction };
+  return { subjectFactory, formula, vault, subjectERC20, moxiePassVerifier, tokenManager, moxieBondingCurve };
 });

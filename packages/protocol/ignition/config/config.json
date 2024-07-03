@@ -7,5 +7,9 @@
   "subjectFeePctForSF": "20000000000000000",
   "auctionDuration": 60,
   "auctionOrderCancellationDuration": 60,
-  "proxyAdminOwner": "0x6F7Cd88a97bE12604aA67B0F38c27558EB192f27"
+  "proxyAdminOwner": "0x9b36D8BED0AFB3EE990961786271ED136d798dBe",
+  "moxieTokenBeneficiary": "0x9b36D8BED0AFB3EE990961786271ED136d798dBe",
+  "adminRoleBeneficiary": "0x9b36D8BED0AFB3EE990961786271ED136d798dBe",
+  "tokenLockManager": "0x9b36D8BED0AFB3EE990961786271ED136d798dBe",
+  "moxiePassURL": "url"
 }
