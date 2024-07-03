@@ -113,6 +113,8 @@ describe("Vault", () => {
             let amount = 15 * 10 ^ 18;
             await token.connect(owner).approve(vaultAddress, amount);
 
+            await vaultInstance.connect(owner).grantRole(await vaultInstance.DEPOSIT_ROLE(), owner.address);
+
             let previousBalance = await token.balanceOf(vaultAddress);
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
                 .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
@@ -134,6 +136,25 @@ describe("Vault", () => {
             expect(await vaultInstance.balanceOf(anyAddress.address, tokenAddress)).to.equal(BigInt(amount) + BigInt(amount2));
         });
 
+        it('should revert deposit without deposit role ', async () => {
+
+            const {
+                vaultInstance,
+                owner,
+                anyAddress,
+                token,
+                vaultAddress,
+            } = await loadFixture(deploy);
+
+            //first deposit
+            let amount = 15 * 10 ^ 18;
+            await token.connect(owner).approve(vaultAddress, amount);
+
+            await expect(vaultInstance.connect(owner).deposit(anyAddress.address, ethers.ZeroAddress, amount))
+                .to.revertedWithCustomError(vaultInstance, 'AccessControlUnauthorizedAccount')
+                .withArgs(owner.address, await vaultInstance.DEPOSIT_ROLE());
+        });
+
         it(' deposit should revert for zero subject token address', async () => {
 
             const {
@@ -148,6 +169,7 @@ describe("Vault", () => {
             let amount = 15 * 10 ^ 18;
             await token.connect(owner).approve(vaultAddress, amount);
 
+            await vaultInstance.connect(owner).grantRole(await vaultInstance.DEPOSIT_ROLE(), owner.address);
             await expect(vaultInstance.connect(owner).deposit(ethers.ZeroAddress, tokenAddress, amount))
                 .to.revertedWithCustomError(vaultInstance, 'InvalidSubjectToken');
 
@@ -167,6 +189,7 @@ describe("Vault", () => {
             let amount = 15 * 10 ^ 18;
             await token.connect(owner).approve(vaultAddress, amount);
 
+            await vaultInstance.connect(owner).grantRole(await vaultInstance.DEPOSIT_ROLE(), owner.address);
             await expect(vaultInstance.connect(owner).deposit(anyAddress.address, ethers.ZeroAddress, amount))
                 .to.revertedWithCustomError(vaultInstance, 'InvalidToken');
 
@@ -187,6 +210,7 @@ describe("Vault", () => {
             let amount = 0;
             await token.connect(owner).approve(vaultAddress, amount);
 
+            await vaultInstance.connect(owner).grantRole(await vaultInstance.DEPOSIT_ROLE(), owner.address);
             await expect(vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
                 .to.revertedWithCustomError(vaultInstance, 'InvalidAmount');
 
@@ -206,6 +230,7 @@ describe("Vault", () => {
             //first deposit
             let amount = 10 * 10 ^ 18;
 
+            await vaultInstance.connect(owner).grantRole(await vaultInstance.DEPOSIT_ROLE(), owner.address);
             await expect(vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
                 .to.revertedWithCustomError(token, 'ERC20InsufficientAllowance');
 
@@ -229,6 +254,9 @@ describe("Vault", () => {
             //first deposit
             let amount = 15 * 10 ^ 18;
             await token.connect(owner).approve(vaultAddress, amount);
+
+            await vaultInstance.connect(owner).grantRole(await vaultInstance.DEPOSIT_ROLE(), owner.address);
+
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
                 .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
 
@@ -263,6 +291,9 @@ describe("Vault", () => {
             //first deposit
             let amount = 15 * 10 ^ 18;
             await token.connect(owner).approve(vaultAddress, amount);
+
+            await vaultInstance.connect(owner).grantRole(await vaultInstance.DEPOSIT_ROLE(), owner.address);
+
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
                 .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
 
@@ -295,6 +326,9 @@ describe("Vault", () => {
             //first deposit
             let amount = 15 * 10 ^ 18;
             await token.connect(owner).approve(vaultAddress, amount);
+
+            await vaultInstance.connect(owner).grantRole(await vaultInstance.DEPOSIT_ROLE(), owner.address);
+
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
                 .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
 
@@ -324,6 +358,9 @@ describe("Vault", () => {
             //first deposit
             let amount = 15 * 10 ^ 18;
             await token.connect(owner).approve(vaultAddress, amount);
+
+            await vaultInstance.connect(owner).grantRole(await vaultInstance.DEPOSIT_ROLE(), owner.address);
+
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
                 .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
 
@@ -352,6 +389,9 @@ describe("Vault", () => {
 
             let amount = 15 * 10 ^ 18;
             await token.connect(owner).approve(vaultAddress, amount);
+
+            await vaultInstance.connect(owner).grantRole(await vaultInstance.DEPOSIT_ROLE(), owner.address);
+
             await vaultInstance.connect(owner).grantRole((await vaultInstance.TRANSFER_ROLE()), signer1.address);
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
                 .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
@@ -381,6 +421,9 @@ describe("Vault", () => {
 
             let amount = 15 * 10 ^ 18;
             await token.connect(owner).approve(vaultAddress, amount);
+
+            await vaultInstance.connect(owner).grantRole(await vaultInstance.DEPOSIT_ROLE(), owner.address);
+
             await vaultInstance.connect(owner).grantRole((await vaultInstance.TRANSFER_ROLE()), signer1.address);
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
                 .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
@@ -411,6 +454,7 @@ describe("Vault", () => {
 
             let amount = 15 * 10 ^ 18;
             await token.connect(owner).approve(vaultAddress, amount);
+            await vaultInstance.connect(owner).grantRole(await vaultInstance.DEPOSIT_ROLE(), owner.address);
             await vaultInstance.connect(owner).grantRole((await vaultInstance.TRANSFER_ROLE()), signer1.address);
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
                 .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
@@ -439,6 +483,7 @@ describe("Vault", () => {
 
             let amount = 15 * 10 ^ 18;
             await token.connect(owner).approve(vaultAddress, amount);
+            await vaultInstance.connect(owner).grantRole(await vaultInstance.DEPOSIT_ROLE(), owner.address);
             await vaultInstance.connect(owner).grantRole((await vaultInstance.TRANSFER_ROLE()), signer1.address);
             expect(await vaultInstance.connect(owner).deposit(anyAddress.address, tokenAddress, amount))
                 .to.emit(vaultInstance, 'VaultDeposit').withArgs(anyAddress.address, tokenAddress, amount, amount);
