@@ -278,7 +278,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         bytes32 _clearingOrder,
         uint256 _amount
     ) internal pure returns (uint256) {
-        /// @dev buyAmount is moxie amount & sell amount is subject token.
+        /// @dev buyAmount is subject token amount & sell amount is moxie token.
         (, uint96 buyAmount, uint96 sellAmount) = _decodeOrder(_clearingOrder);
         return (buyAmount * _amount) / sellAmount;
     }

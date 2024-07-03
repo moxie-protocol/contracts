@@ -629,8 +629,8 @@ describe('Subject Factory', () => {
                 name: 'fid-3761',
                 symbol: 'fid-3761',
                 initialSupply: '1000',
-                minBuyAmount: '1',// in moxie token
-                minBiddingAmount: '1', // in subject token
+                minBuyAmount: '1',// in subject token
+                minBiddingAmount: '1', // in moxie token
                 minFundingThreshold: '0', // amount of auction funding in moxie token below which auction will be cancelled.
                 isAtomicClosureAllowed: false, // false can be hardcoded
                 accessManagerContract: moxiePassVerifierAddress, //
