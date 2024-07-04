@@ -8,6 +8,7 @@ import { DeployFunction, DeployOptions } from 'hardhat-deploy/types'
 import { MoxieTokenMock } from '../build/typechain/contracts/MoxieTokenMock'
 import { MoxieTokenLockManager } from '../build/typechain/contracts/MoxieTokenLockManager'
 import { getDeploymentName, promptContractAddress } from './lib/utils'
+import cfg from'./config.json'
 
 const { parseEther, formatEther } = utils
 
@@ -17,14 +18,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const deploy = (name: string, options: DeployOptions) => hre.deployments.deploy(name, options)
   const { deployer } = await hre.getNamedAccounts()
 
-  // -- Moxie Token --
-
-  // Get the token address we will use
-  const tokenAddress = await promptContractAddress('MOXIE', logger)
-  if (!tokenAddress) {
-    logger.warn('No token address provided')
-    process.exit(1)
-  }
 
   // -- Token Lock Manager --
 
@@ -42,7 +35,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const managerSaveName = await getDeploymentName('MoxieTokenLockManager')
   const managerDeploy = await deploy(managerSaveName, {
     from: deployer,
-    args: [tokenAddress, masterCopyDeploy.address],
+    args: [cfg.MoxieTokenAddress, masterCopyDeploy.address],
     log: true,
     contract: 'MoxieTokenLockManager',
   })
@@ -50,22 +43,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   logger.info(`MoxieTokenLockManager deployed at ${managerDeploy.address}`)
 
 
-   // Get the token address we will use
-   const moxiePassTokenAddress = await promptContractAddress('MoxiePass Token (MXP)', logger)
-   if (!moxiePassTokenAddress) {
-     logger.warn('No moxiePassTokenAddress  provided')
-     process.exit(1)
-   }
-
   // set up moxie pass token address and uri
   const manager = (await hre.ethers.getContractAt(
         'MoxieTokenLockManager',
         managerDeploy.address,
       )) as MoxieTokenLockManager
 
-  await manager.setMoxiePassTokenAndUri(moxiePassTokenAddress, "")
+  await manager.setMoxiePassTokenAndUri(cfg.MoxiePassTokenAddress, cfg.MoxiePassTokenURI)
 
-  logger.info(`MoxieTokenLockManager set up with moxie pass token address and uri`)
+  logger.info(`MoxieTokenLockManager set up with moxie pass token address: ${cfg.MoxiePassTokenAddress} and uri: ${cfg.MoxiePassTokenURI}`)
 
 }
 
