@@ -10,6 +10,6 @@
   "proxyAdminOwner": "0x9b36D8BED0AFB3EE990961786271ED136d798dBe",
   "moxieTokenBeneficiary": "0x9b36D8BED0AFB3EE990961786271ED136d798dBe",
   "adminRoleBeneficiary": "0x9b36D8BED0AFB3EE990961786271ED136d798dBe",
-  "tokenLockManager": "0x9b36D8BED0AFB3EE990961786271ED136d798dBe",
-  "moxiePassURL": "url"
+  "tokenLockManager": "0x2522f61FeC068b05dE64Dd91C8b1E8Cd2b6515c1",
+  "moxiePassURL": "https://assets.airstack.xyz/moxiepass/metadata/0.json"
 }

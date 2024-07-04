@@ -4,11 +4,13 @@ import config from "../config/config.json"
 
 export default buildModule("TokenLockManagerPermissions", (m) => {
 
-    const minter = m.getAccount(2);
+    const owner = m.getAccount(1);
 
     const { moxiePass } = m.useModule(MoxiePass);
 
-    m.call(moxiePass, "mint", [config.tokenLockManager, config.moxiePassURL], { from: minter, id: 'tokenLockManagerMoxiePass' });
+    const mintRole = m.staticCall(moxiePass, "MINTER_ROLE");
+
+    m.call(moxiePass, "grantRole", [mintRole, config.tokenLockManager,], { from: owner, id: 'tokenLockManagerMintRole' });
 
     return {}
 
