@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./MoxieTokenLock.sol";
 import "./IMoxieTokenLockManager.sol";
+import "./IERC20Extended.sol";
 
 /**
  * @title MoxieTokenLockWallet
@@ -41,6 +42,8 @@ contract MoxieTokenLockWallet is MoxieTokenLock {
     event ManagerUpdated(address indexed _oldManager, address indexed _newManager);
     event TokenDestinationsApproved();
     event TokenDestinationsRevoked();
+    event SubjectTokenDestinationsApproved(address indexed _subjectToken);
+    event SubjectTokenDestinationsRevoked(address indexed _subjectToken);
 
     // Initializer
     function initialize(
@@ -201,5 +204,31 @@ contract MoxieTokenLockWallet is MoxieTokenLock {
      */
     receive() external payable {
         revert("Bad call");
+    }
+
+    /**
+     * @notice Approves protocol access of the subjecttoken
+     * @dev Approves all subject token destinations registered in the manager to pull tokens
+     */
+    function approveSubjectToken(address _subjectToken) external onlyBeneficiary {
+        require(manager.isSubjectTokenDestination(_subjectToken), "SubjectToken must be whitelisted in the manager");
+        address[] memory dstList = manager.getSubjectTokenDestinations();
+        for (uint256 i = 0; i < dstList.length; i++) {
+            IERC20Extended(_subjectToken).approve(dstList[i], type(uint256).max);
+        }
+        emit SubjectTokenDestinationsApproved(_subjectToken);
+    }
+
+    /**
+     * @notice Revokes protocol access from the subjecttokens
+     * @dev Revokes approval to all subject token destinations in the manager to pull tokens
+     */
+    function revokeSubjectTokens(address _subjectToken) external onlyBeneficiary {
+        require(manager.isSubjectTokenDestination(_subjectToken), "SubjectToken must be whitelisted in the manager");
+        address[] memory dstList = manager.getSubjectTokenDestinations();
+        for (uint256 i = 0; i < dstList.length; i++) {
+            IERC20Extended(_subjectToken).approve(dstList[i], 0);
+        }
+        emit SubjectTokenDestinationsRevoked(_subjectToken);
     }
 }
