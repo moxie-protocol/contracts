@@ -51,6 +51,7 @@ cached/
 */*/ignition/deployments/chain-31337
 
 
+
 # Build artifacts
 dist/
 build/
@@ -70,3 +71,6 @@ coverage
 reports/
 coverage.json
 venv
+
+# track aritifacts in ignition directory
+!*/*/ignition/deployments/*/artifacts
