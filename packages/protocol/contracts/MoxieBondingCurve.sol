@@ -525,12 +525,12 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
      * @param _onBehalfOf  Beneficiary where shares will be minted.
      * @param _minReturnAmountAfterFee Minimum shares that must be returned.
      */
-    function buyShares(
+    function buySharesFor(
         address _subject,
         uint256 _depositAmount,
         address _onBehalfOf,
         uint256 _minReturnAmountAfterFee
-    ) external whenNotPaused returns (uint256 shares_) {
+    ) public whenNotPaused returns (uint256 shares_) {
         if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
         if (_depositAmount == 0)
             revert MoxieBondingCurve_InvalidDepositAmount();
@@ -558,18 +558,37 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     }
 
     /**
+     * @dev Buy shares of subject.
+     * @param _subject Address of subject.
+     * @param _depositAmount Deposit amount to buy shares.
+     * @param _minReturnAmountAfterFee Minimum shares that must be returned.
+     */
+    function buyShares(
+        address _subject,
+        uint256 _depositAmount,
+        uint256 _minReturnAmountAfterFee
+    ) external whenNotPaused returns (uint256 shares_) {
+        return buySharesFor(
+            _subject,
+            _depositAmount,
+            msg.sender,
+            _minReturnAmountAfterFee
+        );
+    }
+
+    /**
      * @dev Sell shares of subject.
      * @param _subject Address of subject.
      * @param _sellAmount Amount of subject shares to sell.
      * @param _onBehalfOf Address of buy token beneficiary.
      * @param _minReturnAmountAfterFee Minimum buy token that must be returned.
      */
-    function sellShares(
+    function sellSharesFor(
         address _subject,
         uint256 _sellAmount,
         address _onBehalfOf,
         uint256 _minReturnAmountAfterFee
-    ) external whenNotPaused returns (uint256 returnAmount_) {
+    ) public whenNotPaused returns (uint256 returnAmount_) {
         if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
         if (_sellAmount == 0) revert MoxieBondingCurve_InvalidSellAmount();
 
@@ -592,6 +611,26 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _minReturnAmountAfterFee,
             _subject,
             subjectReserveRatio
+        );
+    }
+
+     /**
+     * @dev Sell shares of subject.
+     * @param _subject Address of subject.
+     * @param _sellAmount Amount of subject shares to sell.
+     * @param _minReturnAmountAfterFee Minimum buy token that must be returned.
+     */
+
+    function sellShares(
+        address _subject,
+        uint256 _sellAmount,
+        uint256 _minReturnAmountAfterFee
+    ) public whenNotPaused returns (uint256 returnAmount_) {
+        return sellSharesFor(
+            _subject,
+            _sellAmount,
+            msg.sender,
+            _minReturnAmountAfterFee
         );
     }
 }

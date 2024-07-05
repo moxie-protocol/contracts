@@ -12,7 +12,7 @@ task("onboard", "Onboard Subject", async (taskArgs, hre) => {
 
     const [deployer, owner, minter, subject, subject1, subject2]  = await hre.ethers.getSigners();
 
-    // await moxiePass.connect(owner).mint(subject2.address, "uri");
+    await moxiePass.connect(minter).mint('0x45b19Bafb4c035056E4a2Fe8667545a89C2E44a7', "uri");
 
     console.log(subject2.address)
 
