@@ -428,6 +428,69 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         subjectFee_ = (_sellAmount * subjectSellFeePct) / PCT_BASE;
     }
 
+    function _sellSharesInternal(
+        address _subject,
+        uint256 _sellAmount,
+        address _onBehalfOf,
+        uint256 _minReturnAmountAfterFee
+    ) internal whenNotPaused returns (uint256 returnAmount_) {
+        if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
+        if (_sellAmount == 0) revert MoxieBondingCurve_InvalidSellAmount();
+
+        uint32 subjectReserveRatio = reserveRatio[_subject];
+
+        if (subjectReserveRatio == 0)
+            revert MoxieBondingCurve_SubjectNotInitialized();
+
+        IERC20Extended subjectToken = IERC20Extended(
+            tokenManager.tokens(_subject)
+        );
+
+        if (_isZeroAddress(address(subjectToken)))
+            revert MoxieBondingCurve_InvalidSubjectToken();
+
+        returnAmount_ = _sellShares(
+            subjectToken,
+            _sellAmount,
+            _onBehalfOf,
+            _minReturnAmountAfterFee,
+            _subject,
+            subjectReserveRatio
+        );
+    }
+
+    function _buySharesInternal(
+        address _subject,
+        uint256 _depositAmount,
+        address _onBehalfOf,
+        uint256 _minReturnAmountAfterFee
+    ) internal returns (uint256 shares_) {
+        if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
+        if (_depositAmount == 0)
+            revert MoxieBondingCurve_InvalidDepositAmount();
+
+        uint32 subjectReserveRatio = reserveRatio[_subject];
+
+        if (subjectReserveRatio == 0)
+            revert MoxieBondingCurve_SubjectNotInitialized();
+
+        IERC20Extended subjectToken = IERC20Extended(
+            tokenManager.tokens(_subject)
+        );
+
+        if (_isZeroAddress(address(subjectToken)))
+            revert MoxieBondingCurve_InvalidSubjectToken();
+
+        shares_ = _buyShares(
+            subjectToken,
+            _depositAmount,
+            _onBehalfOf,
+            _minReturnAmountAfterFee,
+            _subject,
+            subjectReserveRatio
+        );
+    }
+
     /**
      * @notice Update fee only be called by role UPDATE_FEES_ROLE.
      * @param _feeInput Fee input struct.
@@ -531,29 +594,30 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _onBehalfOf,
         uint256 _minReturnAmountAfterFee
     ) external whenNotPaused returns (uint256 shares_) {
-        if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
-        if (_depositAmount == 0)
-            revert MoxieBondingCurve_InvalidDepositAmount();
-
-        uint32 subjectReserveRatio = reserveRatio[_subject];
-
-        if (subjectReserveRatio == 0)
-            revert MoxieBondingCurve_SubjectNotInitialized();
-
-        IERC20Extended subjectToken = IERC20Extended(
-            tokenManager.tokens(_subject)
-        );
-
-        if (_isZeroAddress(address(subjectToken)))
-            revert MoxieBondingCurve_InvalidSubjectToken();
-
-        shares_ = _buyShares(
-            subjectToken,
+        shares_ = _buySharesInternal(
+            _subject,
             _depositAmount,
             _onBehalfOf,
-            _minReturnAmountAfterFee,
+            _minReturnAmountAfterFee
+        );
+    }
+
+    /**
+     * @dev Buy shares of subject.
+     * @param _subject Address of subject.
+     * @param _depositAmount Deposit amount to buy shares.
+     * @param _minReturnAmountAfterFee Minimum shares that must be returned.
+     */
+    function buyShares(
+        address _subject,
+        uint256 _depositAmount,
+        uint256 _minReturnAmountAfterFee
+    ) external whenNotPaused returns (uint256 shares_) {
+        shares_ = _buySharesInternal(
             _subject,
-            subjectReserveRatio
+            _depositAmount,
+            msg.sender,
+            _minReturnAmountAfterFee
         );
     }
 
@@ -570,28 +634,30 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _onBehalfOf,
         uint256 _minReturnAmountAfterFee
     ) external whenNotPaused returns (uint256 returnAmount_) {
-        if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
-        if (_sellAmount == 0) revert MoxieBondingCurve_InvalidSellAmount();
-
-        uint32 subjectReserveRatio = reserveRatio[_subject];
-
-        if (subjectReserveRatio == 0)
-            revert MoxieBondingCurve_SubjectNotInitialized();
-
-        IERC20Extended subjectToken = IERC20Extended(
-            tokenManager.tokens(_subject)
-        );
-
-        if (_isZeroAddress(address(subjectToken)))
-            revert MoxieBondingCurve_InvalidSubjectToken();
-
-        returnAmount_ = _sellShares(
-            subjectToken,
+        returnAmount_ = _sellSharesInternal(
+            _subject,
             _sellAmount,
             _onBehalfOf,
-            _minReturnAmountAfterFee,
+            _minReturnAmountAfterFee
+        );
+    }
+
+    /**
+     * @dev Sell shares of subject.
+     * @param _subject Address of subject.
+     * @param _sellAmount Amount of subject shares to sell.
+     * @param _minReturnAmountAfterFee Minimum buy token that must be returned.
+     */
+    function sellShares(
+        address _subject,
+        uint256 _sellAmount,
+        uint256 _minReturnAmountAfterFee
+    ) external whenNotPaused returns (uint256 returnAmount_) {
+        returnAmount_ = _sellSharesInternal(
             _subject,
-            subjectReserveRatio
+            _sellAmount,
+            msg.sender,
+            _minReturnAmountAfterFee
         );
     }
 }
