@@ -42,8 +42,8 @@ contract MoxieTokenLockWallet is MoxieTokenLock {
     event ManagerUpdated(address indexed _oldManager, address indexed _newManager);
     event TokenDestinationsApproved();
     event TokenDestinationsRevoked();
-    event SubjectTokenDestinationsApproved(address indexed _subjectToken);
-    event SubjectTokenDestinationsRevoked(address indexed _subjectToken);
+    event SubjectTokenDestinationsApproved(address indexed _subjectToken, address indexed _destination);
+    event SubjectTokenDestinationsRevoked(address indexed _subjectToken, address indexed _destination);
 
     // Initializer
     function initialize(
@@ -211,12 +211,13 @@ contract MoxieTokenLockWallet is MoxieTokenLock {
      * @dev Approves all subject token destinations registered in the manager to pull tokens
      */
     function approveSubjectToken(address _subjectToken) external onlyBeneficiary {
-        require(manager.isSubjectTokenDestination(_subjectToken), "SubjectToken must be whitelisted in the manager");
+        require(_subjectToken != address(0), "Subject Token address cannot be zero");
         address[] memory dstList = manager.getSubjectTokenDestinations();
         for (uint256 i = 0; i < dstList.length; i++) {
             IERC20Extended(_subjectToken).approve(dstList[i], type(uint256).max);
+             emit SubjectTokenDestinationsApproved(_subjectToken, dstList[i]);
         }
-        emit SubjectTokenDestinationsApproved(_subjectToken);
+       
     }
 
     /**
@@ -224,11 +225,12 @@ contract MoxieTokenLockWallet is MoxieTokenLock {
      * @dev Revokes approval to all subject token destinations in the manager to pull tokens
      */
     function revokeSubjectTokens(address _subjectToken) external onlyBeneficiary {
-        require(manager.isSubjectTokenDestination(_subjectToken), "SubjectToken must be whitelisted in the manager");
+        require(_subjectToken != address(0), "Subject Token address cannot be zero");
         address[] memory dstList = manager.getSubjectTokenDestinations();
         for (uint256 i = 0; i < dstList.length; i++) {
             IERC20Extended(_subjectToken).approve(dstList[i], 0);
+             emit SubjectTokenDestinationsRevoked(_subjectToken, dstList[i]);
         }
-        emit SubjectTokenDestinationsRevoked(_subjectToken);
+       
     }
 }
