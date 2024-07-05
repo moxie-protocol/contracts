@@ -341,7 +341,6 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
             subjectFeeInSubjectToken = moxieBondingCurve.buySharesFor(
                 _subject,
                 subjectFee_,
-                _subject,
                 0 //slippage settings not needed as this is first buy transaction.
             );
         }

@@ -1,15 +1,13 @@
 
 import { task } from "hardhat/config";
-import EasyAuctionArtifact from "../test-artifact/easy-auction/artifacts/EasyAuction.json";
-import { EasyAuction } from "../test-artifact/easy-auction/typechain/EasyAuction";
+import { BigNumber} from "@ethersproject/bignumber";
 
-const VESTING_CONTRACT_ADDRESS = ''
-const SUBJECT_ADDRESS = '';
+const VESTING_CONTRACT_ADDRESS = '0xe2b1B4749896D3ACbdBaE20b7e2B3106a6F0F7E1'
+const SUBJECT_ADDRESS = '0x228e3113F2966DBDDa362c9742baC127a27b3f62';
 
 task("buy", "buy from bonding curve ", async (taskArgs, hre) => {
 
-    const buyAmount = '0'; // subject
-    const depositAmount = '';
+    const buyAmount = BigNumber.from('100').mul(BigNumber.from(10).pow(18)); // subject tokens
 
     const [buyer] = await hre.ethers.getSigners();
 
@@ -17,8 +15,7 @@ task("buy", "buy from bonding curve ", async (taskArgs, hre) => {
 
     await easyAuction.connect(buyer).buyShares(
         SUBJECT_ADDRESS,
-        depositAmount,
-        buyer.address,
+        buyAmount.toString(),
         0
     );
 });
