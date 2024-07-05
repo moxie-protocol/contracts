@@ -525,7 +525,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
      * @param _onBehalfOf  Beneficiary where shares will be minted.
      * @param _minReturnAmountAfterFee Minimum shares that must be returned.
      */
-    function buyShares(
+    function buySharesFor(
         address _subject,
         uint256 _depositAmount,
         address _onBehalfOf,
@@ -564,7 +564,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
      * @param _onBehalfOf Address of buy token beneficiary.
      * @param _minReturnAmountAfterFee Minimum buy token that must be returned.
      */
-    function sellShares(
+    function sellSharesFor(
         address _subject,
         uint256 _sellAmount,
         address _onBehalfOf,

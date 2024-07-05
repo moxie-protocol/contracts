@@ -1113,7 +1113,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(buyer)
-                    .buyShares(subject.address, buyAmount, buyer.address, 0),
+                    .buySharesFor(subject.address, buyAmount, buyer.address, 0),
             )
                 .to.emit(moxieBondingCurve, "SubjectSharePurchased")
                 .withArgs(
@@ -1167,7 +1167,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(buyer2)
-                    .buyShares(subject.address, buyAmount, buyer2.address, 0),
+                    .buySharesFor(subject.address, buyAmount, buyer2.address, 0),
             )
                 .to.emit(moxieBondingCurve, "SubjectSharePurchased")
                 .withArgs(
@@ -1252,7 +1252,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(buyer)
-                    .buyShares(subject.address, buyAmount, ethers.ZeroAddress, 0),
+                    .buySharesFor(subject.address, buyAmount, ethers.ZeroAddress, 0),
             )
                 .to.emit(moxieBondingCurve, "SubjectSharePurchased")
                 .withArgs(
@@ -1301,7 +1301,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(buyer)
-                    .buyShares(ethers.ZeroAddress, buyAmount, buyer.address, 0),
+                    .buySharesFor(ethers.ZeroAddress, buyAmount, buyer.address, 0),
             ).revertedWithCustomError(
                 moxieBondingCurve,
                 "MoxieBondingCurve_InvalidSubject",
@@ -1333,7 +1333,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(buyer)
-                    .buyShares(subject.address, 0, buyer.address, 0),
+                    .buySharesFor(subject.address, 0, buyer.address, 0),
             ).revertedWithCustomError(
                 moxieBondingCurve,
                 "MoxieBondingCurve_InvalidDepositAmount",
@@ -1363,7 +1363,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(buyer)
-                    .buyShares(owner.address, buyAmount, buyer.address, 0),
+                    .buySharesFor(owner.address, buyAmount, buyer.address, 0),
             ).revertedWithCustomError(
                 moxieBondingCurve,
                 "MoxieBondingCurve_SubjectNotInitialized",
@@ -1426,7 +1426,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(buyer)
-                    .buyShares(
+                    .buySharesFor(
                         subject.address,
                         buyAmount,
                         buyer.address,
@@ -1488,7 +1488,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(buyer)
-                    .buyShares(subject.address, buyAmount, buyer.address, expectedShares),
+                    .buySharesFor(subject.address, buyAmount, buyer.address, expectedShares),
             ).to.revertedWithCustomError(moxieToken, "ERC20InsufficientAllowance");
         });
 
@@ -1551,7 +1551,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(buyer)
-                    .buyShares(subject.address, buyAmount, buyer.address, expectedShares),
+                    .buySharesFor(subject.address, buyAmount, buyer.address, expectedShares),
             ).to.revertedWithCustomError(moxieToken, "ERC20InsufficientBalance");
         });
 
@@ -1586,7 +1586,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(buyer)
-                    .buyShares(subject.address, buyAmount, buyer.address, 0),
+                    .buySharesFor(subject.address, buyAmount, buyer.address, 0),
             ).revertedWithCustomError(moxieBondingCurve, "EnforcedPause");
         });
     });
@@ -1652,7 +1652,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(seller)
-                    .buyShares(subject.address, buyAmount, seller.address, 0),
+                    .buySharesFor(subject.address, buyAmount, seller.address, 0),
             ).to.emit(moxieBondingCurve, "SubjectSharePurchased");
 
             await moxieToken
@@ -1661,7 +1661,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(seller2)
-                    .buyShares(subject.address, buyAmount, seller2.address, 0),
+                    .buySharesFor(subject.address, buyAmount, seller2.address, 0),
             ).to.emit(moxieBondingCurve, "SubjectSharePurchased");
         };
 
@@ -1726,7 +1726,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(seller)
-                    .sellShares(
+                    .sellSharesFor(
                         subject.address,
                         totalSellAmountSeller1,
                         seller.address,
@@ -1789,7 +1789,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(seller2)
-                    .sellShares(
+                    .sellSharesFor(
                         subject.address,
                         totalSellAmountSeller2,
                         seller2.address,
@@ -1870,7 +1870,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(seller)
-                    .sellShares(
+                    .sellSharesFor(
                         subject.address,
                         totalSellAmountSeller1,
                         seller.address,
@@ -1913,7 +1913,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(seller2)
-                    .sellShares(
+                    .sellSharesFor(
                         subject.address,
                         totalSellAmountSeller2,
                         seller2.address,
@@ -1938,7 +1938,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(subjectFactory)
-                    .sellShares(
+                    .sellSharesFor(
                         subject.address,
                         initialSupply,
                         subjectFactory.address,
@@ -1977,7 +1977,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(seller)
-                    .sellShares(
+                    .sellSharesFor(
                         ethers.ZeroAddress,
                         totalSellAmountSeller1,
                         seller.address,
@@ -2012,7 +2012,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(seller)
-                    .sellShares(subject.address, 0, seller.address, 0),
+                    .sellSharesFor(subject.address, 0, seller.address, 0),
             ).to.revertedWithCustomError(
                 moxieBondingCurve,
                 "MoxieBondingCurve_InvalidSellAmount",
@@ -2042,7 +2042,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(seller)
-                    .sellShares(owner.address, totalSellAmountSeller1, seller.address, 0),
+                    .sellSharesFor(owner.address, totalSellAmountSeller1, seller.address, 0),
             ).to.revertedWithCustomError(
                 moxieBondingCurve,
                 "MoxieBondingCurve_SubjectNotInitialized",
@@ -2062,7 +2062,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(seller)
-                    .sellShares(
+                    .sellSharesFor(
                         subject.address,
                         totalSellAmountSeller1,
                         seller.address,
@@ -2095,7 +2095,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(owner)
-                    .sellShares(
+                    .sellSharesFor(
                         subject.address,
                         totalSellAmountSeller1,
                         owner.address,
@@ -2134,7 +2134,7 @@ describe("MoxieBondingCurve", () => {
             await expect(
                 moxieBondingCurve
                     .connect(seller)
-                    .sellShares(
+                    .sellSharesFor(
                         subject.address,
                         totalSellAmountSeller1,
                         seller.address,
