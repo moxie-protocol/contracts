@@ -1,5 +1,5 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import EasyAuction from "../../test-artifact/easy-auction/artifacts/contracts/EasyAuction.sol/EasyAuction.json";
+import EasyAuction from "../../test-artifact/easy-auction/artifacts/EasyAuction.json"
 
 export default buildModule("EasyAuctionContracts", (m) => {
 
