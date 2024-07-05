@@ -13,6 +13,9 @@ import "./MinimalProxyFactory.sol";
 import "./IMoxieTokenLockManager.sol";
 import { MoxieTokenLockWallet } from "./MoxieTokenLockWallet.sol";
 import "./IMoxiePass.sol";
+import "./IERC20Extended.sol";
+import {ITokenManager} from "./ITokenManager.sol";
+
 
 /**
  * @title MoxieTokenLockManager
@@ -40,6 +43,7 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
     IERC20 internal _token;
     IMoxiePass public moxiePassToken;
     string public moxiePassTokenUri;
+    ITokenManager public tokenManager;
 
     // -- Events --
 
@@ -65,6 +69,7 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
     event TokenDestinationAllowed(address indexed dst, bool allowed);
     event MoxiePassTokenUpdated(address indexed moxiePassToken);
     event SubjectTokenDestinationAllowed(address indexed dst, bool allowed);
+    event TokenManagerUpdated(address indexed tokenManager);
 
     /**
      * Constructor.
@@ -381,5 +386,27 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
             dstList[i] = _subjectTokenDestinations.at(i);
         }
         return dstList;
+    }
+
+    /**
+     * @notice Sets the token manager contract address
+     * @param _tokenManager Address of the token manager contract
+     */
+     
+    function setTokenManager(address _tokenManager) external onlyOwner {
+        require(_tokenManager != address(0), "Token Manager cannot be zero");
+        tokenManager = ITokenManager(_tokenManager);
+        emit TokenManagerUpdated(_tokenManager);
+    }
+
+    /**
+     * @notice Gets the subject token address for a given subject
+     * @param _subject Address of the subject
+     * @return Address of the subject token
+     */
+    function getSubjectTokenAddress(address _subject) external override returns (address) {
+        IERC20Extended subjectToken = IERC20Extended(tokenManager.tokens(_subject));
+        require(address(subjectToken) != address(0), "Subject token not found");
+        return address(subjectToken);
     }
 }

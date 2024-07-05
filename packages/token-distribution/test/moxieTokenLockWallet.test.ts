@@ -19,6 +19,7 @@ import { defaultInitArgs, Revocability, TokenLockParameters } from './config'
 import { DeployOptions } from 'hardhat-deploy/types'
 import { setupTest, authProtocolFunctions, addAndVerifyTokenDestination, removeAndVerifyTokenDestination , advanceToStart, advancePeriods} from './helper'
 import { Staking } from '@graphprotocol/contracts/dist/types/Staking'
+import { log } from 'console'
 
 const { AddressZero, MaxUint256 } = constants
 
@@ -197,7 +198,7 @@ describe('MoxieTokenLockWallet', () => {
         // Try to stake funds into the protocol should fail
         const stakeAmount = toMOXIE('1000')
         const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
-        await expect(tx).revertedWith('Cannot use more tokens than vested amount')
+        await expect(tx).revertedWith('Cannot use more tokens than releasable amount')
       })
   
       it('should release considering what is used in the protocol', async function () {
@@ -258,6 +259,31 @@ describe('MoxieTokenLockWallet', () => {
         // Approve contracts to pull tokens from the token lock
         await tokenLock.connect(beneficiary.signer).approveProtocol()
       })
+
+      it('should only use releasable tokens for investing - revocability enabled', async function () {
+        await advanceToStart(tokenLock)
+        await advancePeriods(tokenLock, 1)
+
+        // const currentAvailableAmount = await tokenLock.availableAmount()
+        // console.log('currentAvailableAmount', formatMOXIE(currentAvailableAmount))
+        // const currentReleasableAmount = await tokenLock.releasableAmount()
+        // console.log('currentReleasableAmount', formatMOXIE(currentReleasableAmount))
+
+        // withdraw some amount
+        await tokenLock.connect(beneficiary.signer).release()
+
+        // const newAvailableAmount = await tokenLock.availableAmount()
+        // console.log('newAvailableAmount', formatMOXIE(newAvailableAmount))
+        // const newReleasableAmount = await tokenLock.releasableAmount()
+        // console.log('newReleasableAmount', formatMOXIE(newReleasableAmount))
+
+  
+        // At this point we vested one period, we have tokens
+        // Stake funds into the protocol
+        const stakeAmount = toMOXIE('1000')
+        const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount, {gasLimit: 1000000})
+        await expect(tx).to.be.revertedWith('Cannot use more tokens than releasable amount')
+      })
   
       it('should not allow to invest - unvested tokens - revocability enabled', async function () {
         await advanceToStart(tokenLock)
@@ -267,7 +293,7 @@ describe('MoxieTokenLockWallet', () => {
         // Stake funds into the protocol
         const stakeAmount = toMOXIE('2000')
         const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount, {gasLimit: 1000000})
-        await expect(tx).to.be.revertedWith('Cannot use more tokens than vested amount')
+        await expect(tx).to.be.revertedWith('Cannot use more tokens than releasable amount')
       })
   
       it('should get surplus profit amount received from protocol investing - revocability enabled', async function () {

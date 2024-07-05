@@ -39,11 +39,20 @@ contract MoxieTokenLockWallet is MoxieTokenLock {
 
     // -- Events --
 
-    event ManagerUpdated(address indexed _oldManager, address indexed _newManager);
+    event ManagerUpdated(
+        address indexed _oldManager,
+        address indexed _newManager
+    );
     event TokenDestinationsApproved();
     event TokenDestinationsRevoked();
-    event SubjectTokenDestinationsApproved(address indexed _subjectToken, address indexed _destination);
-    event SubjectTokenDestinationsRevoked(address indexed _subjectToken, address indexed _destination);
+    event SubjectTokenDestinationsApproved(
+        address indexed _subjectToken,
+        address indexed _destination
+    );
+    event SubjectTokenDestinationsRevoked(
+        address indexed _subjectToken,
+        address indexed _destination
+    );
 
     // Initializer
     function initialize(
@@ -148,14 +157,20 @@ contract MoxieTokenLockWallet is MoxieTokenLock {
 
         // Vesting cliff is activated and it has not passed means nothing is vested yet
         // so funds cannot be released
-        if (revocable == Revocability.Enabled && vestingCliffTime > 0 && currentTime() < vestingCliffTime) {
+        if (
+            revocable == Revocability.Enabled &&
+            vestingCliffTime > 0 &&
+            currentTime() < vestingCliffTime
+        ) {
             return 0;
         }
 
         // A beneficiary can never have more releasable tokens than the contract balance
         // We consider the `usedAmount` in the protocol as part of the calculations
         // the beneficiary should not release funds that are used.
-        uint256 releasable = availableAmount().sub(releasedAmount).sub(usedAmount);
+        uint256 releasable = availableAmount().sub(releasedAmount).sub(
+            usedAmount
+        );
         return MathUtils.min(currentBalance(), releasable);
     }
 
@@ -184,7 +199,7 @@ contract MoxieTokenLockWallet is MoxieTokenLock {
         if (revocable == Revocability.Enabled) {
             // Track contract balance change
             uint256 newBalance = currentBalance();
-            if (newBalance < oldBalance) { 
+            if (newBalance < oldBalance) {
                 // Outflow
                 uint256 diff = oldBalance.sub(newBalance);
                 usedAmount = usedAmount.add(diff);
@@ -194,7 +209,10 @@ contract MoxieTokenLockWallet is MoxieTokenLock {
                 uint256 diff = newBalance.sub(oldBalance);
                 usedAmount = (diff >= usedAmount) ? 0 : usedAmount.sub(diff);
             }
-            require(usedAmount <= vestedAmount(), "Cannot use more tokens than vested amount");
+            require(
+                usedAmount <= availableAmount() - releasedAmount,
+                "Cannot use more tokens than releasable amount"
+            );
         }
     }
 
@@ -210,27 +228,29 @@ contract MoxieTokenLockWallet is MoxieTokenLock {
      * @notice Approves protocol access of the subjecttoken
      * @dev Approves all subject token destinations registered in the manager to pull tokens
      */
-    function approveSubjectToken(address _subjectToken) external onlyBeneficiary {
-        require(_subjectToken != address(0), "Subject Token address cannot be zero");
+    function approveSubjectToken(address _subject) external onlyBeneficiary {
+        require(_subject != address(0), "_subject cannot be zero");
+        address subjectToken = manager.getSubjectTokenAddress(_subject);
+        require(subjectToken != address(0), "subjectToken cannot be zero");
         address[] memory dstList = manager.getSubjectTokenDestinations();
         for (uint256 i = 0; i < dstList.length; i++) {
-            IERC20Extended(_subjectToken).approve(dstList[i], type(uint256).max);
-             emit SubjectTokenDestinationsApproved(_subjectToken, dstList[i]);
+            IERC20Extended(subjectToken).approve(dstList[i], type(uint256).max);
+            emit SubjectTokenDestinationsApproved(subjectToken, dstList[i]);
         }
-       
     }
 
     /**
      * @notice Revokes protocol access from the subjecttokens
      * @dev Revokes approval to all subject token destinations in the manager to pull tokens
      */
-    function revokeSubjectTokens(address _subjectToken) external onlyBeneficiary {
-        require(_subjectToken != address(0), "Subject Token address cannot be zero");
+    function revokeSubjectToken(address _subject) external onlyBeneficiary {
+        require(_subject != address(0), "_subject cannot be zero");
+        address subjectToken = manager.getSubjectTokenAddress(_subject);
+        require(subjectToken != address(0), "subjectToken cannot be zero");
         address[] memory dstList = manager.getSubjectTokenDestinations();
         for (uint256 i = 0; i < dstList.length; i++) {
-            IERC20Extended(_subjectToken).approve(dstList[i], 0);
-             emit SubjectTokenDestinationsRevoked(_subjectToken, dstList[i]);
+            IERC20Extended(subjectToken).approve(dstList[i], 0);
+            emit SubjectTokenDestinationsRevoked(subjectToken, dstList[i]);
         }
-       
     }
 }

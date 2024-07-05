@@ -16,7 +16,7 @@ task('manager-setup-auth', 'Setup default authorized functions in the manager')
 
     logger.info('Setting up authorized functions...')
     logger.log(`> MoxieTokenLockManager: ${manager.address}`)
-    logger.log(`> Staking: ${taskArgs.targetAddress}`)
+    logger.log(`> TargetAddress: ${taskArgs.targetAddress}`)
 
     // Prepare
     logger.log(await prettyEnv(hre))
@@ -24,21 +24,18 @@ task('manager-setup-auth', 'Setup default authorized functions in the manager')
     // Validations
     isValidAddressOrFail(taskArgs.targetAddress)
 
-    // Setup authorized functions
+    //Setup authorized functions
     const signatures = [
-      // 'buyShares(address,uint256,address,uint256)',
-      // 'sellShares(address,uint256,address,uint256)',
-
       'placeSellOrders(uint256,uint96[],uint96[],bytes32[],bytes)',
       'claimFromParticipantOrder(uint256,bytes32[])',
       'cancelSellOrders(uint256,bytes32[])',
     ]
 
-    logger.info('The following signatures will be authorized:')
-    logger.info(signatures)
+    // logger.info('The following signatures will be authorized:')
+    // logger.info(signatures)
 
     if (await askConfirm()) {
-      // Setup authorized functions
+     // Setup authorized functions
       logger.info('Setup authorized functions...')
       const targets = Array(signatures.length).fill(taskArgs.targetAddress)
       const tx1 = await manager.setAuthFunctionCallMany(signatures, targets)

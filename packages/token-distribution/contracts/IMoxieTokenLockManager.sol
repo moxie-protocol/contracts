@@ -61,4 +61,6 @@ interface IMoxieTokenLockManager {
     function isSubjectTokenDestination(address _dst) external view returns (bool);
 
     function getSubjectTokenDestinations() external view returns (address[] memory);
+
+    function getSubjectTokenAddress(address _subject) external returns (address);
 }
