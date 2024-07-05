@@ -164,7 +164,6 @@ const prettyConfigEntry = (config: TokenLockConfigEntry) => {
     ReleaseCliff: ${config.releaseStartTime} (${prettyDate(config.releaseStartTime)})
     VestingCliff: ${config.vestingCliffTime} (${prettyDate(config.vestingCliffTime)})
     Owner: ${config.owner}
-    -> ContractAddress: ${config.contractAddress}
   `
 }
 
@@ -377,6 +376,8 @@ task('create-token-locks', 'Create token lock contracts from file')
 
       const queue = new PQueue({ concurrency: 6 })
 
+      logger.info('Deploying token lock contracts... start time:', new Date().toLocaleString())
+
       for (const entry of entries) {
         await queue.add(async () => {
           logger.log('')
@@ -412,6 +413,7 @@ task('create-token-locks', 'Create token lock contracts from file')
         })
       }
       await queue.onIdle()
+      logger.info('Deploying token lock contracts... end time:', new Date().toLocaleString())
     } else {
       // Output tx builder json
       logger.info(`Creating transaction builder JSON file...`)

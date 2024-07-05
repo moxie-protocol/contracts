@@ -26,16 +26,12 @@ task('manager-setup-auth', 'Setup default authorized functions in the manager')
 
     // Setup authorized functions
     const signatures = [
-      'stake()',
-      'unstake()',
-      'stake(uint256)',
-      'unstake(uint256)',
-      'withdraw()',
-      'delegate(address,uint256)',
-      'undelegate(address,uint256)',
-      'withdrawDelegated(address,address)',
-      'setDelegationParameters(uint32,uint32,uint32)',
-      'setOperator(address,bool)',
+      // 'buyShares(address,uint256,address,uint256)',
+      // 'sellShares(address,uint256,address,uint256)',
+
+      'placeSellOrders(uint256,uint96[],uint96[],bytes32[],bytes)',
+      'claimFromParticipantOrder(uint256,bytes32[])',
+      'cancelSellOrders(uint256,bytes32[])',
     ]
 
     logger.info('The following signatures will be authorized:')

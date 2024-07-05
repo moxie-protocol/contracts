@@ -73,6 +73,5 @@ coverage/
 
 *.html/
 
-deployments
 
 venv
