@@ -35,7 +35,6 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     error MoxieBondingCurve_InvalidOwner();
     error MoxieBondingCurve_InvalidSubjectFactory();
     error MoxieBondingCurve_OnlySubjectFactory();
-    error MoxieBondingCurve_InvalidReserveFactory();
     error MoxieBondingCurve_InvalidReserveRation();
     error MoxieBondingCurve_SubjectAlreadyInitialized();
     error MoxieBondingCurve_SubjectNotInitialized();
@@ -91,7 +90,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     /// @dev Address of vault contract.
     IVault public vault;
 
-    /// @dev Use to represeny fee percentage base 0% = 0; 1% = 10 ** 16; 100% = 10 ** 18
+    /// @dev Use to represent fee percentage base 0% = 0; 1% = 10 ** 16; 100% = 10 ** 18
     uint256 public constant PCT_BASE = 10 ** 18;
     /// @dev Use to represent reserve ratio, 1M is 1
     uint32 public constant PPM = 1000000;
@@ -198,10 +197,12 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
      */
     function _validateFee(FeeInput memory _feeInput) internal pure {
         if (
-            !_feeIsValid(_feeInput.protocolBuyFeePct) ||
-            !_feeIsValid(_feeInput.protocolSellFeePct) ||
-            !_feeIsValid(_feeInput.subjectBuyFeePct) ||
-            !_feeIsValid(_feeInput.subjectSellFeePct)
+            !_feeIsValid(
+                _feeInput.protocolBuyFeePct + _feeInput.subjectBuyFeePct
+            ) ||
+            !_feeIsValid(
+                _feeInput.protocolSellFeePct + _feeInput.subjectSellFeePct
+            )
         ) revert MoxieBondingCurve_InvalidFeePercentage();
     }
 
@@ -282,7 +283,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
      * @param _subjectToken Address of Subject Token.
      * @param _depositAmount Amount of deposit to buy shares.
      * @param _onBehalfOf Address of beneficiary where shares will be minted. This address can be zero address too.
-     * @param _minReturnAmountAfterFee Minimum number of shares that must be recieved.
+     * @param _minReturnAmountAfterFee Minimum number of shares that must be received.
      * @param _subject Address of subject.
      * @param _subjectReserveRatio Subject Reserve ratio.
      */
@@ -387,8 +388,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         );
 
         // burn subjectToken
-        _subjectToken.safeTransferFrom(msg.sender, address(this), _sellAmount);
-        _subjectToken.burn(_sellAmount);
+        _subjectToken.burnFrom(msg.sender, _sellAmount);
 
         vault.transfer(
             address(_subjectToken),
@@ -475,7 +475,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
      * @param _subject Address of subject.
      * @param _initialSupply Initial supply of subjects tokens at the time of bonding curve initialization.
      * @param _reserveRatio reserve ratio of subject for bonding curve.
-     * @param _reserveAmount Initial reseve amount.
+     * @param _reserveAmount Initial reserve amount.
      */
     function initializeSubjectBondingCurve(
         address _subject,
@@ -518,8 +518,6 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         return true;
     }
 
-    //todo add moxie pass check
-    //todo decide if onBehalfOf can be address(0)
     /**
      * @dev Buy shares of subject.
      * @param _subject Address of subject.

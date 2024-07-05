@@ -136,6 +136,10 @@ describe("MoxieBondingCurve", () => {
             .connect(owner)
             .grantRole(await vaultInstance.TRANSFER_ROLE(), moxieBondingCurveAddress);
 
+        await vaultInstance
+            .connect(owner)
+            .grantRole(await vaultInstance.DEPOSIT_ROLE(), moxieBondingCurveAddress);
+
         const PCT_BASE = BigInt(10 ** 18);
         return {
             owner,
