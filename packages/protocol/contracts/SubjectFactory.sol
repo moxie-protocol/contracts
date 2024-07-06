@@ -339,7 +339,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         ///@dev Instead of returning subject fee to subject, give buy subject shares for subject.
 
         if (subjectFee_ > 0) {
-            moxieBondingCurve.buyShares(
+            moxieBondingCurve.buySharesFor(
                 _subject,
                 subjectFee_,
                 _subject,
