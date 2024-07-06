@@ -8,3 +8,4 @@
 5. npx hardhat ignition deploy ignition/modules/4_EasyAuction.ts --network baseSepolia --deployment-id testnet-v3
 6. npx hardhat ignition deploy ignition/modules/5_ProtocolContractsProxy.ts --network baseSepolia --deployment-id testnet-v3
 7. npx hardhat ignition deploy ignition/modules/6_Permissions.ts --network baseSepolia --deployment-id testnet-v3
+8. npx hardhat ignition deploy ignition/modules/7_TokenLockManager.ts --network baseSepolia --deployment-id testnet-v3
