@@ -12,11 +12,11 @@ import "../protocol/tasks/OnboardSubject"
 import "./tasks/AssignOnboardingRole"
 import "./tasks/CancelBid"
 import "./tasks/Finalize"
+import "./tasks/Test1"
 
 const config: HardhatUserConfig = {
   solidity: "0.8.24",
- 
-  , etherscan: {
+   etherscan: {
     customChains: [
       {
         network: "baseSepolia",

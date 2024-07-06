@@ -1,7 +1,7 @@
 import { task } from "hardhat/config";
 import { BigNumber} from "@ethersproject/bignumber";
 
-const SUBJECT_FACTORY_ADDRESS = '0x830ABa2522399E0EEE39bad3b6eE8778d4614B51'
+const SUBJECT_FACTORY_ADDRESS = '0x3199219bda5dbC9ee45bb3DFad180be56A7ebfd0'
 const MOXIE_PASS = '0xA63D5a914F575F8Fe8832A2A9Fcb4A2d875Db2Ef'
 const MOXIE_PASS_VERIFIER_ADDRESS = '0xCCCAbD849485Eb16BAd22B4b3e8B315F537Da1E9'
 
@@ -12,9 +12,9 @@ task("onboard", "Onboard Subject", async (taskArgs, hre) => {
 
     const [deployer, owner, minter, subject, subject1, subject2]  = await hre.ethers.getSigners();
 
-    await moxiePass.connect(minter).mint('0x45b19Bafb4c035056E4a2Fe8667545a89C2E44a7', "uri");
+    // await moxiePass.connect(minter).mint('0x45b19Bafb4c035056E4a2Fe8667545a89C2E44a7', "uri");
 
-    console.log(subject2.address)
+    // console.log(subject2.address)
 
     const auctionInput = {
         name: 'fid-3761',
@@ -33,11 +33,11 @@ task("onboard", "Onboard Subject", async (taskArgs, hre) => {
     await subjectFactory.connect(owner).grantRole(await subjectFactory.UPDATE_AUCTION_ROLE(), owner.address)
 
     // Change auctionTime to 15 minutes
-    await subjectFactory.connect(owner).updateAuctionTime(900, 899);
+    await subjectFactory.connect(owner).updateAuctionTime(600, 599);
 
-    await subjectFactory.connect(owner).initiateSubjectOnboarding(
-        subject2.address,
-        auctionInput,
-    )
+    // await subjectFactory.connect(owner).initiateSubjectOnboarding(
+    //     subject2.address,
+    //     auctionInput,
+    // )
 
 });
