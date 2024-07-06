@@ -404,9 +404,9 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
      * @param _subject Address of the subject
      * @return Address of the subject token
      */
-    function getSubjectTokenAddress(address _subject) external override returns (address) {
-        IERC20Extended subjectToken = IERC20Extended(tokenManager.tokens(_subject));
-        require(address(subjectToken) != address(0), "Subject token not found");
-        return address(subjectToken);
+    function getSubjectTokenAddress(address _subject) external view override returns (address) {
+        address subjectToken = tokenManager.tokens(_subject);
+        require(subjectToken != address(0), "Subject token not found");
+        return subjectToken;
     }
 }

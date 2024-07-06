@@ -10,7 +10,7 @@ interface ITokenManager {
     );
     event TokenMinted(address _subject, address _token, uint256 _amount);
 
-    function tokens(address _subject) external returns (address token_);
+    function tokens(address _subject) external view returns (address token_);
 
     function create(
         address _beneficiary,
