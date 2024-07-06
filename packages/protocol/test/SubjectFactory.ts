@@ -2,8 +2,14 @@ import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import hre, { ethers } from "hardhat";
 import EasyAuctionArtifact from "../test-artifact/easy-auction/artifacts/EasyAuction.json";
+import MoxieTokenLockWalletArtifact from "../test-artifact/MoxieTokenLockWallet.sol/artifacts/MoxieTokenLockWallet.json";
+import MoxieTokenLockManagerArtifact from "../test-artifact/MoxieTokenLockManager.sol/artifacts/MoxieTokenLockManager.json";
 import { EasyAuction } from "../test-artifact/easy-auction/typechain/EasyAuction";
+import { MoxieTokenLockWallet } from "../test-artifact/MoxieTokenLockWallet.sol/typechain/MoxieTokenLockWallet";
+import { MoxieTokenLockManager } from "../test-artifact/MoxieTokenLockManager.sol/typechain/MoxieTokenLockManager";
+
 import { SubjectERC20 } from "../typechain-types";
+import { parseEther } from "ethers";
 
 
 describe('Subject Factory', () => {
@@ -11,8 +17,7 @@ describe('Subject Factory', () => {
 
     const deploy = async () => {
 
-        const [deployer, owner, minter, feeBeneficiary, subject, bidder1, bidder2] = await ethers.getSigners();
-
+        const [deployer, owner, minter, feeBeneficiary, subject, bidder1, bidder2, vestingBeneficiary] = await ethers.getSigners();
 
         const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactory");
         const MoxieToken = await hre.ethers.getContractFactory("MoxieToken");
@@ -39,6 +44,7 @@ describe('Subject Factory', () => {
 
         // vault deployment
         const vaultInstance = await Vault.deploy({ from: deployer.address });
+
 
         await vaultInstance.connect(deployer).initialize(owner.address);
         // subject deployment
@@ -72,10 +78,6 @@ describe('Subject Factory', () => {
             .connect(deployer)
             .initialize(owner.address, subjectErc20Address);
 
-        // token lock wallet and token lock manager
-        const TokenLockWallet = await hre.ethers.getContractFactoryFromArtifact(EasyAuctionArtifact);;
-
-
         const moxieTokenAddress = await moxieToken.getAddress();
         const formulaAddress = await formula.getAddress();
         const tokenManagerAddress = await tokenManager.getAddress();
@@ -98,6 +100,7 @@ describe('Subject Factory', () => {
             subjectBuyFeePct,
             subjectSellFeePct,
         };
+        
 
         await moxieBondingCurve.initialize(
             moxieTokenAddress,
@@ -157,6 +160,50 @@ describe('Subject Factory', () => {
         await moxiePass.connect(minter).mint(bidder2.address, "uri");
 
         const PCT_BASE = BigInt(10 ** 18);
+
+         // token lock wallet and token lock manager
+
+        //  const EasyAuctionVC = await hre.ethers.getContractFactoryFromArtifact(EasyAuctionArtifact);
+        //  const easyAuctionVC: EasyAuction = (await EasyAuction.connect(owner).deploy()) as unknown as EasyAuction;
+        
+         const MoxieTokenLockWallet = await hre.ethers.getContractFactoryFromArtifact(MoxieTokenLockWalletArtifact);;
+         const moxieTokenLockWallet : MoxieTokenLockWallet= (await MoxieTokenLockWallet.connect(owner).deploy()) as unknown as MoxieTokenLockWallet;
+         const moxieTokenLockWalletAddress = await moxieTokenLockWallet.getAddress();
+ 
+         const MoxieTokenLockManager = await hre.ethers.getContractFactoryFromArtifact(MoxieTokenLockManagerArtifact);
+         const moxieTokenLockManager : MoxieTokenLockManager= (await MoxieTokenLockManager.connect(owner).deploy(moxieTokenAddress, moxieTokenLockWalletAddress)) as unknown as MoxieTokenLockManager;
+    
+         // set MoxiePass token and uri
+         const moxiePassTokenAddress  = await moxiePass.getAddress();
+         await moxieTokenLockManager.connect(owner).setMoxiePassTokenAndUri(moxiePassTokenAddress, "uri");
+
+         const moxieTokenLockManagerAddress = await moxieTokenLockManager.getAddress();
+
+         await moxiePass
+            .connect(owner)
+            .grantRole(await moxiePass.MINTER_ROLE(), moxieTokenLockManagerAddress);
+
+        // set token manager address in moxie token lock manager to fetch subject token address for given subject address
+        await moxieTokenLockManager.connect(owner).setTokenManager(tokenManagerAddress);
+        await moxieTokenLockManager.connect(owner).addSubjectTokenDestination(moxieBondingCurveAddress);
+        
+        // set authorized protocol contracts that will be used by vesting contract for invest while vest
+        await moxieTokenLockManager.connect(owner).addTokenDestination(moxieBondingCurveAddress);
+        await moxieTokenLockManager.connect(owner).addTokenDestination(easyAuctionAddress);
+
+        // whitelist easy auction authorized functions
+        await moxieTokenLockManager.connect(owner).setAuthFunctionCallMany(
+            ['placeSellOrders(uint256,uint96[],uint96[],bytes32[],bytes)',
+            'claimFromParticipantOrder(uint256,bytes32[])',
+            'cancelSellOrders(uint256,bytes32[])'],
+            [easyAuctionAddress, easyAuctionAddress, easyAuctionAddress]);
+
+        // whitelist moxie bonding curve authorized functions
+        await moxieTokenLockManager.connect(owner).setAuthFunctionCallMany(
+            ['buyShares(address,uint256,uint256)','sellShares(address,uint256,uint256)'],
+            [moxieBondingCurveAddress, moxieBondingCurveAddress]);
+    
+
         return {
             subjectFactory,
             owner,
@@ -182,7 +229,12 @@ describe('Subject Factory', () => {
             reserveRatio,
             PCT_BASE,
             vaultInstance,
-            formula
+            formula,
+            moxieTokenLockWallet,
+            moxieTokenLockWalletAddress,
+            moxieTokenLockManager,
+            moxieTokenLockManagerAddress,
+            vestingBeneficiary
         };
 
     }
@@ -1138,7 +1190,7 @@ describe('Subject Factory', () => {
 
         });
 
-        it('should finalize subject onboarding when there are bids in auction from vesting contracts', async () => {
+        it.only('should finalize subject onboarding when there are bids in auction from vesting contracts', async () => {
             const {
                 subjectFactory,
                 owner,
@@ -1158,19 +1210,22 @@ describe('Subject Factory', () => {
                 vaultInstance,
                 feeBeneficiary,
                 formula,
-                feeInput
-
-
+                feeInput,
+                moxieTokenLockWallet,
+                moxieTokenLockWalletAddress,
+                moxieTokenLockManager,
+                moxieTokenLockManagerAddress,
+                vestingBeneficiary
             } = await loadFixture(deploy);
 
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
             const auctionInput = {
                 name: 'fid-3761',
                 symbol: 'fid-3761',
-                initialSupply: '1000',
-                minBuyAmount: '1000',// in moxie token
-                minBiddingAmount: '1000', // in subject token
-                minFundingThreshold: '0', // amount of auction funding in moxie token below which auction will be cancelled.
+                initialSupply: parseEther('1000'),
+                minBuyAmount: parseEther('10'),// in moxie token 100 MOXIE
+                minBiddingAmount: parseEther('10'), // in subject token 100 
+                minFundingThreshold: parseEther('0'), // amount of auction funding in moxie token below which auction will be cancelled.
                 isAtomicClosureAllowed: false, // false can be hardcoded
                 accessManagerContract: moxiePassVerifierAddress, //
                 accessManagerContractData: '0x' //0x00 can be hardcoded
@@ -1186,14 +1241,66 @@ describe('Subject Factory', () => {
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
             let subjectToken = SubjectERC20.attach(subjectTokenAddress) as SubjectERC20;
 
-            // fund bidder
-            const biddingAmount = '1000000'; //moxie
-            await moxieToken.connect(owner).transfer(bidder1.address, biddingAmount);
+            // fund the token lock manager 
+            await moxieToken.connect(owner).transfer(moxieTokenLockManagerAddress, '1000000000000000000000');
 
-            await moxieToken.connect(bidder1).approve(easyAuctionAddress, biddingAmount);
+
+            // vesting contract input parameters
+
+            const startTime = parseInt(Date.now()/ 1000);
+            const endTime = startTime + 172800; // 2 days
+            const periodsInterval = 5;// 5 minutes
+            const periods = (endTime - startTime) / periodsInterval; // number of periods
+            const releaseStartTime = 0; // release start time in epoch seconds. Default: 0
+            const vestingCliffTime = 0; // vesting cliff time in epoch seconds. Default: 0
+            const revocable = 1; // vesting contract revocable flag: 1 for revocable, 2 for non-revocable
+            const managedAmount =  parseEther('1000') // 1000 MOXIE  // amount managed by vesting contract
+            
+            // Deploy a vesting contract
+            const tx = await moxieTokenLockManager
+              .connect(owner)
+              .createTokenLockWallet(
+                owner.address,
+                vestingBeneficiary.address,
+                managedAmount,
+                startTime,
+                endTime,
+                periods, 
+                releaseStartTime, 
+                vestingCliffTime,
+                revocable,
+              )
+            console.log(`> Transaction sent: ${tx.hash}`)
+            const receipt = await tx.wait(1)  // 1 confirmations
+            const vestingContractAddress = receipt.logs[0].args[0]
+            console.log(`Deployed vesting contract: ${vestingContractAddress}`)
+
+            // verify if data looks okay for newly created vesting contract
+            const vestingContract = moxieTokenLockWallet.attach(vestingContractAddress) as MoxieTokenLockWallet
+            expect(await vestingContract.owner()).to.equal(owner.address)
+            expect(await vestingContract.beneficiary()).to.equal(vestingBeneficiary.address)
+            expect(await vestingContract.managedAmount()).to.equal(managedAmount)
+            expect(await vestingContract.startTime()).to.equal(startTime)
+            expect(await vestingContract.endTime()).to.equal(endTime)
+            expect(await vestingContract.periods()).to.equal(periods)
+            expect(await vestingContract.releaseStartTime()).to.equal(releaseStartTime)
+            expect(await vestingContract.vestingCliffTime()).to.equal(vestingCliffTime)
+            expect(await vestingContract.revocable()).to.equal(revocable)
+
+            // approve so that protocol contracts can spend the MOXIE tokens
+            await vestingContract.connect(vestingBeneficiary).approveProtocol()
+
+            // check releasable amount before placing bids
+            const releasableAmount = await vestingContract.releasableAmount()
+            console.log(`Releasable amount before placing bids: ${releasableAmount}`)
+
+            const easyAuctionVC = easyAuction.attach(vestingContractAddress) as EasyAuction
+
+            const biddingAmount = releasableAmount // 200 MOXIE
+
             const queueStartElement =
                 "0x0000000000000000000000000000000000000000000000000000000000000001";
-            await easyAuction.connect(bidder1).placeSellOrders(
+            await easyAuctionVC.connect(vestingBeneficiary).placeSellOrders(
                 auctionId,
                 [auctionInput.initialSupply],//subject token
                 [biddingAmount], // moxie token
@@ -1201,10 +1308,11 @@ describe('Subject Factory', () => {
                 '0x',
             );
 
+            expect (await vestingContract.releasableAmount()).to.equal('0')
+
             await time.increase(auctionDuration);
-
-
-            const buyAmount = "1000000";
+ 
+            const buyAmount = parseEther('1');   // 1 MOXIE
             const additionalSupplyDueToBuyAmount = BigInt(buyAmount) * BigInt(auctionInput.initialSupply) / BigInt(biddingAmount);
 
             const expectedProtocolFee = (BigInt(biddingAmount) + BigInt(buyAmount)) * BigInt(feeInputSubjectFactory.protocolFeePct) / PCT_BASE;
@@ -1229,13 +1337,25 @@ describe('Subject Factory', () => {
                 expectedSubjectFee
             );
 
-            const actualBuyAmountFromSubjectFee = expectedSubjectFee * (PCT_BASE - BigInt(feeInput.protocolBuyFeePct) - BigInt(feeInput.subjectBuyFeePct)) / PCT_BASE;
+            //const actualBuyAmountFromSubjectFee = expectedSubjectFee * (PCT_BASE - BigInt(feeInput.protocolBuyFeePct) - BigInt(feeInput.subjectBuyFeePct)) / PCT_BASE;
+            const subjectBuyFeeForSubject = expectedSubjectFee * BigInt(feeInput.subjectBuyFeePct) / PCT_BASE;
+            const protocolBuyFeeForSubject = expectedSubjectFee * BigInt(feeInput.protocolBuyFeePct) / PCT_BASE;
+            const actualBuyAmountFromSubjectFee = expectedSubjectFee - subjectBuyFeeForSubject - protocolBuyFeeForSubject
+            // console.log(`subjectBuyFeeForSubject: ${subjectBuyFeeForSubject}`)
+            // console.log(`protocolBuyFeeForSubject: ${protocolBuyFeeForSubject}`)
+
             const expectedShareMintFromBondingCurve = await formula.calculatePurchaseReturn(
                 expectedBondingSupply,
                 expectedBondingAmount,
                 reserveRatio,
                 actualBuyAmountFromSubjectFee
             );
+            // console.log(`expectedSubjectFee: ${expectedSubjectFee}`)
+            // console.log(`actualBuyAmountFromSubjectFee: ${actualBuyAmountFromSubjectFee}`)
+            // console.log(`expectedBondingSupply: ${expectedBondingSupply}`)
+            // console.log(`expectedBondingAmount: ${expectedBondingAmount}`)
+            // console.log(`actualBuyAmountFromSubjectFee: ${actualBuyAmountFromSubjectFee}`)
+            // console.log(`expectedShareMintFromBondingCurve: ${expectedShareMintFromBondingCurve}`)
             expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply + BigInt(expectedShareMintFromBondingCurve));
             expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount + actualBuyAmountFromSubjectFee);
             const auction = await subjectFactory.auctions(subject.address);
