@@ -3,6 +3,8 @@ import { setup } from "./utils";
 import { BigNumber} from "@ethersproject/bignumber";
 import * as contracts from "./config/deployed_addresses.json";
 
+const SUBJECT_FACTORY_ADDRESS = '0x3199219bda5dbC9ee45bb3DFad180be56A7ebfd0'
+
 
 task("test1", "test1", async (taskArgs, hre) => {
 
@@ -26,6 +28,8 @@ task("test1", "test1", async (taskArgs, hre) => {
    console.log('owner.address', owner.address)
    console.log('subject.address', subject.address)
 
+   
+   // To change as per your test
    const auctionInput = {
     name: 'fid-3761',
     symbol: 'fid-3761',
@@ -39,70 +43,75 @@ task("test1", "test1", async (taskArgs, hre) => {
 }
 
    // Initiate subject onboarding
-   // await moxiePass.connect(owner).mint(subject.address, "uri");
-   // const auctionId  = await subjectFactory.connect(owner).initiateSubjectOnboarding(
-   //  subject.address,
-   //  auctionInput
-   // ).then((tx: any) => {
-   //    console.log(tx)
-   // });
+   await moxiePass.connect(owner).mint(subject.address, "uri");
+   await subjectFactory.connect(owner).initiateSubjectOnboarding(
+    subject.address,
+    auctionInput
+   ).then((tx: any) => {
+      console.log(tx)
+   });
 
+   // Get the auction id from log of the above transaction
    const auctionId = 8;
    console.log('auctionId', auctionId)
 
    // place a bid
-   // const buyAmount = BigNumber.from('5').mul(BigNumber.from(10).pow(18)); // subject
-   // const sellAmount = BigNumber.from('7').mul(BigNumber.from(10).pow(18)); // moxie
+   // To change as per your test
+   const buyAmount = BigNumber.from('5').mul(BigNumber.from(10).pow(18)); // subject
+   const sellAmount = BigNumber.from('7').mul(BigNumber.from(10).pow(18)); // moxie
    
-   // const queueStartElement =
-   //    "0x0000000000000000000000000000000000000000000000000000000000000001";
-   // await easyAuctionVC.connect(beneficiary).placeSellOrders(
-   //    BigInt(auctionId),
-   //    [buyAmount.toString()],
-   //    [sellAmount.toString()],
-   //    [queueStartElement],
-   //    '0x'
-   // ).then((tx: any) => {
-   //    console.log(tx)
-   // }).catch((err: any) => {
-   //    console.log(err)
-   //    });
+   const queueStartElement =
+      "0x0000000000000000000000000000000000000000000000000000000000000001";
+   await easyAuctionVC.connect(beneficiary).placeSellOrders(
+      BigInt(auctionId),
+      [buyAmount.toString()],
+      [sellAmount.toString()],
+      [queueStartElement],
+      '0x'
+   ).then((tx: any) => {
+      console.log(tx)
+   }).catch((err: any) => {
+      console.log(err)
+      });
 
    // Finalize subject onboarding
-   // const buyAmountFinalize = BigNumber.from('1').mul(BigNumber.from(10).pow(18)).toString();
-   // await moxieToken.connect(owner).approve('0x3199219bda5dbC9ee45bb3DFad180be56A7ebfd0', buyAmountFinalize);
+   const buyAmountFinalize = BigNumber.from('1').mul(BigNumber.from(10).pow(18)).toString();
+   await moxieToken.connect(owner).approve(SUBJECT_FACTORY_ADDRESS, buyAmountFinalize);
    
-   // await subjectFactory.connect(owner).finalizeSubjectOnboarding(
-   //    subject.address,
-   //    buyAmountFinalize,
-   //    660000
-   // ).catch((err: any) => {
-   //    console.log(err)
-   //    });
+   await subjectFactory.connect(owner).finalizeSubjectOnboarding(
+      subject.address,
+      buyAmountFinalize,
+      660000
+   ).catch((err: any) => {
+      console.log(err)
+      });
 
    // Claim from participant order
-   // await easyAuctionVC.connect(beneficiary).claimFromParticipantOrder(
-   //    BigInt(auctionId), [
-   //       encodeOrder({
-   //          buyAmount: BigNumber.from('5').mul(BigNumber.from(10).pow(18)),
-   //           sellAmount: BigNumber.from('7').mul(BigNumber.from(10).pow(18)),
-   //           userId: BigNumber.from(3),
-   //         }),
-   //   ]
-   // );
+   // buyAmount and sellAmount should be same as the bid placed
+   await easyAuctionVC.connect(beneficiary).claimFromParticipantOrder(
+      BigInt(auctionId), [
+         encodeOrder({
+            buyAmount: BigNumber.from('5').mul(BigNumber.from(10).pow(18)),
+             sellAmount: BigNumber.from('7').mul(BigNumber.from(10).pow(18)),
+             userId: BigNumber.from(3),
+           }),
+     ]
+   );
 
    const setupOutput = await setup(hre, 1);
    const moxieBondingCureVC2 = setupOutput.moxieBondingCurveVC;
    // Buy Shares
-   // console.log('moxieBondingCureVC2', await moxieBondingCureVC2.getAddress())
-   // const buyAmountBuyShares = BigNumber.from('7').mul(BigNumber.from(10).pow(18)); // subject tokens
-   // await moxieBondingCureVC2.connect(beneficiary).buyShares(
-   //    subject.address,
-   //    buyAmountBuyShares.toString(),
-   //    0
-   // )
+   // buyAmountBuyShares can be change as per your test
+   console.log('moxieBondingCureVC2', await moxieBondingCureVC2.getAddress())
+   const buyAmountBuyShares = BigNumber.from('7').mul(BigNumber.from(10).pow(18)); // subject tokens
+   await moxieBondingCureVC2.connect(beneficiary).buyShares(
+      subject.address,
+      buyAmountBuyShares.toString(),
+      0
+   )
 
    // Sell shares
+   // sellAmountShares will be same as the buyAmountBuyShares or less than that
    const sellAmountShares = BigNumber.from('7').mul(BigNumber.from(10).pow(18)); // subject tokens
    console.log('vestingContract', await vestingContract.getAddress())
    await vestingContract.connect(beneficiary).approveSubjectToken(subject.address)
