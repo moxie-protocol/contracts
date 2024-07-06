@@ -1,6 +1,4 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import EasyAuction from "../../test-artifact/easy-auction/artifacts/contracts/EasyAuction.sol/EasyAuction.json";
-
 
 export default buildModule("ProtocolContracts", (m) => {
 
