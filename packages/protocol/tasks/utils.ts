@@ -22,6 +22,7 @@ export const setup = async (hre: any, beneficiaryIndex: number): Promise< {
     const signers = await hre.ethers.getSigners();
 
     const beneficiary = signers[beneficiaryIndex];
+    console.log('beneficiary.address', beneficiary.address)
     const vestingContractAddresses = JSON.parse(JSON.stringify(vestingContracts));
     const vestingContractAddress = vestingContractAddresses[beneficiary.address];
     const easyAuctionVC = await hre.ethers.getContractAtFromArtifact(EasyAuctionArtifact, vestingContractAddress) as unknown as EasyAuction
