@@ -16,7 +16,7 @@ interface IMoxieBondingCurve {
         uint256 _reserveAmount
     ) external returns (bool);
 
-    function buyShares(
+    function buySharesFor(
         address _subject,
         uint256 _depositAmount,
         address _onBehalfOf,
