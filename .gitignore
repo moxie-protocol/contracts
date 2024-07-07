@@ -38,6 +38,8 @@ cached/
 
 # Do not ignore the artifacts folder inside the test directory
 !packages/protocol/test-artifact/easy-auction/artifacts
+!packages/protocol/test-artifact/MoxieTokenLockManager.sol/artifacts
+!packages/protocol/test-artifact/MoxieTokenLockWallet.sol/artifacts
 
 # TypeChain files
 */*/typechain
