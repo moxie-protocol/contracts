@@ -1,4 +1,4 @@
-import { task } from 'hardhat/config'
+import { task, types } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { askConfirm, getTokenLockManagerOrFail, isValidAddressOrFail, prettyEnv, waitTransaction } from './create'
 import consola from 'consola'
@@ -9,6 +9,7 @@ const logger = consola.create({})
 
 task('manager-setup-auth', 'Setup default authorized functions in the manager')
   .addParam('targetAddress', 'Target address for function calls')
+  .addParam('signatures', 'function signatures to authorize', [], types.json)
   .addParam('managerName', 'Name of the token lock manager deployment', 'MoxieTokenLockManager')
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
     // Get contracts
@@ -17,6 +18,7 @@ task('manager-setup-auth', 'Setup default authorized functions in the manager')
     logger.info('Setting up authorized functions...')
     logger.log(`> MoxieTokenLockManager: ${manager.address}`)
     logger.log(`> TargetAddress: ${taskArgs.targetAddress}`)
+    logger.log(`> Signatures: ${taskArgs.signatures}`)
 
     // Prepare
     logger.log(await prettyEnv(hre))
@@ -25,14 +27,13 @@ task('manager-setup-auth', 'Setup default authorized functions in the manager')
     isValidAddressOrFail(taskArgs.targetAddress)
 
     //Setup authorized functions
-    const signatures = [
-      'placeSellOrders(uint256,uint96[],uint96[],bytes32[],bytes)',
-      'claimFromParticipantOrder(uint256,bytes32[])',
-      'cancelSellOrders(uint256,bytes32[])',
-    ]
-
-    // logger.info('The following signatures will be authorized:')
-    // logger.info(signatures)
+    // const signatures1 = [
+    //   'placeSellOrders(uint256,uint96[],uint96[],bytes32[],bytes)',
+    //   'claimFromParticipantOrder(uint256,bytes32[])',
+    //   'cancelSellOrders(uint256,bytes32[])',
+    // ]
+    // logger.log(`> Signatures1: ${signatures1}`)
+    const signatures = taskArgs.signatures
 
     if (await askConfirm()) {
      // Setup authorized functions
@@ -161,4 +162,56 @@ task('manager-transfer-ownership', 'Transfer ownership of the manager')
 
     // Transfer ownership
     await manager.transferOwnership(taskArgs.owner)
+  })
+
+  task('set-token-manager', 'Set Token Manager contract address')  
+  .addParam('tokenManagerAddress', 'Address of the Token Manager contract')
+  .addParam('managerName', 'Name of the token lock manager deployment', 'MoxieTokenLockManager')
+  .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
+    const manager = await getTokenLockManagerOrFail(hre, taskArgs.managerName)
+
+    // Validate current owner
+    const tokenLockManagerOwner = await manager.owner()
+    const { deployer } = await hre.getNamedAccounts()
+    if (tokenLockManagerOwner !== deployer) {
+      logger.error('Only the owner can transfer ownership')
+      process.exit(1)
+    }
+
+    logger.info(`Manager address: ${manager.address}}`)
+    logger.info(`Token Lock Manager Address: ${taskArgs.tokenManagerAddress}`)
+
+    if (!(await askConfirm())) {
+      logger.log('Cancelled')
+      process.exit(1)
+    }
+
+    await manager.setTokenManager(taskArgs.tokenManagerAddress)
+    logger.info(`Token Lock Manager is set`)
+  })
+
+  task('add-subject-token-destination', 'Add subject token destination address')  
+  .addParam('protocolContractAddress', 'Address of the protocol contract')
+  .addParam('managerName', 'Name of the token lock manager deployment', 'MoxieTokenLockManager')
+  .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
+    const manager = await getTokenLockManagerOrFail(hre, taskArgs.managerName)
+
+    // Validate current owner
+    const tokenLockManagerOwner = await manager.owner()
+    const { deployer } = await hre.getNamedAccounts()
+    if (tokenLockManagerOwner !== deployer) {
+      logger.error('Only the owner can transfer ownership')
+      process.exit(1)
+    }
+
+    logger.info(`Manager address: ${manager.address}}`)
+    logger.info(`Protocol contract Address: ${taskArgs.protocolContractAddress}`)
+
+    if (!(await askConfirm())) {
+      logger.log('Cancelled')
+      process.exit(1)
+    }
+
+    await manager.addSubjectTokenDestination(taskArgs.protocolContractAddress)
+    logger.info(`Protocol contract address is whitelisted in token lock manager`)
   })
