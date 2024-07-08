@@ -372,7 +372,7 @@ task('create-token-locks', 'Create token lock contracts from file')
     if (!taskArgs.txBuilder) {
       // Deploy contracts
       const accounts = await hre.ethers.getSigners()
-      const nonceManager = new NonceManager(accounts[0]) // Use NonceManager to send concurrent txs
+      const nonceManager = new NonceManager(accounts[1]) // Use NonceManager to send concurrent txs
 
       const queue = new PQueue({ concurrency: 6 })
 
