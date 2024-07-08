@@ -210,7 +210,7 @@ contract MoxieTokenLockWallet is MoxieTokenLock {
                 usedAmount = (diff >= usedAmount) ? 0 : usedAmount.sub(diff);
             }
             require(
-                usedAmount <= availableAmount() - releasedAmount,
+                usedAmount <= super.releasableAmount(),
                 "Cannot use more tokens than releasable amount"
             );
         }

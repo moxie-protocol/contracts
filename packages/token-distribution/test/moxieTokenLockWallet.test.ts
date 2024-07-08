@@ -295,6 +295,44 @@ describe('MoxieTokenLockWallet', () => {
         const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount, {gasLimit: 1000000})
         await expect(tx).to.be.revertedWith('Cannot use more tokens than releasable amount')
       })
+
+      it('should not allow to invest - more than releasable amount - revocability enabled', async function () {
+        await advanceToStart(tokenLock)
+        await advancePeriods(tokenLock,2)
+  
+        // At this point we vested two period, we have tokens
+        // withdraw 2000 moxie
+        await tokenLock.connect(beneficiary.signer).release()
+        //advance 1 periods
+        await advancePeriods(tokenLock, 1)
+        // now we have only 1000 MOXIE releasable
+        // Stake funds into the protocol that is more than releasable amount
+        const stakeAmount = toMOXIE('3000')
+        const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount, {gasLimit: 1000000})
+        await expect(tx).to.be.revertedWith('Cannot use more tokens than releasable amount')
+      })
+
+      it('should not allow to invest anything if cliff is not reached - revocability enabled', async function () {
+        
+        // Deploy a revocable contract with 10 periods, 1 per month with cliff of 5 periods
+        initArgs = defaultInitArgs(deployer, beneficiary, moxie, toMOXIE('10000'))         
+        tokenLock = await initWithArgs({ ...initArgs, periods: 10, revocable: Revocability.Enabled, vestingCliffTime: initArgs.startTime + 5 * 30 * 24 * 60 * 60})
+
+        // Use the tokenLock contract as if itCannot use more tokens than vested amoun were the Staking contract
+        lockAsStaking = Staking__factory.connect(tokenLock.address, deployer.signer)
+  
+        // Approve contracts to pull tokens from the token lock
+        await tokenLock.connect(beneficiary.signer).approveProtocol()
+        
+        await advanceToStart(tokenLock)
+        await advancePeriods(tokenLock,2)
+
+        // At this point ,we dont have any tokens since cliff is not reached
+        // Stake funds into the protocol 
+        const stakeAmount = toMOXIE('1000')
+        const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount, {gasLimit: 1000000})
+        await expect(tx).to.be.revertedWith('Cannot use more tokens than releasable amount')
+      })
   
       it('should get surplus profit amount received from protocol investing - revocability enabled', async function () {
         await advanceToStart(tokenLock)
@@ -369,6 +407,32 @@ describe('MoxieTokenLockWallet', () => {
         // Stake funds into the protocol
         const stakeAmount = toMOXIE('2000')
         const tx = await lockAsStaking.connect(beneficiary.signer).stake(stakeAmount)
+      })
+
+      it('should allow to invest - withdraw & invest - revocability disabled', async function () {
+        // total MOXIE managedamount = 10000 MOXIE
+        await advanceToStart(tokenLock)
+        await advancePeriods(tokenLock,2)
+  
+        // At this point we vested two period, we have tokens
+        // withdraw 2000 moxie
+        await tokenLock.connect(beneficiary.signer).release()
+        
+        //advance 1 periods
+        await advancePeriods(tokenLock, 2)
+        // now we have only 2000 MOXIE releasable
+        // Stake funds into the protocol that is more than releasable amount
+        const stakeAmount = toMOXIE('5000')
+        const tx = lockAsStaking.connect(beneficiary.signer).stake(stakeAmount, {gasLimit: 1000000})
+        const postTokenLockContractBalance = formatMOXIE(await moxie.balanceOf(tokenLock.address))
+        await expect(postTokenLockContractBalance).to.equal('3000.0')
+
+        // advance till end of the periods and execute release
+        await advancePeriods(tokenLock, 5)
+        await tokenLock.connect(beneficiary.signer).release()
+        const totalReleasedAmount = formatMOXIE(await tokenLock.releasedAmount())
+        await expect(totalReleasedAmount).to.equal('5000.0')
+
       })
   
       it('revert if invest amount is greater than the token lock wallet balance - revocability disabled', async function () {
