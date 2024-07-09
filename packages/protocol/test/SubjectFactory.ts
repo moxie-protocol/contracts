@@ -8,6 +8,8 @@ import { EasyAuction } from "../test-artifact/easy-auction/typechain/EasyAuction
 import { MoxieTokenLockWallet } from "../test-artifact/MoxieTokenLockWallet.sol/typechain/MoxieTokenLockWallet";
 import { MoxieTokenLockManager } from "../test-artifact/MoxieTokenLockManager.sol/typechain/moxieTokenLockManager";
 
+import EasyAuctionArtifact from "../external-artifact/easy-auction/artifacts/EasyAuction.json";
+import { EasyAuction } from "../external-artifact/easy-auction/typechain/EasyAuction";
 import { SubjectERC20 } from "../typechain-types";
 import { parseEther } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";

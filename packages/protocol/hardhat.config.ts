@@ -4,11 +4,6 @@ import "@nomiclabs/hardhat-solhint";
 import "@nomicfoundation/hardhat-ignition-ethers";
 import "@nomicfoundation/hardhat-verify";
 
-// import "../protocol/tasks/Bid"
-// import "../protocol/tasks/Buy"
-// import "../protocol/tasks/Claim"
-// import "../protocol/tasks/Sell"
-
 const config: HardhatUserConfig = {
   solidity: "0.8.24",
   networks: {
