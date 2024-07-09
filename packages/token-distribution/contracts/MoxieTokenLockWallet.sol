@@ -209,6 +209,8 @@ contract MoxieTokenLockWallet is MoxieTokenLock {
                 uint256 diff = newBalance.sub(oldBalance);
                 usedAmount = (diff >= usedAmount) ? 0 : usedAmount.sub(diff);
             }
+            // this check ensures that at any point in time,  used amount [total amount used in protocol investing]
+            // is always less than or equal to the releasable amount [(available amount as per vesting schedule) - (already released amount)] 
             require(
                 usedAmount <= super.releasableAmount(),
                 "Cannot use more tokens than releasable amount"
