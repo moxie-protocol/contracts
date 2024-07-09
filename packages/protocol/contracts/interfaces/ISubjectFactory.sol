@@ -4,20 +4,29 @@ pragma solidity ^0.8.24;
 
 contract ISubjectFactory {
     event SubjectOnboardingInitiated(
-        address _subject,
-        address _subjectToken,
+        address indexed _subject,
+        address indexed _subjectToken,
         uint256 _auctionAmount,
         address _biddingToken,
         uint256 auctionEndDate,
         uint256 _auctionId
     );
 
+     event SubjectOnboardingFinished(
+        address indexed _subject,
+        address indexed _subjectToken,
+        uint256 _auctionId,
+        uint256 _bondingSupply,
+        uint256 _bondingAmount,
+        uint256 _protocolFee,
+        uint256 _subjectFee, //In moxie token
+        uint256 _subjectFeeInSubjectToken //In subjectToken
+    );
+
     event UpdateBeneficiary(address _beneficiary);
     event UpdateFees(
-        uint256 _protocolBuyFeePct,
-        uint256 _protocolSellFeePct,
-        uint256 _subjectBuyFeePct,
-        uint256 _subjectSellFeePct
+        uint256 _protocolFeePct,
+        uint256 _subjectFeePct
     );
 
     event UpdateAuctionParam(
@@ -28,6 +37,7 @@ contract ISubjectFactory {
     struct Auction {
         uint256 auctionId;
         uint256 auctionEndDate;
+        uint256 initialSupply;
     }
 
     struct SubjectAuctionInput {
@@ -43,9 +53,7 @@ contract ISubjectFactory {
     }
 
     struct FeeInput {
-        uint256 protocolBuyFeePct;
-        uint256 protocolSellFeePct;
-        uint256 subjectBuyFeePct;
-        uint256 subjectSellFeePct;
+        uint256 protocolFeePct;
+        uint256 subjectFeePct;
     }
 }

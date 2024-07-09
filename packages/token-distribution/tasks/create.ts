@@ -384,8 +384,6 @@ task('create-token-locks', 'Create token lock contracts from file')
 
       logger.info('Deploying token lock contracts... start time:', new Date().toLocaleString())
 
-      logger.info('Deploying token lock contracts... start time:', new Date().toLocaleString())
-
       for (const entry of entries) {
         await queue.add(async () => {
           logger.log('')

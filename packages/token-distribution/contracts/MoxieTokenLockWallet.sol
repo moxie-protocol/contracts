@@ -199,7 +199,7 @@ contract MoxieTokenLockWallet is MoxieTokenLock {
         if (revocable == Revocability.Enabled) {
             // Track contract balance change
             uint256 newBalance = currentBalance();
-            if (newBalance < oldBalance) { 
+            if (newBalance < oldBalance) {
                 // Outflow
                 uint256 diff = oldBalance.sub(newBalance);
                 usedAmount = usedAmount.add(diff);
