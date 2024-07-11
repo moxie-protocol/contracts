@@ -12,6 +12,7 @@ import {
     assertVestingContractData
 } from "./Utils";
 import { parseEther } from "ethers";
+import { bigint } from "hardhat/internal/core/params/argumentTypes";
 
 describe("MoxieBondingCurve", () => {
     const deploy = async () => {
@@ -2518,17 +2519,17 @@ describe("MoxieBondingCurve", () => {
             // execute buy shares through vesting contract
             const moxieBondingCurveVC1 = moxieBondingCurve.attach(vestingContractAddress1) as MoxieBondingCurve;
 
-            const buyAmount = (1 * 1e19).toString();
+            const buyAmount1 = (100 * 1e18).toString();
 
             await expect(
                 moxieBondingCurveVC1
                     .connect(vestingBeneficiary1)
-                    .buyShares(subject.address, buyAmount, 0),
+                    .buyShares(subject.address, buyAmount1, 0),
             ).to.emit(moxieBondingCurve, "SubjectSharePurchased");
 
             // second buyer
             // vesting contract input parameters for revocable contract started 1 day ago
-            const startTime2 =  Math.floor(Date.now() / 1000) - 86400; //  today - 1 in epoch seconds
+            const startTime2 =  Math.floor(Date.now() / 1000) - 2 * 86400; //  today - 2 in epoch seconds
             const endTime2 = startTime2 + 172800; // +2 days
             const periodsInterval2 = 60;// in seconds = 1 mins
             const periods2 = (endTime2 - startTime2) / periodsInterval2; // number of periods
@@ -2549,8 +2550,11 @@ describe("MoxieBondingCurve", () => {
                 vestingCliffTime2,
                 revocable2);
 
+
             // verify if data looks okay for newly created vesting contract
             const vestingContract2 = moxieTokenLockWallet.attach(vestingContractAddress2) as MoxieTokenLockWallet
+
+            //console.log('releasable amt: ', await vestingContract2.releasableAmount())
 
             // approve so that protocol contracts can spend the MOXIE tokens
             await vestingContract2.connect(vestingBeneficiary2).approveProtocol()
@@ -2561,10 +2565,11 @@ describe("MoxieBondingCurve", () => {
             // execute buy shares through vesting contract
             const moxieBondingCurveVC2 = moxieBondingCurve.attach(vestingContractAddress2) as MoxieBondingCurve;
 
+            const buyAmount2 = BigInt(5000 * 1e18) // 5000 MOXIE
             await expect(
                 moxieBondingCurveVC2
                     .connect(vestingBeneficiary2)
-                    .buyShares(subject.address, buyAmount, 0),
+                    .buyShares(subject.address, buyAmount2, 0),
             ).to.emit(moxieBondingCurve, "SubjectSharePurchased");
 
 
@@ -2572,7 +2577,9 @@ describe("MoxieBondingCurve", () => {
                 vestingContractAddress1,
                 moxieBondingCurveVC1,
                 vestingContractAddress2,
-                moxieBondingCurveVC2
+                moxieBondingCurveVC2,
+                vestingContract1,
+                vestingContract2
             }
 
         };
@@ -2750,14 +2757,16 @@ describe("MoxieBondingCurve", () => {
                 vestingBeneficiary2,
             } = deployment;
 
-            const {vestingContractAddress1, moxieBondingCurveVC1,vestingContractAddress2, moxieBondingCurveVC2} = await setupSellFromVestingContract(deployment);
+            const {vestingContractAddress1, moxieBondingCurveVC1,vestingContractAddress2, moxieBondingCurveVC2, vestingContract1, vestingContract2} = await setupSellFromVestingContract(deployment);
 
             const totalSellAmountVestingContract1 = await subjectToken.balanceOf(
                 vestingContractAddress1,
             );
+            //console.log(`totalSellAmountVestingContract1: ${totalSellAmountVestingContract1}`)
             const totalSellAmountVestingContract2 = await subjectToken.balanceOf(
                 vestingContractAddress2,
             );
+            //console.log(`totalSellAmountVestingContract2: ${totalSellAmountVestingContract2}`)
 
             // seller 1
             const { returnAmount, protocolFee, subjectFee } =
@@ -2784,6 +2793,11 @@ describe("MoxieBondingCurve", () => {
             const subjectBeneficiaryPreviousMoxieBalance = await moxieToken.balanceOf(
                 subject.address,
             );
+
+            // balance check before sell share from vesting contract1
+            // const vestingContract1BalanceBeforeSale = await moxieToken.balanceOf(vestingContractAddress1)
+            // console.log(`vestingContract1BalanceBeforeSale: ${vestingContract1BalanceBeforeSale}`)
+
             await expect(
                 moxieBondingCurveVC1
                     .connect(vestingBeneficiary1)
@@ -2814,6 +2828,25 @@ describe("MoxieBondingCurve", () => {
                 BigInt(subjectBeneficiaryPreviousMoxieBalance) + subjectFee,
             );
 
+            // balance check after sell share from vesting contract1
+            // const vestingContract1BalanceAfterSale = await moxieToken.balanceOf(vestingContractAddress1)
+            // console.log(`vestingContract1BalanceAfterSale: ${vestingContract1BalanceAfterSale}`)
+
+            // check surplus amount
+            const surplusAmount = await vestingContract1.surplusAmount()
+            expect(surplusAmount).to.be.greaterThan(0) // surplus amount should be greater than 0 
+
+             // withdraw surplus amount
+             expect(await vestingContract1.connect(vestingBeneficiary1).withdrawSurplus(surplusAmount))
+             .to.emit(vestingContract1, "TokensWithdrawn").withArgs(
+                    vestingBeneficiary1.address,
+                    surplusAmount
+             )
+
+            // assert surplus amount is 0
+            expect(await vestingContract1.surplusAmount()).to.be.eq(0) // surplus amount should be eq to 0 after withdrawl
+
+
             // seller 2
 
             const {
@@ -2843,6 +2876,10 @@ describe("MoxieBondingCurve", () => {
             const subjectBeneficiaryPreviousMoxieBalance2 =
                 await moxieToken.balanceOf(subject.address);
 
+            // balance check before sell share from vesting contract2
+            // const vestingContract2BalanceBeforeSale = await moxieToken.balanceOf(vestingContractAddress2)
+            // console.log(`vestingContract2BalanceBeforeSale: ${vestingContract2BalanceBeforeSale}`)
+            
             await expect(
                 moxieBondingCurveVC2
                     .connect(vestingBeneficiary2)
@@ -2861,6 +2898,7 @@ describe("MoxieBondingCurve", () => {
                     expectedReturn2,
                     vestingContractAddress2,
                 );
+            
 
             //verify fund transfers
             expect(await moxieToken.balanceOf(vestingContractAddress2)).to.equal(
@@ -2872,6 +2910,23 @@ describe("MoxieBondingCurve", () => {
             expect(await moxieToken.balanceOf(subject.address)).to.equal(
                 BigInt(subjectBeneficiaryPreviousMoxieBalance2) + subjectFee2,
             );
+
+            // balance check after sell share from vesting contract1
+            // const vestingContract1BalanceAfterSale = await moxieToken.balanceOf(vestingContractAddress1)
+            // console.log(`vestingContract1BalanceAfterSale: ${vestingContract1BalanceAfterSale}`)
+
+            // check surplus amount
+            const surplusAmount2 = await vestingContract1.surplusAmount()
+            expect(surplusAmount2).to.be.equal(0) // surplus amount should be  0  for seller 2
+
+            // check loss
+            const currentBalance = await moxieToken.balanceOf(vestingContractAddress2)
+            // console.log('currentBalance: ', currentBalance)
+            const managedAmount = await vestingContract2.managedAmount()
+            // console.log('managedAmount: ', managedAmount)
+            const loss = managedAmount - currentBalance
+            // console.log('loss: ', loss)
+            expect(loss).to.be.greaterThan(0) // loss should be greater than 0
         });
 
         it("should be able to sell all subject token till supply is 0 ", async () => {

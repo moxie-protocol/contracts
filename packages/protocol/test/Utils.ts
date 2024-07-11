@@ -2,8 +2,8 @@ import { BancorFormula, SubjectERC20, Vault } from "../typechain-types";
 import { MoxieTokenLockWallet } from "../test-artifact/MoxieTokenLockWallet.sol/typechain/MoxieTokenLockWallet";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
-import { MoxieTokenLockManager } from "../test-artifact/MoxieTokenLockManager.sol/typechain/moxieTokenLockManager";
-
+import { MoxieTokenLockManager } from "../test-artifact/MoxieTokenLockManager.sol/typechain/MoxieTokenLockManager";
+import { BigNumber} from "@ethersproject/bignumber";
 export const getExpectedBuyReturnAndFee = async (
     subjectToken: SubjectERC20,
     vaultInstance: Vault,
@@ -129,3 +129,17 @@ export const assertVestingContractData = async (
     expect(await vestingContract.revocable()).to.equal(revocable);
 }
 
+export function encodeOrder(order: Order): string {
+    return (
+      "0x" +
+      order.userId.toHexString().slice(2).padStart(16, "0") +
+      order.buyAmount.toHexString().slice(2).padStart(24, "0") +
+      order.sellAmount.toHexString().slice(2).padStart(24, "0")
+    );
+ }
+ 
+ export interface Order {
+    sellAmount: BigNumber;
+    buyAmount: BigNumber;
+    userId: BigNumber;
+ }

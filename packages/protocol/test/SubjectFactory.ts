@@ -1,12 +1,10 @@
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import hre, { ethers } from "hardhat";
-import EasyAuctionArtifact from "../test-artifact/easy-auction/artifacts/EasyAuction.json";
 import MoxieTokenLockWalletArtifact from "../test-artifact/MoxieTokenLockWallet.sol/artifacts/MoxieTokenLockWallet.json";
 import MoxieTokenLockManagerArtifact from "../test-artifact/MoxieTokenLockManager.sol/artifacts/MoxieTokenLockManager.json";
-import { EasyAuction } from "../test-artifact/easy-auction/typechain/EasyAuction";
 import { MoxieTokenLockWallet } from "../test-artifact/MoxieTokenLockWallet.sol/typechain/MoxieTokenLockWallet";
-import { MoxieTokenLockManager } from "../test-artifact/MoxieTokenLockManager.sol/typechain/moxieTokenLockManager";
+import { MoxieTokenLockManager } from "../test-artifact/MoxieTokenLockManager.sol/typechain/MoxieTokenLockManager";
 
 import EasyAuctionArtifact from "../external-artifact/easy-auction/artifacts/EasyAuction.json";
 import { EasyAuction } from "../external-artifact/easy-auction/typechain/EasyAuction";
@@ -15,8 +13,10 @@ import { parseEther } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import {
     deployVestingContract,
-    assertVestingContractData
+    assertVestingContractData,
+    encodeOrder
 } from "./Utils";
+import { BigNumber} from "@ethersproject/bignumber";
 
 
 describe('Subject Factory', () => {
@@ -1296,24 +1296,24 @@ describe('Subject Factory', () => {
             await vestingContract.connect(vestingBeneficiary).approveProtocol()
 
             // check releasable amount before placing bids
-            const releasableAmount = await vestingContract.releasableAmount()
-            //console.log(`Releasable amount before placing bids: ${releasableAmount}`)
+            // const releasableAmount = await vestingContract.releasableAmount()
+            // console.log(`Releasable amount before placing bids: ${releasableAmount}`)
 
             const easyAuctionVC = easyAuction.attach(vestingContractAddress) as EasyAuction
 
-            const biddingAmount = releasableAmount // 200 MOXIE
+           // const biddingAmount = releasableAmount 
+            const biddingAmount = parseEther('200') 
 
             const queueStartElement =
                 "0x0000000000000000000000000000000000000000000000000000000000000001";
-            await easyAuctionVC.connect(vestingBeneficiary).placeSellOrders(
+            expect(await easyAuctionVC.connect(vestingBeneficiary).placeSellOrders(
                 auctionId,
-                [auctionInput.initialSupply],//subject token
+                [auctionInput.initialSupply], //subject token
                 [biddingAmount], // moxie token
                 [queueStartElement],
                 '0x',
-            );
-
-            expect (await vestingContract.releasableAmount()).to.equal('0')
+            )).to.emit(easyAuction, "SellOrderPlaced").
+            withArgs(auctionId, vestingContractAddress, auctionInput.initialSupply, biddingAmount, queueStartElement)
 
             await time.increase(auctionDuration);
  
@@ -1360,6 +1360,23 @@ describe('Subject Factory', () => {
             expect(auction.auctionEndDate).to.equal(0);
             const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) / PCT_BASE;
             expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
+
+            // Claim from participant order
+            // buyAmount and sellAmount should be same as the bid placed
+           const userId =  BigNumber.from(2)
+            await expect(easyAuctionVC.connect(vestingBeneficiary).claimFromParticipantOrder(
+               BigInt(auctionId), [
+                  encodeOrder({
+                      buyAmount: BigNumber.from(auctionInput.initialSupply),
+                      sellAmount: BigNumber.from(biddingAmount),
+                      userId: userId,
+                    }),
+              ]
+            )).to.emit(easyAuction, "ClaimedFromOrder")
+            .withArgs(auctionId, userId, auctionInput.initialSupply, biddingAmount)
+
+            // check if the vesting contract has received the subject tokens
+            expect(await subjectToken.balanceOf(vestingContractAddress)).to.equal(auctionInput.initialSupply)
 
         });
 
@@ -1545,7 +1562,7 @@ describe('Subject Factory', () => {
             const periods1 = (endTime1 - startTime1) / periodsInterval1; // number of periods
             const releaseStartTime1 = 0; // release start time in epoch seconds. Default: 0
             const vestingCliffTime1 = 0; // vesting cliff time in epoch seconds. Default: 0
-            const revocable1 = 1; // vesting contract revocable flag: 1 for revocable, 2 for non-revocable
+            const revocable1 = 2; // vesting contract revocable flag: 1 for revocable, 2 for non-revocable
             const managedAmount1 =  parseEther('10000') // 1000 MOXIE  // amount managed by vesting contract
 
             
@@ -1569,7 +1586,6 @@ describe('Subject Factory', () => {
             const biddingAmount1 = releasableAmount1;
             const buyAmount1 = parseEther('50')  ; // MOXIE
             await placeBidFromVestingContract(easyAuction, vestingContractAddress1, buyAmount1, biddingAmount1, vestingBeneficiary1, auctionId);
-            expect (await vestingContract1.releasableAmount()).to.equal('0')
 
 
             // Deploy a vesting contract 2
@@ -1578,11 +1594,11 @@ describe('Subject Factory', () => {
             const startTime2 =  Math.floor(Date.now()/ 1000) - 1800; // current time  - 30 mins in epoch seconds 
             const endTime2 = startTime1 + 172800; // 2 days
             const periodsInterval2 = 60 ;// in seconds = 1 mins
-            const periods2 = (endTime1 - startTime1) / periodsInterval1; // number of periods
+            const periods2 = (endTime2 - startTime2) / periodsInterval2; // number of periods
             const releaseStartTime2 = 0; // release start time in epoch seconds. Default: 0
             const vestingCliffTime2 = 0; // vesting cliff time in epoch seconds. Default: 0
             const revocable2 = 1; // vesting contract revocable flag: 1 for revocable, 2 for non-revocable
-            const managedAmount2 =  parseEther('3000') // 1000 MOXIE  // amount managed by vesting contract
+            const managedAmount2 =  parseEther('3000') // 3000 MOXIE  // amount managed by vesting contract
 
             const vestingContractAddress2 = await deployVestingContract(
                 moxieTokenLockManager,
@@ -1609,7 +1625,7 @@ describe('Subject Factory', () => {
             //console.log(`Releasable amount before placing bids from vesting contract 2: ${releasableAmount2}`)
 
             // place bid order from vesting contract 2
-            const biddingAmount2 = releasableAmount2;   // 10 MOXIE 
+            const biddingAmount2 = releasableAmount2;  
             const buyAmount2 = parseEther('20');
             await placeBidFromVestingContract(easyAuction, vestingContractAddress2, buyAmount2, biddingAmount2, vestingBeneficiary2, auctionId);
 
@@ -2747,3 +2763,5 @@ async function placeBidFromVestingContract(easyAuction: EasyAuction, vestingCont
         '0x'
     );
 }
+
+
