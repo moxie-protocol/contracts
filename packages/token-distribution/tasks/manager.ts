@@ -94,6 +94,8 @@ task('manager-withdraw', 'Withdraw fund from the manager')
     // Get contracts
     const manager = await getTokenLockManagerOrFail(hre, taskArgs.managerName)
 
+    const accounts = await hre.ethers.getSigners()
+
     // Prepare
     logger.log(await prettyEnv(hre))
 
@@ -109,8 +111,8 @@ task('manager-withdraw', 'Withdraw fund from the manager')
     if (await askConfirm()) {
       const weiAmount = parseEther(taskArgs.amount)
 
-      logger.log('Deposit...')
-      const tx = await manager.withdraw(weiAmount)
+      logger.log('Withdraw...')
+      const tx = await manager.connect(accounts[1]).withdraw(weiAmount)
       await waitTransaction(tx)
     }
   })
