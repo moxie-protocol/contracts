@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {SecurityModule} from "./SecurityModule.sol";
 import {ITokenManager} from "./interfaces/ITokenManager.sol";
@@ -11,13 +12,20 @@ import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
 import {ISubjectErc20} from "./interfaces/ISubjectErc20.sol";
 
 contract TokenManager is ITokenManager, SecurityModule {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     using SafeERC20 for IERC20Extended;
 
     bytes32 public constant MINT_ROLE = keccak256("MINT_ROLE");
     bytes32 public constant CREATE_ROLE = keccak256("CREATE_ROLE");
+    bytes32 public constant ALLOW_LIST_ROLE = keccak256("ALLOW_LIST_ROLE");
 
     /// @dev Address of subject implementation.
     address public subjectImplementation;
+
+    /// @dev list of address which must be either to or from of a valid subject token transfer.
+    /// This is to ensure transfer should always involve moxie protocol contracts.
+    EnumerableSet.AddressSet private transferAllowList;
 
     /// @dev Mapping of subject & its Token
     mapping(address subject => address token) public tokens;
@@ -98,5 +106,47 @@ contract TokenManager is ITokenManager, SecurityModule {
 
         IERC20Extended(token).mint(_beneficiary, _amount);
         return true;
+    }
+
+    /**
+     * @notice Adds an address that can be allowed as one of the transfer address(from/to)
+     * @param _wallet Wallet address that is to be added to allow list.
+     */
+    function addToAllowList(
+        address _wallet
+    ) external onlyRole(ALLOW_LIST_ROLE) {
+        if (_wallet == address(0)) revert TokenManager_InvalidAddress();
+
+        if (!transferAllowList.add(_wallet))
+            revert TokenManager_AddressAlreadyAdded();
+
+        emit TransferAllowListWalletAllowed(_wallet, true);
+    }
+
+    /**
+     * @notice Removes an address from allow list.
+     * @param _wallet Wallet address that is to be added to allow list.
+     */
+    function removeFromAllowList(
+        address _wallet
+    ) external onlyRole(ALLOW_LIST_ROLE) {
+        if (_wallet == address(0)) revert TokenManager_InvalidAddress();
+
+        if (!transferAllowList.remove(_wallet))
+            revert TokenManager_AddressAlreadyRemoved();
+        emit TransferAllowListWalletAllowed(_wallet, false);
+    }
+
+    /**
+     * @notice Check if wallet is whitelisted in allow list.
+     * For a valid Subject Token transfer either from or to address
+     * must be part of allow list.
+     * @param _wallet Address of wallet.
+     */
+    function isWalletAllowed(address _wallet) external view returns (bool) {
+        //always allow if allow list is not set.
+        if (transferAllowList.length() == 0) return true;
+
+        return transferAllowList.contains(_wallet);
     }
 }

@@ -15,8 +15,8 @@ describe("Vault", () => {
         );
 
 
-        const SubjectERC20 = await hre.ethers.getContractFactory("SubjectERC20");
-        const token = await SubjectERC20.deploy({ from: deployer.address });
+        const MoxieToken = await hre.ethers.getContractFactory("MoxieToken");
+        const token = await MoxieToken.connect(owner).deploy();
 
         const MoxiePassVerifier = await hre.ethers.getContractFactory(
             "MockMoxiePassVerifier",
@@ -31,18 +31,7 @@ describe("Vault", () => {
         await moxiePassVerifier
             .connect(owner)
             .setErc721ContractAddress(await mockErc721.getAddress());
-
-        const initialSupply = 100 * 10 ^ 18;
-        const name = 'test';
-        const symbol = 'test';
-        await token.connect(deployer).initialize(
-            owner.address,
-            name,
-            symbol,
-            initialSupply,
-            await moxiePassVerifier.getAddress()
-        );
-
+            
         const vaultAddress = await vaultInstance.getAddress();
         const tokenAddress = await token.getAddress();
 

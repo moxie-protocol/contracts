@@ -10,6 +10,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 
 import {IMoxiePassVerifier} from "./interfaces/IMoxiePassVerifier.sol";
 import {ISubjectErc20} from "./interfaces/ISubjectErc20.sol";
+import {ITokenManager} from "./interfaces/ITokenManager.sol";
 
 contract SubjectERC20 is
     ISubjectErc20,
@@ -23,6 +24,7 @@ contract SubjectERC20 is
 
     error SubjectERC20_NotAMoxiePassHolder();
     error SubjectERC20_InvalidOwner();
+    error SubjectERC20_InvalidTransfer();
 
     /**
      * @notice Initialize contract
@@ -59,13 +61,45 @@ contract SubjectERC20 is
         _mint(_to, _amount);
     }
 
+    /**
+     * Only allow to & from whitelisted addresses.
+     * @param from From address of transfer.
+     * @param to To address of transfer.
+     */
+    function _isValidTransfer(
+        address from,
+        address to
+    ) internal returns (bool) {
+        return
+            ITokenManager(owner()).isWalletAllowed(from) ||
+            ITokenManager(owner()).isWalletAllowed(to);
+    }
+
+    /**
+     * @notice This function enforces
+     *  1. Only moxie pass holders can own Subject Tokens
+     *  2. Transfer of subject token between wallets are not allowed(except done from protocol contracts)
+     * @param from Address of from wallet.
+     * @param to Address of to wallet.
+     * @param value Amount of tokens.
+     */
     function _update(
         address from,
         address to,
         uint256 value
     ) internal virtual override {
+        // only moxie pass holders can hold subject tokens.
         if (to != address(0) && !moxiePassVerifier.isMoxiePassHolder(to))
             revert SubjectERC20_NotAMoxiePassHolder();
+
+        // for a transfer(not mint) one of the contract must be whitelisted address
+        if (
+            from != address(0) &&
+            to != address(0) &&
+            !_isValidTransfer(from, to)
+        ) {
+            revert SubjectERC20_InvalidTransfer();
+        }
 
         super._update(from, to, value);
     }

@@ -22,12 +22,31 @@ describe("SubjectERC20", () => {
             .setErc721ContractAddress(await mockErc721.getAddress());
 
         const SubjectERC20 = await hre.ethers.getContractFactory("SubjectERC20");
-        const subjectErc20 = await SubjectERC20.deploy({ from: deployer.address });
+        const subjectErc20MasterCopy = await SubjectERC20.deploy({ from: deployer.address });
+
+
+        const TokenManager =
+            await hre.ethers.getContractFactory("TokenManager");
+
+        const tokenManager = await TokenManager.deploy({ from: deployer.address });
+        const subjectErc20Address = await subjectErc20MasterCopy.getAddress();
+
+        await tokenManager.connect(deployer).initialize(
+            owner.address, subjectErc20Address
+        );
+
 
         const initialSupply = 100 * 10 ^ 18;
         const name = 'test';
         const symbol = 'test';
-        await subjectErc20.connect(deployer).initialize(
+
+        await tokenManager.connect(owner).grantRole((await tokenManager.CREATE_ROLE()), owner.address);
+        await tokenManager.connect(owner).grantRole((await tokenManager.MINT_ROLE()), owner.address);
+
+        const tokenManagerAddress = await tokenManager.getAddress();
+        await mockErc721.mint(tokenManagerAddress, "102")
+
+        await tokenManager.connect(owner).create(
             owner.address,
             name,
             symbol,
@@ -35,7 +54,12 @@ describe("SubjectERC20", () => {
             await moxiePassVerifier.getAddress()
         );
 
-        return { mockErc721, moxiePassVerifier, subjectErc20, initialSupply, name, symbol, owner, deployer, signer };
+        const tokenAddress = await tokenManager.tokens(owner.address);
+
+        const subjectErc20 = await SubjectERC20.attach(tokenAddress);
+
+
+        return { mockErc721, moxiePassVerifier, subjectErc20, initialSupply, name, symbol, owner, deployer, signer, tokenManagerAddress, tokenManager };
     };
 
 
@@ -50,13 +74,14 @@ describe("SubjectERC20", () => {
                 symbol,
                 initialSupply,
                 moxiePassVerifier,
+                tokenManagerAddress
             } = await loadFixture(deploy);
 
             expect(await subjectErc20.symbol()).equal(symbol);
             expect(await subjectErc20.name()).equal(name);
             expect(await subjectErc20.totalSupply()).equal(initialSupply);
             expect(await subjectErc20.moxiePassVerifier()).to.equal(await moxiePassVerifier.getAddress())
-            expect(await subjectErc20.owner()).to.equal(owner.address)
+            expect(await subjectErc20.owner()).to.equal(tokenManagerAddress)
 
             expect(await subjectErc20.balanceOf(owner.address)).to.equal(initialSupply);
         });
@@ -109,7 +134,7 @@ describe("SubjectERC20", () => {
     });
 
 
-    describe('mint', () => {
+    describe('mint/transfer', () => {
 
         it('should allow mint', async () => {
 
@@ -117,14 +142,15 @@ describe("SubjectERC20", () => {
                 subjectErc20,
                 owner,
                 mockErc721,
-                signer
+                signer,
+                tokenManager
             } = await loadFixture(deploy);
 
             await mockErc721.connect(owner).mint(signer.address, '200');
 
             const amount = 20 * 10 ^ 18;
             const beforeBalance = await subjectErc20.balanceOf(signer.address);
-            await expect(subjectErc20.connect(owner).mint(signer.address, amount)).emit(subjectErc20, 'Transfer')
+            await expect(tokenManager.connect(owner).mint(owner.address, signer.address, amount)).emit(subjectErc20, 'Transfer')
                 .withArgs(ethers.ZeroAddress, signer.address, amount);
             const afterBalance = await subjectErc20.balanceOf(signer.address);
 
@@ -132,7 +158,7 @@ describe("SubjectERC20", () => {
 
         });
 
-        it('should allow transfer', async () => {
+        it('should allow transfer when no whitelisted address set in tokenManager', async () => {
 
             const {
                 subjectErc20,
@@ -189,12 +215,15 @@ describe("SubjectERC20", () => {
             const {
                 subjectErc20,
                 owner,
-                signer
+                signer,
+                tokenManager
             } = await loadFixture(deploy);
 
             const amount = 20 * 10 ^ 18;
-            await expect(subjectErc20.connect(owner).mint(signer.address, amount))
-                .revertedWithCustomError(subjectErc20, 'SubjectERC20_NotAMoxiePassHolder');
+
+            await expect(tokenManager.connect(owner).mint(owner.address, signer.address, amount))
+            .revertedWithCustomError(subjectErc20, 'SubjectERC20_NotAMoxiePassHolder');
+
 
         });
 
@@ -210,6 +239,14 @@ describe("SubjectERC20", () => {
                 .revertedWithCustomError(subjectErc20, 'SubjectERC20_NotAMoxiePassHolder');
 
         });
+    });
+
+    describe('allowlist', () => {
+
+        it('should fail to transfer if its triggered from wallet not in allow list', async () => {
+
+        })
+
     });
 
 });

@@ -318,7 +318,7 @@ contract BancorFormula {
      * @return amount of reserve tokens
      */
     function calculateFundCost(
-        uint256 _supply,
+        uint256 _supply, 
         uint256 _reserveBalance,
         uint32 _totalRatio,
         uint256 _amount

@@ -23,8 +23,8 @@ const feeInputSubjectFactory = {
     subjectFeePct: config.subjectFeePctForSF
 };
 
-const AUCTION_DURATION = config.auctionDuration; // 2 sec block time so total 2 mins
-const AUCTION_ORDER_CANCELLATION_DURATION = config.auctionOrderCancellationDuration; // 2 sec block time so total 2 mins
+const AUCTION_DURATION = config.auctionDuration;
+const AUCTION_ORDER_CANCELLATION_DURATION = config.auctionOrderCancellationDuration;
 
 export default buildModule("ProtocolContractsProxy", (m) => {
 
