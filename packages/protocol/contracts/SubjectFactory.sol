@@ -334,11 +334,9 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
 
         token.safeTransfer(feeBeneficiary, protocolFee_);
 
-        token.approve(address(moxieBondingCurve), subjectFee_);
-
         ///@dev Instead of returning subject fee to subject, give buy subject shares for subject.
-
         if (subjectFee_ > 0) {
+            token.approve(address(moxieBondingCurve), subjectFee_);
             moxieBondingCurve.buySharesFor(
                 _subject,
                 subjectFee_,
