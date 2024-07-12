@@ -92,6 +92,7 @@ const loadDeployData = (filepath: string): TokenLockConfigEntry[] => {
 const loadResultData = (filepath: string): TokenLockConfigEntry[] => {
   const data = fs.readFileSync(filepath, 'utf8')
   const entries = data.split('\n').map(e => e.trim())
+  entries.shift() // remove the title from the csv
   return entries
     .filter(entryData => !!entryData)
     .map((entryData) => {
@@ -105,9 +106,10 @@ const loadResultData = (filepath: string): TokenLockConfigEntry[] => {
         revocable: parseInt(entry[5]),
         releaseStartTime: entry[6],
         vestingCliffTime: entry[7],
-        contractAddress: entry[8],
-        salt: entry[9],
-        txHash: entry[10],
+        fid: entry[8],
+        contractAddress: entry[9],
+        salt: entry[10],
+        txHash: entry[11],
       }
     })
 }
@@ -377,7 +379,7 @@ task('create-token-locks', 'Create token lock contracts from file')
       const accounts = await hre.ethers.getSigners()
       const nonceManager = new NonceManager(accounts[1]) // Use NonceManager to send concurrent txs
 
-      const queue = new PQueue({ concurrency: 6 })
+      const queue = new PQueue({ concurrency: 10 })
 
       logger.info('Deploying token lock contracts... start time:', new Date().toLocaleString())
 
@@ -574,7 +576,7 @@ task('scan-token-locks-balances', 'Check current balances of deployed contracts'
     logger.log('Current Manager balance is ', formatEther(balance))
 
     // Load deployed entries
-    const deployedEntries = loadResultData('/' + taskArgs.resultFile)
+    const deployedEntries = loadResultData( taskArgs.resultFile)
 
     let balances = BigNumber.from(0)
     for (const entry of deployedEntries) {
