@@ -33,6 +33,7 @@ interface TokenLockConfigEntry {
   salt?: string
   txHash?: string
   contractAddress?: string
+  fid: string
 }
 
 interface TokenLockDeployEntry extends TokenLockConfigEntry {
@@ -83,6 +84,7 @@ const loadDeployData = (filepath: string): TokenLockConfigEntry[] => {
         revocable: parseInt(entry[5]),
         releaseStartTime: entry[6],
         vestingCliffTime: entry[7],
+        fid: entry[8],
       }
     })
 }
@@ -120,6 +122,7 @@ const deployEntryToCSV = (entry: TokenLockDeployEntry) => {
     entry.revocable,
     entry.releaseStartTime,
     entry.vestingCliffTime,
+    entry.fid,
     entry.contractAddress,
     entry.salt,
     entry.txHash,

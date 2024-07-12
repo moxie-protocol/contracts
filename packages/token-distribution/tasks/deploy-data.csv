@@ -1,3 +1,2 @@
-beneficiary,managedAmount,startTime,endTime,periods,revocable,releaseStartTime,vestingCliffTime
-0x53425e91952644933a3d4C69d3799eFBFc7d49d6,1000.00,1718413200,1721005200,720,2,0,0
-0x3BD3E709E946b0882Cd6393ddE0fB200ce7119cE,1000.00,1718413200,1721005200,720,2,0,0
+beneficiary,managedAmount,startTime,endTime,periods,revocable,releaseStartTime,vestingCliffTime,fid
+0x53425e91952644933a3d4C69d3799eFBFc7d49d6,1000.00,1718413200,1721005200,720,2,0,0,1
