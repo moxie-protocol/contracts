@@ -33,7 +33,7 @@ task("onboard", "Onboard Subject", async (taskArgs, hre) => {
     await subjectFactory.connect(owner).grantRole(await subjectFactory.UPDATE_AUCTION_ROLE(), owner.address)
 
     // Change auctionTime to 15 minutes
-    await subjectFactory.connect(owner).updateAuctionTime(1200, 1199);
+    await subjectFactory.connect(owner).updateAuctionTime(900, 899);
 
     // await subjectFactory.connect(owner).initiateSubjectOnboarding(
     //     subject2.address,
