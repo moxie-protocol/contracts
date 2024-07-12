@@ -288,6 +288,7 @@ export const waitTransaction = async (tx: ContractTransaction, confirmations = 1
 
 task('create-token-locks', 'Create token lock contracts from file')
   .addParam('deployFile', 'File from where to read the deploy config')
+  .addParam('pendingFile', 'File where to save the records that are picked')
   .addParam('resultFile', 'File where to save results')
   .addParam('ownerAddress', 'Owner address of token lock contracts')
   .addParam('managerName', 'Name of the token lock manager deployment', 'MoxieTokenLockManager')
@@ -390,6 +391,9 @@ task('create-token-locks', 'Create token lock contracts from file')
           logger.log(prettyConfigEntry(entry))
 
           try {
+            // Save record in pendingFile before processing
+            const pendingResult = { ...entry}
+            saveDeployResult(taskArgs.pendingFile, pendingResult)
             // Deploy
             const tx = await manager
               .connect(nonceManager)
