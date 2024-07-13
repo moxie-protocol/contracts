@@ -49,7 +49,7 @@ task("test1", "test1", async (taskArgs, hre) => {
    //    console.log(tx)
    // });
 
-   // // Get the auction id from log of the above transaction
+   // Get the auction id from log of the above transaction
    // const auctionId = 18;
    // console.log('auctionId', auctionId)
 
@@ -93,15 +93,15 @@ task("test1", "test1", async (taskArgs, hre) => {
 
    // Claim from participant order
    // buyAmount and sellAmount should be same as the bid placed
-   // await easyAuctionVC.connect(beneficiary).claimFromParticipantOrder(
-   //    BigInt(auctionId), [
-   //       encodeOrder({
-   //          buyAmount: BigNumber.from('500').mul(BigNumber.from(10).pow(18)),
-   //           sellAmount: BigNumber.from('1284').mul(BigNumber.from(10).pow(18)),
-   //           userId: BigNumber.from(4),
-   //         }),
-   //   ]
-   // );
+   await easyAuctionVC.connect(beneficiary).claimFromParticipantOrder(
+      BigInt(auctionId), [
+         encodeOrder({
+            buyAmount: BigNumber.from('500').mul(BigNumber.from(10).pow(18)),
+             sellAmount: BigNumber.from('1284').mul(BigNumber.from(10).pow(18)),
+             userId: BigNumber.from(4),
+           }),
+     ]
+   );
 
    const setupOutput = await setup(hre, 5);
    const moxieBondingCureVC2 = setupOutput.moxieBondingCurveVC;

@@ -1,0 +1,58 @@
+{
+    "subjectAddress": "0x67Fb7eF3c65bA4b938fefAdb883b5730734aAFa8",
+    "auctionId": "34",
+    "isOnboarding": false,
+    "auctionInput": {
+        "name": "fid-3761",
+        "symbol": "fid-3761",
+        "initialSupply": "1000",
+        "minBuyAmount": "200",
+        "minBiddingAmount": "200",
+        "minFundingThreshold": "0",
+        "isAtomicClosureAllowed": false,
+        "accessManagerContract": "0x7E6DD7Ee0CD8A395B8eD5B21D8C40535CC1D4640",
+        "accessManagerContractData": "0x"
+    },
+    "isPlaceBid": false,
+    "bids": [
+        {
+            "bidderIndex": "10",
+            "buyAmount": "500",
+            "sellAmount": "501"
+        },
+        {
+            "bidderIndex": "11",
+            "buyAmount": "500",
+            "sellAmount": "501"
+        }
+    ],
+    "isCancelBid": false,
+    "cancelBids": [
+        {
+            "bidderIndex": "10",
+            "buyAmount": "500",
+            "sellAmount": "501"
+        },
+        {
+            "bidderIndex": "11",
+            "buyAmount": "500",
+            "sellAmount": "501"
+        }
+    ],
+    "finalizeOnboarding": false,
+    "finalizeAmount": "1",
+    "reserveRatio": "660000",
+    "isClaim": false,
+    "claimTokens": [
+        {
+            "bidderIndex": "10",
+            "buyAmount": "500",
+            "sellAmount": "501"
+        },
+        {
+            "bidderIndex": "11",
+            "buyAmount": "500",
+            "sellAmount": "501"
+        }
+    ]
+}
