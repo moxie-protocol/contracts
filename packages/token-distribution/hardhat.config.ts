@@ -166,7 +166,7 @@ const config = {
   },
   namedAccounts: {
     deployer: {
-      default: 0,
+      default: 1,
     },
   },
   etherscan: {

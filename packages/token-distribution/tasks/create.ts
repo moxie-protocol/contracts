@@ -33,6 +33,7 @@ interface TokenLockConfigEntry {
   salt?: string
   txHash?: string
   contractAddress?: string
+  fid: string
 }
 
 interface TokenLockDeployEntry extends TokenLockConfigEntry {
@@ -83,6 +84,7 @@ const loadDeployData = (filepath: string): TokenLockConfigEntry[] => {
         revocable: parseInt(entry[5]),
         releaseStartTime: entry[6],
         vestingCliffTime: entry[7],
+        fid: entry[8],
       }
     })
 }
@@ -90,6 +92,7 @@ const loadDeployData = (filepath: string): TokenLockConfigEntry[] => {
 const loadResultData = (filepath: string): TokenLockConfigEntry[] => {
   const data = fs.readFileSync(filepath, 'utf8')
   const entries = data.split('\n').map(e => e.trim())
+  entries.shift() // remove the title from the csv
   return entries
     .filter(entryData => !!entryData)
     .map((entryData) => {
@@ -103,9 +106,10 @@ const loadResultData = (filepath: string): TokenLockConfigEntry[] => {
         revocable: parseInt(entry[5]),
         releaseStartTime: entry[6],
         vestingCliffTime: entry[7],
-        contractAddress: entry[8],
-        salt: entry[9],
-        txHash: entry[10],
+        fid: entry[8],
+        contractAddress: entry[9],
+        salt: entry[10],
+        txHash: entry[11],
       }
     })
 }
@@ -120,6 +124,7 @@ const deployEntryToCSV = (entry: TokenLockDeployEntry) => {
     entry.revocable,
     entry.releaseStartTime,
     entry.vestingCliffTime,
+    entry.fid,
     entry.contractAddress,
     entry.salt,
     entry.txHash,
@@ -283,6 +288,7 @@ export const waitTransaction = async (tx: ContractTransaction, confirmations = 1
 
 task('create-token-locks', 'Create token lock contracts from file')
   .addParam('deployFile', 'File from where to read the deploy config')
+  .addParam('pendingFile', 'File where to save the records that are picked')
   .addParam('resultFile', 'File where to save results')
   .addParam('ownerAddress', 'Owner address of token lock contracts')
   .addParam('managerName', 'Name of the token lock manager deployment', 'MoxieTokenLockManager')
@@ -374,7 +380,7 @@ task('create-token-locks', 'Create token lock contracts from file')
       const accounts = await hre.ethers.getSigners()
       const nonceManager = new NonceManager(accounts[1]) // Use NonceManager to send concurrent txs
 
-      const queue = new PQueue({ concurrency: 6 })
+      const queue = new PQueue({ concurrency: 10 })
 
       logger.info('Deploying token lock contracts... start time:', new Date().toLocaleString())
 
@@ -385,6 +391,9 @@ task('create-token-locks', 'Create token lock contracts from file')
           logger.log(prettyConfigEntry(entry))
 
           try {
+            // Save record in pendingFile before processing
+            const pendingResult = { ...entry}
+            saveDeployResult(taskArgs.pendingFile, pendingResult)
             // Deploy
             const tx = await manager
               .connect(nonceManager)
@@ -571,7 +580,7 @@ task('scan-token-locks-balances', 'Check current balances of deployed contracts'
     logger.log('Current Manager balance is ', formatEther(balance))
 
     // Load deployed entries
-    const deployedEntries = loadResultData('/' + taskArgs.resultFile)
+    const deployedEntries = loadResultData( taskArgs.resultFile)
 
     let balances = BigNumber.from(0)
     for (const entry of deployedEntries) {
