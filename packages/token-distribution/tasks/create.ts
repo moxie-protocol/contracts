@@ -370,10 +370,10 @@ task('create-token-locks', 'Create token lock contracts from file')
     }
 
     // Summary
-    if (!(await askConfirm())) {
-      logger.log('Cancelled')
-      process.exit(1)
-    }
+    // if (!(await askConfirm())) {
+    //   logger.log('Cancelled')
+    //   process.exit(1)
+    // }
 
     if (!taskArgs.txBuilder) {
       // Deploy contracts
