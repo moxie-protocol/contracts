@@ -59,7 +59,7 @@ const networkConfigs: NetworkConfig[] = [
   {
     network: 'base-sepolia',
     chainId: 84532,
-    url: 'https://sepolia.base.org',
+    url: 'https://base-sepolia.g.alchemy.com/v2/y2Usu-Y-jVTFVdzbu6ufj7oVUdoSpIl1',
     gasPrice: 2000000
   },
 ]
