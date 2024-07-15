@@ -21,7 +21,7 @@ interface ITokenManager {
     
     event TransferAllowListWalletAllowed(address _wallet, bool allowed);
 
-    function tokens(address _subject) external returns (address token_);
+    function tokens(address _subject) view external returns (address token_);
 
     function create(
         address _beneficiary,

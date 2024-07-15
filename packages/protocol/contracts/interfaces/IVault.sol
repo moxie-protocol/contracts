@@ -27,7 +27,7 @@ interface IVault {
     function balanceOf(
         address _subject,
         address _token
-    ) external returns (uint256 balance_);
+    ) external view returns (uint256 balance_);
 
     function deposit(address _subject, address _token, uint256 _value) external;
 

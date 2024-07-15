@@ -182,7 +182,6 @@ describe("SubjectERC20", () => {
         it('should not allow mint by non owner', async () => {
             const {
                 subjectErc20,
-                owner,
                 mockErc721,
                 signer
             } = await loadFixture(deploy);
@@ -222,7 +221,7 @@ describe("SubjectERC20", () => {
             const amount = 20 * 10 ^ 18;
 
             await expect(tokenManager.connect(owner).mint(owner.address, signer.address, amount))
-            .revertedWithCustomError(subjectErc20, 'SubjectERC20_NotAMoxiePassHolder');
+                .revertedWithCustomError(subjectErc20, 'SubjectERC20_NotAMoxiePassHolder');
 
 
         });
@@ -245,8 +244,80 @@ describe("SubjectERC20", () => {
 
         it('should fail to transfer if its triggered from wallet not in allow list', async () => {
 
-        })
+            const {
+                subjectErc20,
+                owner,
+                tokenManager,
+                deployer
 
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole(await tokenManager.ALLOW_LIST_ROLE(), owner.address);
+
+            await tokenManager.connect(owner).addToAllowList(await tokenManager.getAddress());
+
+            await expect(subjectErc20.connect(owner).transfer(deployer.address, "100"))
+                .to.revertedWithCustomError(subjectErc20, "SubjectERC20_InvalidTransfer");
+        });
+
+        it('should allow transfer if to address is allowed', async () => {
+
+            const {
+                subjectErc20,
+                owner,
+                tokenManager,
+                deployer
+
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole(await tokenManager.ALLOW_LIST_ROLE(), owner.address);
+
+            await tokenManager.connect(owner).addToAllowList(await owner.address);
+
+            expect(await subjectErc20.connect(owner).transfer(deployer.address, "100"))
+                .to.emit(subjectErc20, "Transfer")
+                .withArgs(owner.address, deployer.address, "200");
+
+        });
+
+        it('should allow transfer if from address is allowed ', async () => {
+            const {
+                subjectErc20,
+                owner,
+                tokenManager,
+                deployer
+
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole(await tokenManager.ALLOW_LIST_ROLE(), owner.address);
+
+            await tokenManager.connect(owner).addToAllowList(await deployer.address);
+
+            expect(await subjectErc20.connect(owner).transfer(deployer.address, "100"))
+                .to.emit(subjectErc20, "Transfer")
+                .withArgs(owner.address, deployer.address, "200");
+
+        });
+
+        it('shoud not allow transfer if to address is in allow list but doesnt have moxie pass', async () => {
+            const {
+                subjectErc20,
+                owner,
+                signer,
+                tokenManager,
+                deployer
+
+            } = await loadFixture(deploy);
+
+
+            await tokenManager.connect(owner).grantRole(await tokenManager.ALLOW_LIST_ROLE(), owner.address);
+
+            await tokenManager.connect(owner).addToAllowList(await deployer.address);
+
+            await expect(subjectErc20.connect(owner).transfer(signer.address, "100"))
+                .to.revertedWithCustomError(subjectErc20, "SubjectERC20_NotAMoxiePassHolder");
+
+        });
     });
 
 });
