@@ -44,6 +44,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     error MoxieBondingCurve_InvalidSubjectToken();
     error MoxieBondingCurve_SlippageExceedsLimit();
     error MoxieBondingCurve_InvalidSellAmount();
+    error MoxieBondingCurve_InvalidAmount();
 
     event UpdateFees(
         uint256 _protocolBuyFeePct,
@@ -492,6 +493,46 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     }
 
     /**
+     * @notice Valid Subject Input
+     * @param _subject  Address of subject
+     * @param _subjectTokenAmount Amount of buy/sell estimates.
+     * @return subjectReserveRatio_ Reserve ratio of subject.
+     * @return subjectReserve_ Total reserve of Subject.
+     * @return subjectSupply_ Total supply of subject token.
+     */
+    function validateSubjectInput(
+        address _subject,
+        uint256 _subjectTokenAmount
+    )
+        internal
+        view
+        returns (
+            uint32 subjectReserveRatio_,
+            uint256 subjectReserve_,
+            uint256 subjectSupply_
+        )
+    {
+        if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
+        if (_subjectTokenAmount == 0) revert MoxieBondingCurve_InvalidAmount();
+
+        subjectReserveRatio_ = reserveRatio[_subject];
+
+        if (subjectReserveRatio_ == 0)
+            revert MoxieBondingCurve_SubjectNotInitialized();
+
+        IERC20Extended subjectToken = IERC20Extended(
+            tokenManager.tokens(_subject)
+        );
+
+        subjectReserve_ = vault.balanceOf(
+            address(subjectToken),
+            address(token)
+        );
+
+        subjectSupply_ = subjectToken.totalSupply();
+    }
+
+    /**
      * @notice Update fee only be called by role UPDATE_FEES_ROLE.
      * @param _feeInput Fee input struct.
      */
@@ -659,5 +700,60 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             msg.sender,
             _minReturnAmountAfterFee
         );
+    }
+
+    /**
+     * @notice Estimates amount of Moxie token required to buy given subject token amount
+     * @param _subject  Address of subject.
+     * @param _subjectTokenAmount  Amount of subject tokens.
+     */
+    function calculateTokensForBuy(
+        address _subject,
+        uint256 _subjectTokenAmount
+    ) external view returns (uint256 moxieAmount_) {
+        (
+            uint32 subjectReserveRatio_,
+            uint256 subjectReserve_,
+            uint256 subjectSupply_
+        ) = validateSubjectInput(_subject, _subjectTokenAmount);
+
+        uint256 estimatedAmount = formula.calculateFundCost(
+            subjectSupply_,
+            subjectReserve_,
+            subjectReserveRatio_,
+            _subjectTokenAmount
+        );
+
+        uint256 totalFeePCT = protocolBuyFeePct + subjectBuyFeePct;
+        moxieAmount_ = (estimatedAmount * PCT_BASE) / (PCT_BASE - totalFeePCT);
+    }
+
+    /**
+     * @notice Estimates amount of Moxie tokes will be returned after selling given subject tokens.
+     * @param _subject  Address of subject.
+     * @param _subjectTokenAmount  Amount of subject tokens.
+     */
+    function calculateTokensForSell(
+        address _subject,
+        uint256 _subjectTokenAmount
+    ) external view returns (uint256 moxieAmount_) {
+        (
+            uint32 subjectReserveRatio_,
+            uint256 subjectReserve_,
+            uint256 subjectSupply_
+        ) = validateSubjectInput(_subject, _subjectTokenAmount);
+
+        uint256 estimatedAmount = formula.calculateSaleReturn(
+            subjectSupply_,
+            subjectReserve_,
+            subjectReserveRatio_,
+            _subjectTokenAmount
+        );
+
+        (uint256 protocolFee, uint256 subjectFee) = _calculateSellSideFee(
+            estimatedAmount
+        );
+
+        moxieAmount_ = estimatedAmount - protocolFee - subjectFee;
     }
 }
