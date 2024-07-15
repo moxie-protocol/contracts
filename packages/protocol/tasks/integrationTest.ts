@@ -1,9 +1,9 @@
 
-import { experimentalAddHardhatNetworkMessageTraceHook, task } from "hardhat/config";
+import { task } from "hardhat/config";
 import { BigNumber} from "@ethersproject/bignumber";
 import * as contracts from "./config/deployed_addresses.json";
 import * as task_data from "./config/integrationTest.json";
-import { AbiCoder } from "ethers";
+import { AbiCoder, MaxUint256 } from "ethers";
 import EasyAuctionArtifact from "../test-artifact/easy-auction/artifacts/EasyAuction.json";
 import { EasyAuction } from "../test-artifact/easy-auction/typechain/EasyAuction";
 
@@ -26,6 +26,11 @@ task("integrationTest", "integrationTest", async (taskArgs, hre) => {
     const moxiePass = await hre.ethers.getContractAt("MoxiePass", contracts["MoxiePass#MoxiePass"]);
     const subjectFactory = await hre.ethers.getContractAt("SubjectFactory", contracts["ProtocolContractsProxy#subjectFactoryProxy"]);
     const moxieToken = await hre.ethers.getContractAt("MoxieToken", contracts["MoxieToken#MoxieToken"]);
+    const moxieBondingCurve = await hre.ethers.getContractAt("MoxieBondingCurve", contracts["ProtocolContractsProxy#moxieBondingCurveProxy"]);
+    const tokenManager = await hre.ethers.getContractAt("TokenManager", contracts["ProtocolContractsProxy#tokenManagerProxy"]);
+    const subjectTokenAddress = await tokenManager.tokens(subjectAddress);
+    const subjectToken = await hre.ethers.getContractAt("SubjectERC20", subjectTokenAddress);
+
 
     // onbaord subject if isOnboarding is true
     const isOnboarding = task_data.isOnboarding;
@@ -155,7 +160,7 @@ task("integrationTest", "integrationTest", async (taskArgs, hre) => {
                    encodeOrder({
                       buyAmount: buyAmount,
                        sellAmount: sellAmount,
-                       userId: BigNumber.from(4),
+                       userId: BigNumber.from(await getUserId(bidder.address)),
                     }),
                 ]
             );
@@ -163,16 +168,49 @@ task("integrationTest", "integrationTest", async (taskArgs, hre) => {
         }
     }
 
-    // Get user id
-    const bidder = signers[parseInt("10")]
-    console.log('bidder.address', bidder.address)
-    const easyAuction = await hre.ethers.getContractAtFromArtifact(EasyAuctionArtifact, contracts["EasyAuctionContracts#EasyAuction"]) as unknown as EasyAuction
-    const userId = await easyAuction.getUserId(bidder.address);
-    // Get traces of the transaction
-    const traces = await hre.ethers.provider.send("eth_getTransactionReceipt", [
-        userId?.hash]);
-    console.log('traces', traces)
-    
+    // Buy Shares
+    if (task_data.isBuyShares) {
+        const buyShares = task_data.buyShares;
+        for (let i = 0; i < buyShares.length; i++) {
+
+            const bidder = signers[parseInt(buyShares[i].bidderIndex)]
+            // Print the bidder address
+            console.log('bidder.address', bidder.address)
+
+            const buyAmountBuyShares = BigNumber.from(buyShares[i].buyAmount).mul(BigNumber.from(10).pow(18));
+            // Give allowance
+            await moxieToken.connect(bidder).approve(contracts["ProtocolContractsProxy#moxieBondingCurveProxy"], buyAmountBuyShares.toString());
+
+            await moxieBondingCurve.connect(bidder).buyShares(
+                task_data.subjectAddress,
+                buyAmountBuyShares.toString(),
+                0,
+            )
+
+        }
+    }
+
+    // Sell shares
+    if (task_data.isSellShares) {
+        const sellShares = task_data.sellShares;
+        for (let i = 0; i < sellShares.length; i++) {
+
+            const seller = signers[parseInt(sellShares[i].sellerIndex)]
+            // Print the bidder address
+            console.log('bidder.address', seller.address)
+
+            const sellAmountShares = BigNumber.from(sellShares[i].sellAmount).mul(BigNumber.from(10).pow(18));
+            // Give allowance
+            await subjectToken.connect(seller).approve(contracts["ProtocolContractsProxy#moxieBondingCurveProxy"], MaxUint256);
+
+            await moxieBondingCurve.connect(seller).sellShares(
+                task_data.subjectAddress,
+                sellAmountShares.toString(),
+                0,
+            )
+
+        }
+    }
 
 });
 
@@ -190,3 +228,29 @@ export function encodeOrder(order: Order): string {
     buyAmount: BigNumber;
     userId: BigNumber;
  }
+
+ async function getUserId(address:string) {
+    const query = `
+    {
+      users(where: { address_in: ["${address}"] }) {
+        id
+        address
+      }
+    }
+  `;
+
+    const response = await fetch('https://api.studio.thegraph.com/proxy/27864/auction/v3.4.3', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+    });
+  
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+  
+    const responseBody = await response.json();
+    return responseBody.data.users[0].id;
+  }

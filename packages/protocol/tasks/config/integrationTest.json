@@ -3,8 +3,8 @@
     "auctionId": "34",
     "isOnboarding": false,
     "auctionInput": {
-        "name": "fid-3761",
-        "symbol": "fid-3761",
+        "name": "fid:289309",
+        "symbol": "fid:289309",
         "initialSupply": "1000",
         "minBuyAmount": "200",
         "minBiddingAmount": "200",
@@ -53,6 +53,28 @@
             "bidderIndex": "11",
             "buyAmount": "500",
             "sellAmount": "501"
+        }
+    ],
+    "isBuyShares": false,
+    "buyShares": [
+        {
+            "bidderIndex": "10",
+            "buyAmount": "500"
+        },
+        {
+            "bidderIndex": "11",
+            "buyAmount": "500"
+        }
+    ],
+    "isSellShares": false,
+    "sellShares": [
+        {
+            "sellerIndex": "10",
+            "sellAmount": "270"
+        },
+        {
+            "sellerIndex": "11",
+            "sellAmount": "270"
         }
     ]
 }
