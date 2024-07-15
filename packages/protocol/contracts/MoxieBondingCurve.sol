@@ -710,7 +710,15 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     function calculateTokensForBuy(
         address _subject,
         uint256 _subjectTokenAmount
-    ) external view returns (uint256 moxieAmount_) {
+    )
+        external
+        view
+        returns (
+            uint256 moxieAmount_,
+            uint256 protocolFee_,
+            uint256 subjectFee_
+        )
+    {
         (
             uint32 subjectReserveRatio_,
             uint256 subjectReserve_,
@@ -726,6 +734,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
 
         uint256 totalFeePCT = protocolBuyFeePct + subjectBuyFeePct;
         moxieAmount_ = (estimatedAmount * PCT_BASE) / (PCT_BASE - totalFeePCT);
+
+        (protocolFee_, subjectFee_) = _calculateBuySideFee(moxieAmount_);
     }
 
     /**
@@ -736,7 +746,15 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     function calculateTokensForSell(
         address _subject,
         uint256 _subjectTokenAmount
-    ) external view returns (uint256 moxieAmount_) {
+    )
+        external
+        view
+        returns (
+            uint256 moxieAmount_,
+            uint256 protocolFee_,
+            uint256 subjectFee_
+        )
+    {
         (
             uint32 subjectReserveRatio_,
             uint256 subjectReserve_,
@@ -750,10 +768,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _subjectTokenAmount
         );
 
-        (uint256 protocolFee, uint256 subjectFee) = _calculateSellSideFee(
-            estimatedAmount
-        );
+        (protocolFee_, subjectFee_) = _calculateSellSideFee(estimatedAmount);
 
-        moxieAmount_ = estimatedAmount - protocolFee - subjectFee;
+        moxieAmount_ = estimatedAmount - protocolFee_ - subjectFee_;
     }
 }

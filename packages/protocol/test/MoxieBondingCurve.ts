@@ -3564,12 +3564,14 @@ describe("MoxieBondingCurve", () => {
                 );
 
 
-            const estimatedMoxieAmount = await moxieBondingCurve.calculateTokensForBuy(
+            const estimate = await moxieBondingCurve.calculateTokensForBuy(
                 subject,
                 expectedShares
             );
 
-            expect(estimatedMoxieAmount).to.equal(buyAmount);
+            expect(estimate.moxieAmount_).to.equal(buyAmount);
+            expect(estimate.protocolFee_).to.equal(protocolFee);
+            expect(estimate.subjectFee_).to.equal(subjectFee);
 
         });
 
@@ -3728,12 +3730,14 @@ describe("MoxieBondingCurve", () => {
 
             const expectedReturn = returnAmount - protocolFee - subjectFee;
 
-            const moxieAmount = await moxieBondingCurve.calculateTokensForSell(
+            const estimate = await moxieBondingCurve.calculateTokensForSell(
                 subject,
                 sellAmount
             );
 
-            expect(moxieAmount).to.equal(expectedReturn);
+            expect(estimate.moxieAmount_).to.equal(expectedReturn);
+            expect(estimate.protocolFee_).to.equal(protocolFee);
+            expect(estimate.subjectFee_).to.equal(subjectFee);
         });
 
         it('should fail estimate for zero subject', async() => {
