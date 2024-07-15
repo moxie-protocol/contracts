@@ -53,6 +53,34 @@ contract SubjectERC20 is
     }
 
     /**
+     * @notice Verifiers if address is moxie pass holder.
+     * @param _address input address.
+     */
+    modifier onlyMoxiePassHolder(address _address) {
+        if (
+            _address != address(0) &&
+            !moxiePassVerifier.isMoxiePassHolder(_address)
+        ) revert SubjectERC20_NotAMoxiePassHolder();
+        _;
+    }
+
+    /**
+     * @notice Verify if transfer is valid based on allowlist.
+     * @param _from  From address of transfer.
+     * @param _to To address of transfer.
+     */
+    modifier onlyValidTransfers(address _from, address _to) {
+        if (
+            _from != address(0) &&
+            _to != address(0) &&
+            !_isValidTransfer(_from, _to)
+        ) {
+            revert SubjectERC20_InvalidTransfer();
+        }
+        _;
+    }
+
+    /**
      * @notice Mint tokens to address.
      * @param _to Address of beneficiary.
      * @param _amount Amount of tokens to be minted.
@@ -87,20 +115,13 @@ contract SubjectERC20 is
         address from,
         address to,
         uint256 value
-    ) internal virtual override {
-        // only moxie pass holders can hold subject tokens.
-        if (to != address(0) && !moxiePassVerifier.isMoxiePassHolder(to))
-            revert SubjectERC20_NotAMoxiePassHolder();
-
-        // for a transfer(not mint) one of the contract must be whitelisted address
-        if (
-            from != address(0) &&
-            to != address(0) &&
-            !_isValidTransfer(from, to)
-        ) {
-            revert SubjectERC20_InvalidTransfer();
-        }
-
+    )
+        internal
+        virtual
+        override
+        onlyMoxiePassHolder(to)
+        onlyValidTransfers(from, to)
+    {
         super._update(from, to, value);
     }
 }
