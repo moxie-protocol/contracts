@@ -148,6 +148,8 @@ task('manager-transfer-ownership', 'Transfer ownership of the manager')
     // Validate current owner
     const tokenLockManagerOwner = await manager.owner()
     const { deployer } = await hre.getNamedAccounts()
+    const signers = await hre.ethers.getSigners()
+    const ownerSinger = signers[1]
     if (tokenLockManagerOwner !== deployer) {
       logger.error('Only the owner can transfer ownership')
       process.exit(1)
@@ -163,7 +165,7 @@ task('manager-transfer-ownership', 'Transfer ownership of the manager')
     }
 
     // Transfer ownership
-    await manager.transferOwnership(taskArgs.owner)
+    await manager.connect(ownerSinger).transferOwnership(taskArgs.owner)
   })
 
   task('set-token-manager', 'Set Token Manager contract address')  
