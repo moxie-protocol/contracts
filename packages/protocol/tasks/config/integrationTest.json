@@ -1,6 +1,6 @@
 {
-    "subjectAddress": "0x67Fb7eF3c65bA4b938fefAdb883b5730734aAFa8",
-    "auctionId": "34",
+    "subjectAddress": "0xCfA706659D0bBe85EbB5C145a2D9f1c89C76b1c4",
+    "auctionId": "2",
     "isOnboarding": false,
     "auctionInput": {
         "name": "fid:289309",
@@ -10,7 +10,7 @@
         "minBiddingAmount": "200",
         "minFundingThreshold": "0",
         "isAtomicClosureAllowed": false,
-        "accessManagerContract": "0x7E6DD7Ee0CD8A395B8eD5B21D8C40535CC1D4640",
+        "accessManagerContract": "0x6BCF68EBc21f0b5Cb62C60F5900E95c7fAB2DE50",
         "accessManagerContractData": "0x"
     },
     "isPlaceBid": false,

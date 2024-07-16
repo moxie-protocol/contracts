@@ -1,9 +1,9 @@
 import { task } from "hardhat/config";
 import { BigNumber} from "@ethersproject/bignumber";
 
-const SUBJECT_FACTORY_ADDRESS = '0x3199219bda5dbC9ee45bb3DFad180be56A7ebfd0'
+const SUBJECT_FACTORY_ADDRESS = '0x0b34EB0DE7977b1d3e7facD449b92a0Fe5772A40'
 const MOXIE_PASS = '0xA63D5a914F575F8Fe8832A2A9Fcb4A2d875Db2Ef'
-const MOXIE_PASS_VERIFIER_ADDRESS = '0xCCCAbD849485Eb16BAd22B4b3e8B315F537Da1E9'
+const MOXIE_PASS_VERIFIER_ADDRESS = '0x6BCF68EBc21f0b5Cb62C60F5900E95c7fAB2DE50'
 
 task("onboard", "Onboard Subject", async (taskArgs, hre) => {
 
@@ -33,7 +33,7 @@ task("onboard", "Onboard Subject", async (taskArgs, hre) => {
     await subjectFactory.connect(owner).grantRole(await subjectFactory.UPDATE_AUCTION_ROLE(), owner.address)
 
     // Change auctionTime to 15 minutes
-    await subjectFactory.connect(owner).updateAuctionTime(1800, 1799);
+    await subjectFactory.connect(owner).updateAuctionTime(600, 599);
 
     // await subjectFactory.connect(owner).initiateSubjectOnboarding(
     //     subject2.address,

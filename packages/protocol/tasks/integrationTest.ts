@@ -65,12 +65,13 @@ task("integrationTest", "integrationTest", async (taskArgs, hre) => {
                 response.logs[i].data,
               );
             auctionId = decodedEvent[5].toString();
-            console.log('auctionId', auctionId)
+            console.log("Onboarded new subject with address", subjectAddress, "and auctionId", auctionId);
             }
         }
 
     } else {
         auctionId = task_data.auctionId;
+        console.log("Using already deployed subject with auctionId: ", auctionId)
     }
 
     // Place a bid if bids are present in the task_data
@@ -78,8 +79,6 @@ task("integrationTest", "integrationTest", async (taskArgs, hre) => {
         const bids = task_data.bids;
         for (let i = 0; i < bids.length; i++) {
             const bidder = signers[parseInt(bids[i].bidderIndex)]
-            // Print the bidder address
-            console.log('bidder.address', bidder.address)
 
             // Send moxie to the bidder
             const transferAmount = BigNumber.from(bids[i].sellAmount).mul(BigNumber.from(10).pow(18));
@@ -103,6 +102,8 @@ task("integrationTest", "integrationTest", async (taskArgs, hre) => {
                 '0x',
             );
 
+            // Print the bidder address and bid order
+            console.log("Placed bid for bidder", bidder.address, "with buyAmount", buyAmount.toString(), "and sellAmount", sellAmount.toString())
         }
     }
 
@@ -112,9 +113,6 @@ task("integrationTest", "integrationTest", async (taskArgs, hre) => {
         for (let i = 0; i < cancelBids.length; i++) {
 
             const bidder = signers[parseInt(cancelBids[i].bidderIndex)]
-            // Print the bidder address
-            console.log('bidder.address', bidder.address)
-
             const easyAuction = await hre.ethers.getContractAtFromArtifact(EasyAuctionArtifact, contracts["EasyAuctionContracts#EasyAuction"]) as unknown as EasyAuction
 
             const buyAmount = BigNumber.from(cancelBids[i].buyAmount).mul(BigNumber.from(10).pow(18));
@@ -125,6 +123,9 @@ task("integrationTest", "integrationTest", async (taskArgs, hre) => {
                 .cancelSellOrders(auctionId, [
                 encodeOrder({ sellAmount, buyAmount,  userId: BigNumber.from(4)}),
             ]);
+
+            // Print the bidder address and bid order
+            console.log("Cancelled bid for bidder", bidder.address, "with buyAmount", buyAmount.toString(), "and sellAmount", sellAmount.toString())
 
         }
     }
@@ -139,6 +140,9 @@ task("integrationTest", "integrationTest", async (taskArgs, hre) => {
             buyAmountFinalize,
             parseInt(task_data.reserveRatio),
         );
+
+        // Print that subject finalization is done
+        console.log("Finalized onboarding for subject", task_data.subjectAddress, "with buyAmount", buyAmountFinalize, "and reserveRatio", task_data.reserveRatio)
     }
 
     // Claim from participant order
@@ -147,9 +151,6 @@ task("integrationTest", "integrationTest", async (taskArgs, hre) => {
         for (let i = 0; i < claimTokens.length; i++) {
 
             const bidder = signers[parseInt(claimTokens[i].bidderIndex)]
-            // Print the bidder address
-            console.log('bidder.address', bidder.address)
-
             const easyAuction = await hre.ethers.getContractAtFromArtifact(EasyAuctionArtifact, contracts["EasyAuctionContracts#EasyAuction"]) as unknown as EasyAuction
 
             const buyAmount = BigNumber.from(claimTokens[i].buyAmount).mul(BigNumber.from(10).pow(18));
@@ -165,6 +166,9 @@ task("integrationTest", "integrationTest", async (taskArgs, hre) => {
                 ]
             );
 
+            // Print that claiming done with order
+            console.log("Claimed tokens for bidder", bidder.address, "with buyAmount", buyAmount.toString(), "and sellAmount", sellAmount.toString())
+
         }
     }
 
@@ -174,9 +178,6 @@ task("integrationTest", "integrationTest", async (taskArgs, hre) => {
         for (let i = 0; i < buyShares.length; i++) {
 
             const bidder = signers[parseInt(buyShares[i].bidderIndex)]
-            // Print the bidder address
-            console.log('bidder.address', bidder.address)
-
             const buyAmountBuyShares = BigNumber.from(buyShares[i].buyAmount).mul(BigNumber.from(10).pow(18));
             // Give allowance
             await moxieToken.connect(bidder).approve(contracts["ProtocolContractsProxy#moxieBondingCurveProxy"], buyAmountBuyShares.toString());
@@ -187,6 +188,9 @@ task("integrationTest", "integrationTest", async (taskArgs, hre) => {
                 0,
             )
 
+            // Print buy shares
+            console.log("Bought shares for bidder", bidder.address, "with buyAmount", buyAmountBuyShares.toString())
+
         }
     }
 
@@ -196,9 +200,6 @@ task("integrationTest", "integrationTest", async (taskArgs, hre) => {
         for (let i = 0; i < sellShares.length; i++) {
 
             const seller = signers[parseInt(sellShares[i].sellerIndex)]
-            // Print the bidder address
-            console.log('bidder.address', seller.address)
-
             const sellAmountShares = BigNumber.from(sellShares[i].sellAmount).mul(BigNumber.from(10).pow(18));
             // Give allowance
             await subjectToken.connect(seller).approve(contracts["ProtocolContractsProxy#moxieBondingCurveProxy"], MaxUint256);
@@ -208,6 +209,9 @@ task("integrationTest", "integrationTest", async (taskArgs, hre) => {
                 sellAmountShares.toString(),
                 0,
             )
+
+            // Print sell shares
+            console.log("Sold shares for seller", seller.address, "with sellAmount", sellAmountShares.toString())
 
         }
     }
