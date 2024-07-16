@@ -112,7 +112,7 @@ contract TokenManager is ITokenManager, SecurityModule {
      * @notice Adds an address that can be allowed as one of the transfer address(from/to)
      * @param _wallet Wallet address that is to be added to allow list.
      */
-    function addToAllowList(
+    function addToTransferAllowList(
         address _wallet
     ) external onlyRole(ALLOW_LIST_ROLE) {
         if (_wallet == address(0)) revert TokenManager_InvalidAddress();
@@ -127,7 +127,7 @@ contract TokenManager is ITokenManager, SecurityModule {
      * @notice Removes an address from allow list.
      * @param _wallet Wallet address that is to be added to allow list.
      */
-    function removeFromAllowList(
+    function removeFromTransferAllowList(
         address _wallet
     ) external onlyRole(ALLOW_LIST_ROLE) {
         if (_wallet == address(0)) revert TokenManager_InvalidAddress();
@@ -143,7 +143,7 @@ contract TokenManager is ITokenManager, SecurityModule {
      * must be part of allow list.
      * @param _wallet Address of wallet.
      */
-    function isWalletAllowed(address _wallet) external view returns (bool) {
+    function isWalletAllowedForTransfer(address _wallet) external view returns (bool) {
         //always allow if allow list is not set.
         if (transferAllowList.length() == 0) return true;
 

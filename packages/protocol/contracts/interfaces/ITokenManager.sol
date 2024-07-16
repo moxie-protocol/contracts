@@ -38,8 +38,8 @@ interface ITokenManager {
     ) external returns (bool);
 
 
-    function addToAllowList(address _wallet) external;
-    function removeFromAllowList(address _wallet) external;
-    function isWalletAllowed(address _wallet) external returns(bool);
+    function addToTransferAllowList(address _wallet) external;
+    function removeFromTransferAllowList(address _wallet) external;
+    function isWalletAllowedForTransfer(address _wallet) external returns(bool);
 
 }

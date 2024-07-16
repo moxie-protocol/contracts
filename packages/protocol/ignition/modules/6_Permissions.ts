@@ -35,10 +35,10 @@ export default buildModule("Permissions", (m) => {
     m.call(tokenManagerInstance, 'grantRole', [mintRole, moxieBondingCurveInstance,], { from: owner, id: 'mintRoleMoxieBondingCurve' });
     const allowListRoleOwner = m.call(tokenManagerInstance, 'grantRole', [allowListRole, owner,], { from: owner, id: 'allowListRoleOwner' });
 
-    m.call(tokenManagerInstance, "addToAllowList", [tokenManagerInstance], { from: owner, id: "tokenManagerInAllowList", after: [allowListRoleOwner] })
-    m.call(tokenManagerInstance, "addToAllowList", [easyAuction], { from: owner, id: "easyAuctionInAllowList", after: [allowListRoleOwner] })
-    m.call(tokenManagerInstance, "addToAllowList", [moxieBondingCurveInstance], { from: owner, id: "moxieBondingCurveInAllowList", after: [allowListRoleOwner] })
-    m.call(tokenManagerInstance, "addToAllowList", [subjectFactoryInstance], { from: owner, id: "subjectFactoryInAllowList", after: [allowListRoleOwner] })
+    m.call(tokenManagerInstance, "addToTransferAllowList", [tokenManagerInstance], { from: owner, id: "tokenManagerInAllowList", after: [allowListRoleOwner] })
+    m.call(tokenManagerInstance, "addToTransferAllowList", [easyAuction], { from: owner, id: "easyAuctionInAllowList", after: [allowListRoleOwner] })
+    m.call(tokenManagerInstance, "addToTransferAllowList", [moxieBondingCurveInstance], { from: owner, id: "moxieBondingCurveInAllowList", after: [allowListRoleOwner] })
+    m.call(tokenManagerInstance, "addToTransferAllowList", [subjectFactoryInstance], { from: owner, id: "subjectFactoryInAllowList", after: [allowListRoleOwner] })
 
 
     //provide admin role to multi-sig

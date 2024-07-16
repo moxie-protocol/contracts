@@ -493,7 +493,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     }
 
     /**
-     * @notice Valid Subject Input
+     * @notice Validates Subject Input
      * @param _subject  Address of subject
      * @param _subjectTokenAmount Amount of buy/sell estimates.
      * @return subjectReserveRatio_ Reserve ratio of subject.

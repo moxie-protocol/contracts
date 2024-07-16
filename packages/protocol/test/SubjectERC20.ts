@@ -254,7 +254,7 @@ describe("SubjectERC20", () => {
 
             await tokenManager.connect(owner).grantRole(await tokenManager.ALLOW_LIST_ROLE(), owner.address);
 
-            await tokenManager.connect(owner).addToAllowList(await tokenManager.getAddress());
+            await tokenManager.connect(owner).addToTransferAllowList(await tokenManager.getAddress());
 
             await expect(subjectErc20.connect(owner).transfer(deployer.address, "100"))
                 .to.revertedWithCustomError(subjectErc20, "SubjectERC20_InvalidTransfer");
@@ -272,7 +272,7 @@ describe("SubjectERC20", () => {
 
             await tokenManager.connect(owner).grantRole(await tokenManager.ALLOW_LIST_ROLE(), owner.address);
 
-            await tokenManager.connect(owner).addToAllowList(await owner.address);
+            await tokenManager.connect(owner).addToTransferAllowList(await owner.address);
 
             expect(await subjectErc20.connect(owner).transfer(deployer.address, "100"))
                 .to.emit(subjectErc20, "Transfer")
@@ -291,7 +291,7 @@ describe("SubjectERC20", () => {
 
             await tokenManager.connect(owner).grantRole(await tokenManager.ALLOW_LIST_ROLE(), owner.address);
 
-            await tokenManager.connect(owner).addToAllowList(await deployer.address);
+            await tokenManager.connect(owner).addToTransferAllowList(await deployer.address);
 
             expect(await subjectErc20.connect(owner).transfer(deployer.address, "100"))
                 .to.emit(subjectErc20, "Transfer")
@@ -312,7 +312,7 @@ describe("SubjectERC20", () => {
 
             await tokenManager.connect(owner).grantRole(await tokenManager.ALLOW_LIST_ROLE(), owner.address);
 
-            await tokenManager.connect(owner).addToAllowList(await deployer.address);
+            await tokenManager.connect(owner).addToTransferAllowList(await deployer.address);
 
             await expect(subjectErc20.connect(owner).transfer(signer.address, "100"))
                 .to.revertedWithCustomError(subjectErc20, "SubjectERC20_NotAMoxiePassHolder");

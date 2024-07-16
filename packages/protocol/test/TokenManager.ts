@@ -522,7 +522,7 @@ describe("TokenManager", () => {
 
             await tokenManager.connect(owner).grantRole((await tokenManager.ALLOW_LIST_ROLE()), deployer.address);
 
-            expect(await tokenManager.connect(deployer).addToAllowList(
+            expect(await tokenManager.connect(deployer).addToTransferAllowList(
                 wallet1.address
             )).to.emit(
                 tokenManager, "TransferAllowListWalletAllowed"
@@ -543,7 +543,7 @@ describe("TokenManager", () => {
 
             await tokenManager.connect(owner).grantRole((await tokenManager.ALLOW_LIST_ROLE()), deployer.address);
 
-            expect(await tokenManager.connect(deployer).addToAllowList(
+            expect(await tokenManager.connect(deployer).addToTransferAllowList(
                 wallet1.address
             )).to.emit(
                 tokenManager, "TransferAllowListWalletAllowed"
@@ -552,7 +552,7 @@ describe("TokenManager", () => {
                 true
             );
 
-            await expect(tokenManager.connect(deployer).addToAllowList(
+            await expect(tokenManager.connect(deployer).addToTransferAllowList(
                 wallet1.address
             )).to.revertedWithCustomError(tokenManager, "TokenManager_AddressAlreadyAdded")
         });
@@ -569,7 +569,7 @@ describe("TokenManager", () => {
             await tokenManager.connect(owner).grantRole((await tokenManager.ALLOW_LIST_ROLE()), deployer.address);
 
 
-            await expect(tokenManager.connect(deployer).addToAllowList(
+            await expect(tokenManager.connect(deployer).addToTransferAllowList(
                 ethers.ZeroAddress
             )).to.revertedWithCustomError(tokenManager, "TokenManager_InvalidAddress")
         });
@@ -583,7 +583,7 @@ describe("TokenManager", () => {
                 wallet1
             } = await loadFixture(deploy)
 
-            await expect(tokenManager.connect(deployer).addToAllowList(
+            await expect(tokenManager.connect(deployer).addToTransferAllowList(
                 ethers.ZeroAddress
             )).to.revertedWithCustomError(tokenManager, "AccessControlUnauthorizedAccount")
                 .withArgs(deployer.address, await tokenManager.ALLOW_LIST_ROLE());
@@ -604,7 +604,7 @@ describe("TokenManager", () => {
 
             await tokenManager.connect(owner).grantRole((await tokenManager.ALLOW_LIST_ROLE()), deployer.address);
 
-            expect(await tokenManager.connect(deployer).addToAllowList(
+            expect(await tokenManager.connect(deployer).addToTransferAllowList(
                 wallet1.address
             )).to.emit(
                 tokenManager, "TransferAllowListWalletAllowed"
@@ -613,7 +613,7 @@ describe("TokenManager", () => {
                 true
             );
 
-            expect(await tokenManager.connect(deployer).removeFromAllowList(
+            expect(await tokenManager.connect(deployer).removeFromTransferAllowList(
                 wallet1.address
             )).to.emit(
                 tokenManager, "TransferAllowListWalletAllowed"
@@ -634,7 +634,7 @@ describe("TokenManager", () => {
 
             await tokenManager.connect(owner).grantRole((await tokenManager.ALLOW_LIST_ROLE()), deployer.address);
 
-            expect(await tokenManager.connect(deployer).addToAllowList(
+            expect(await tokenManager.connect(deployer).addToTransferAllowList(
                 wallet1.address
             )).to.emit(
                 tokenManager, "TransferAllowListWalletAllowed"
@@ -643,7 +643,7 @@ describe("TokenManager", () => {
                 true
             );
 
-            expect(await tokenManager.connect(deployer).removeFromAllowList(
+            expect(await tokenManager.connect(deployer).removeFromTransferAllowList(
                 wallet1.address
             )).to.emit(
                 tokenManager, "TransferAllowListWalletAllowed"
@@ -652,7 +652,7 @@ describe("TokenManager", () => {
                 false
             );
 
-            await expect(tokenManager.connect(deployer).removeFromAllowList(
+            await expect(tokenManager.connect(deployer).removeFromTransferAllowList(
                 wallet1.address
             )).to.revertedWithCustomError(tokenManager, "TokenManager_AddressAlreadyRemoved");
         });
@@ -669,7 +669,7 @@ describe("TokenManager", () => {
             await tokenManager.connect(owner).grantRole((await tokenManager.ALLOW_LIST_ROLE()), deployer.address);
 
 
-            await expect(tokenManager.connect(deployer).removeFromAllowList(
+            await expect(tokenManager.connect(deployer).removeFromTransferAllowList(
                 ethers.ZeroAddress
             )).to.revertedWithCustomError(tokenManager, "TokenManager_InvalidAddress");
         });
@@ -684,7 +684,7 @@ describe("TokenManager", () => {
             } = await loadFixture(deploy);
 
 
-            await expect(tokenManager.connect(deployer).removeFromAllowList(
+            await expect(tokenManager.connect(deployer).removeFromTransferAllowList(
                 ethers.ZeroAddress
             )).to.revertedWithCustomError(tokenManager, "AccessControlUnauthorizedAccount")
                 .withArgs(deployer.address, await tokenManager.ALLOW_LIST_ROLE());
@@ -700,7 +700,7 @@ describe("TokenManager", () => {
                 wallet1
             } = await loadFixture(deploy);
 
-            expect(await tokenManager.isWalletAllowed(wallet1.address)).to.be.true;
+            expect(await tokenManager.isWalletAllowedForTransfer(wallet1.address)).to.be.true;
         });
 
 
@@ -715,7 +715,7 @@ describe("TokenManager", () => {
 
             await tokenManager.connect(owner).grantRole((await tokenManager.ALLOW_LIST_ROLE()), deployer.address);
 
-            expect(await tokenManager.connect(deployer).addToAllowList(
+            expect(await tokenManager.connect(deployer).addToTransferAllowList(
                 wallet1.address
             )).to.emit(
                 tokenManager, "TransferAllowListWalletAllowed"
@@ -724,8 +724,8 @@ describe("TokenManager", () => {
                 true
             );
 
-            expect(await tokenManager.isWalletAllowed(wallet1.address)).to.be.true;
-            expect(await tokenManager.isWalletAllowed(wallet2.address)).to.be.false;
+            expect(await tokenManager.isWalletAllowedForTransfer(wallet1.address)).to.be.true;
+            expect(await tokenManager.isWalletAllowedForTransfer(wallet2.address)).to.be.false;
         });
 
     });

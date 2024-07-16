@@ -99,8 +99,8 @@ contract SubjectERC20 is
         address to
     ) internal returns (bool) {
         return
-            ITokenManager(owner()).isWalletAllowed(from) ||
-            ITokenManager(owner()).isWalletAllowed(to);
+            ITokenManager(owner()).isWalletAllowedForTransfer(from) ||
+            ITokenManager(owner()).isWalletAllowedForTransfer(to);
     }
 
     /**
