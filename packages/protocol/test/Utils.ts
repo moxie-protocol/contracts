@@ -1,6 +1,6 @@
 import { BancorFormula, SubjectERC20, Vault } from "../typechain-types";
 
-export const getExpectedBuyReturnAndFee = async (
+export const getExpectedSellReturnAndFee = async (
     subjectToken: SubjectERC20,
     vaultInstance: Vault,
     subjectTokenAddress: string,
@@ -33,7 +33,7 @@ export const getExpectedBuyReturnAndFee = async (
 
 }
 
-export const getExpectedSellReturnAndFee = async (
+export const getExpectedBuyAmountAndFee = async (
     subjectToken: SubjectERC20,
     vaultInstance: Vault,
     subjectTokenAddress: string,
