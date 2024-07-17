@@ -1,7 +1,7 @@
 import { task } from "hardhat/config";
 
-const MOXIE_BONDING_CURVE = '0x0f0EcB17575c232077075EF9d78fC9afad808B4D'
-const SUBJECT_ADDRESS = '0x3e0ea0e39dc5af19d5fd53b2628899b53ce3497b'
+const MOXIE_BONDING_CURVE = '0xAE03AC8F00cD242f69f996BD06DE5Ab9363c20Ac'
+const SUBJECT_ADDRESS = '0xdbDa8904eEdA849C70DBbDED4D3B22651aD57973';
 
 task("sell", "Sell tokens", async (taskArgs, hre) => {
 
@@ -9,16 +9,17 @@ task("sell", "Sell tokens", async (taskArgs, hre) => {
 
     const [deployer, owner] = await hre.ethers.getSigners();
 
+    const subjectToken = await hre.ethers.getContractAt('SubjectERC20', '0xe272372AB0469cE91Df79fe42f5E5dc24c31ff67');
+
+    await subjectToken.connect(owner).approve(MOXIE_BONDING_CURVE, "2000000000000000000");
+
     // Get signer using a address
     await vestingContract
         .connect(owner)
         .sellShares(
         SUBJECT_ADDRESS,
-        '57000000000000000000',
-        0,
-        {
-            gasLimit: 1000000,
-        }
+        '2000000000000000000',
+        0
     );
 
 });

@@ -1,8 +1,8 @@
 import { task } from "hardhat/config";
 import { BigNumber} from "@ethersproject/bignumber";
 
-const SUBJECT_FACTORY_ADDRESS = '0x830ABa2522399E0EEE39bad3b6eE8778d4614B51'
-const MOXIE_TOKEN_ADDRESS = '0x0788F73D9d912DcF358d2D815680b61864623419'
+const SUBJECT_FACTORY_ADDRESS = '0x0b34EB0DE7977b1d3e7facD449b92a0Fe5772A40'
+const MOXIE_TOKEN_ADDRESS = '0xf86136AfB0fb72cdbd27d7Aea9e283725d6815a1'
 
 task("finalize", "Finalize Onboarding", async (taskArgs, hre) => {
 
@@ -17,7 +17,7 @@ task("finalize", "Finalize Onboarding", async (taskArgs, hre) => {
     await moxieToken.connect(owner).approve(SUBJECT_FACTORY_ADDRESS, buyAmount);
 
     await subjectFactory.connect(owner).finalizeSubjectOnboarding(
-        subject2.address,
+        "0xdbDa8904eEdA849C70DBbDED4D3B22651aD57973",
         buyAmount,
         660000,
     )
