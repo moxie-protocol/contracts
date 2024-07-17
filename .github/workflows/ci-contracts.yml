@@ -32,10 +32,9 @@ jobs:
       
       - name: Install dependencies
         shell: bash
-        run: yarn --immutable
-      - name: Build
-        shell: bash
-        run: yarn build || yarn build
+        run: |
+          yarn set version 4.2.2
+          yarn install
       
       - name: Run tests
         run: |
