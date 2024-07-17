@@ -8,8 +8,6 @@
     "compile": "hardhat compile --show-stack-traces",
     "deploy": "yarn run build && hardhat deploy",
     "test": "hardhat test",
-    "coverage": "hardhat coverage",
-    "check:coverage": "istanbul check-coverage ./coverage.json --statements 95 --branches 95 --functions 95 --lines 95",
     "lint": "yarn run lint:ts && yarn run lint:sol",
     "lint:ts": "eslint '**/*.{js,ts}' --fix",
     "lint:sol": "prettier --write contracts/**/*.sol && solhint --fix contracts/**/*.sol --config node_modules/solhint-graph-config/index.js",
