@@ -3,8 +3,8 @@ import { expect } from "chai";
 import hre, { ethers } from "hardhat";
 import { SubjectERC20 as SubjectERC20Type } from "../typechain-types";
 import {
-    getExpectedBuyReturnAndFee,
     getExpectedSellReturnAndFee,
+    getExpectedBuyAmountAndFee,
 } from "./Utils";
 
 describe("MoxieBondingCurve", () => {
@@ -1089,7 +1089,7 @@ describe("MoxieBondingCurve", () => {
             );
 
             const { expectedShares, protocolFee, subjectFee } =
-                await getExpectedSellReturnAndFee(
+                await getExpectedBuyAmountAndFee(
                     subjectToken,
                     vaultInstance,
                     subjectTokenAddress,
@@ -1151,7 +1151,7 @@ describe("MoxieBondingCurve", () => {
                 expectedShares: expectedShares2,
                 protocolFee: protocolFee2,
                 subjectFee: subjectFee2,
-            } = await getExpectedSellReturnAndFee(
+            } = await getExpectedBuyAmountAndFee(
                 subjectToken,
                 vaultInstance,
                 subjectTokenAddress,
@@ -1228,7 +1228,7 @@ describe("MoxieBondingCurve", () => {
             );
 
             const { expectedShares, protocolFee, subjectFee } =
-                await getExpectedSellReturnAndFee(
+                await getExpectedBuyAmountAndFee(
                     subjectToken,
                     vaultInstance,
                     subjectTokenAddress,
@@ -1673,7 +1673,7 @@ describe("MoxieBondingCurve", () => {
             );
 
             const { expectedShares, protocolFee, subjectFee } =
-                await getExpectedSellReturnAndFee(
+                await getExpectedBuyAmountAndFee(
                     subjectToken,
                     vaultInstance,
                     subjectTokenAddress,
@@ -1735,7 +1735,7 @@ describe("MoxieBondingCurve", () => {
                 expectedShares: expectedShares2,
                 protocolFee: protocolFee2,
                 subjectFee: subjectFee2,
-            } = await getExpectedSellReturnAndFee(
+            } = await getExpectedBuyAmountAndFee(
                 subjectToken,
                 vaultInstance,
                 subjectTokenAddress,
@@ -2199,7 +2199,7 @@ describe("MoxieBondingCurve", () => {
 
             // seller 1
             const { returnAmount, protocolFee, subjectFee } =
-                await getExpectedBuyReturnAndFee(
+                await getExpectedSellReturnAndFee(
                     subjectToken,
                     vaultInstance,
                     subjectTokenAddress,
@@ -2266,7 +2266,7 @@ describe("MoxieBondingCurve", () => {
                 returnAmount: returnAmount2,
                 protocolFee: protocolFee2,
                 subjectFee: subjectFee2,
-            } = await getExpectedBuyReturnAndFee(
+            } = await getExpectedSellReturnAndFee(
                 subjectToken,
                 vaultInstance,
                 subjectTokenAddress,
@@ -2352,7 +2352,7 @@ describe("MoxieBondingCurve", () => {
 
             // seller 1
             const { returnAmount, protocolFee, subjectFee } =
-                await getExpectedBuyReturnAndFee(
+                await getExpectedSellReturnAndFee(
                     subjectToken,
                     vaultInstance,
                     subjectTokenAddress,
@@ -2399,7 +2399,7 @@ describe("MoxieBondingCurve", () => {
                 returnAmount: returnAmount2,
                 protocolFee: protocolFee2,
                 subjectFee: subjectFee2,
-            } = await getExpectedBuyReturnAndFee(
+            } = await getExpectedSellReturnAndFee(
                 subjectToken,
                 vaultInstance,
                 subjectTokenAddress,
@@ -2752,7 +2752,7 @@ describe("MoxieBondingCurve", () => {
 
             // seller 1
             const { returnAmount, protocolFee, subjectFee } =
-                await getExpectedBuyReturnAndFee(
+                await getExpectedSellReturnAndFee(
                     subjectToken,
                     vaultInstance,
                     subjectTokenAddress,
@@ -2818,7 +2818,7 @@ describe("MoxieBondingCurve", () => {
                 returnAmount: returnAmount2,
                 protocolFee: protocolFee2,
                 subjectFee: subjectFee2,
-            } = await getExpectedBuyReturnAndFee(
+            } = await getExpectedSellReturnAndFee(
                 subjectToken,
                 vaultInstance,
                 subjectTokenAddress,
@@ -2903,7 +2903,7 @@ describe("MoxieBondingCurve", () => {
 
             // seller 1
             const { returnAmount, protocolFee, subjectFee } =
-                await getExpectedBuyReturnAndFee(
+                await getExpectedSellReturnAndFee(
                     subjectToken,
                     vaultInstance,
                     subjectTokenAddress,
@@ -2949,7 +2949,7 @@ describe("MoxieBondingCurve", () => {
                 returnAmount: returnAmount2,
                 protocolFee: protocolFee2,
                 subjectFee: subjectFee2,
-            } = await getExpectedBuyReturnAndFee(
+            } = await getExpectedSellReturnAndFee(
                 subjectToken,
                 vaultInstance,
                 subjectTokenAddress,
@@ -3478,5 +3478,308 @@ describe("MoxieBondingCurve", () => {
                 "MoxieBondingCurve_InvalidBeneficiary",
             );
         });
+    });
+
+
+    describe('calculateTokensForBuy ', () => {
+
+        const setupBuy = async (deployment: any) => {
+            const {
+                moxieBondingCurve,
+                subject,
+                subjectFactory,
+                moxieToken,
+                moxieBondingCurveAddress,
+                initialReserve,
+                initialSupply,
+                reserveRatio,
+                subjectTokenAddress,
+                buyer,
+                buyer2,
+                owner,
+            } = deployment;
+
+            await moxieToken
+                .connect(subjectFactory)
+                .approve(moxieBondingCurveAddress, initialReserve);
+
+            expect(
+                await moxieBondingCurve
+                    .connect(subjectFactory)
+                    .initializeSubjectBondingCurve(
+                        subject.address,
+                        reserveRatio,
+                        initialSupply,
+                        initialReserve,
+                    ),
+            )
+                .to.emit(moxieBondingCurve, "BondingCurveInitialized")
+                .withArgs(
+                    subject.address,
+                    subjectTokenAddress,
+                    initialSupply,
+                    initialReserve,
+                    reserveRatio,
+                );
+
+            // fund buyer
+            await moxieToken
+                .connect(owner)
+                .transfer(buyer.address, (1 * 1e20).toString());
+            await moxieToken
+                .connect(owner)
+                .transfer(buyer2.address, (1 * 1e20).toString());
+        };
+
+        it("estimate moxie amount require for given subject token", async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                subject,
+                reserveRatio,
+                subjectTokenAddress,
+                moxieTokenAddress,
+                formula,
+                subjectToken,
+                vaultInstance,
+                feeInput,
+                PCT_BASE,
+            } = deployment;
+
+            await setupBuy(deployment);
+
+            const buyAmount = (1 * 1e19).toString();
+
+            const { expectedShares, protocolFee, subjectFee } =
+                await getExpectedBuyAmountAndFee(
+                    subjectToken,
+                    vaultInstance,
+                    subjectTokenAddress,
+                    moxieTokenAddress,
+                    formula,
+                    reserveRatio,
+                    feeInput,
+                    PCT_BASE,
+                    BigInt(buyAmount),
+                );
+
+
+            const estimate = await moxieBondingCurve.calculateTokensForBuy(
+                subject,
+                expectedShares
+            );
+
+            expect(estimate.moxieAmount_).to.equal(buyAmount);
+            expect(estimate.protocolFee_).to.equal(protocolFee);
+            expect(estimate.subjectFee_).to.equal(subjectFee);
+
+        });
+
+        it('should fail estimate for zero subject', async() => {
+
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+            } = deployment;
+
+            await expect(moxieBondingCurve.calculateTokensForBuy(
+                ethers.ZeroAddress,
+                '100'
+            )).to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_InvalidSubject");
+        });
+
+        it('should fail estimate for invalid subject address', async() => {
+
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                buyer
+            } = deployment;
+
+            await expect(moxieBondingCurve.calculateTokensForBuy(
+                buyer.address,
+                '100'
+            )).to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_SubjectNotInitialized");
+        });
+
+        it('should fail estimate for zero amount', async() => {
+
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                subject
+            } = deployment;
+
+            await expect(moxieBondingCurve.calculateTokensForBuy(
+                subject.address,
+                '0'
+            )).to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_InvalidAmount");
+        });
+    });
+
+    describe('calculateTokensForSell', () => {
+
+        const setupSell = async (deployment: any) => {
+            const {
+                moxieBondingCurve,
+                subject,
+                subjectFactory,
+                moxieToken,
+                moxieBondingCurveAddress,
+                initialReserve,
+                initialSupply,
+                reserveRatio,
+                subjectTokenAddress,
+                seller,
+                seller2,
+                owner,
+                moxiePass,
+                minter,
+            } = deployment;
+
+            await moxieToken
+                .connect(subjectFactory)
+                .approve(moxieBondingCurveAddress, initialReserve);
+
+            expect(
+                await moxieBondingCurve
+                    .connect(subjectFactory)
+                    .initializeSubjectBondingCurve(
+                        subject.address,
+                        reserveRatio,
+                        initialSupply,
+                        initialReserve,
+                    ),
+            )
+                .to.emit(moxieBondingCurve, "BondingCurveInitialized")
+                .withArgs(
+                    subject.address,
+                    subjectTokenAddress,
+                    initialSupply,
+                    initialReserve,
+                    reserveRatio,
+                );
+
+            // fund buyer
+            await moxieToken
+                .connect(owner)
+                .transfer(seller.address, (1 * 1e20).toString());
+            await moxieToken
+                .connect(owner)
+                .transfer(seller2.address, (1 * 1e20).toString());
+
+            const buyAmount = (1 * 1e19).toString();
+
+            await moxiePass.connect(minter).mint(seller.address, "url");
+            await moxiePass.connect(minter).mint(seller2.address, "url");
+
+            await moxieToken
+                .connect(seller)
+                .approve(moxieBondingCurveAddress, buyAmount);
+            await expect(
+                moxieBondingCurve
+                    .connect(seller)
+                    .buySharesFor(subject.address, buyAmount, seller.address, 0),
+            ).to.emit(moxieBondingCurve, "SubjectSharePurchased");
+
+            await moxieToken
+                .connect(seller2)
+                .approve(moxieBondingCurveAddress, buyAmount);
+            await expect(
+                moxieBondingCurve
+                    .connect(seller2)
+                    .buySharesFor(subject.address, buyAmount, seller2.address, 0),
+            ).to.emit(moxieBondingCurve, "SubjectSharePurchased");
+        };
+
+        it("should be able to sell subject token", async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                subject,
+                reserveRatio,
+                subjectTokenAddress,
+                moxieTokenAddress,
+                formula,
+                subjectToken,
+                vaultInstance,
+                feeInput,
+                PCT_BASE,
+                seller,
+            } = deployment;
+
+            await setupSell(deployment);
+
+            const sellAmount = await subjectToken.balanceOf(
+                seller.address,
+            );
+
+            // seller 1
+            const { returnAmount, protocolFee, subjectFee } =
+                await getExpectedSellReturnAndFee(
+                    subjectToken,
+                    vaultInstance,
+                    subjectTokenAddress,
+                    moxieTokenAddress,
+                    formula,
+                    reserveRatio,
+                    feeInput,
+                    PCT_BASE,
+                    sellAmount,
+                );
+
+            const expectedReturn = returnAmount - protocolFee - subjectFee;
+
+            const estimate = await moxieBondingCurve.calculateTokensForSell(
+                subject,
+                sellAmount
+            );
+
+            expect(estimate.moxieAmount_).to.equal(expectedReturn);
+            expect(estimate.protocolFee_).to.equal(protocolFee);
+            expect(estimate.subjectFee_).to.equal(subjectFee);
+        });
+
+        it('should fail estimate for zero subject', async() => {
+
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+            } = deployment;
+
+            await expect(moxieBondingCurve.calculateTokensForSell(
+                ethers.ZeroAddress,
+                '100'
+            )).to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_InvalidSubject");
+        });
+
+        it('should fail estimate for invalid subject address', async() => {
+
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                buyer
+            } = deployment;
+
+            await expect(moxieBondingCurve.calculateTokensForSell(
+                buyer.address,
+                '100'
+            )).to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_SubjectNotInitialized");
+        });
+
+        it('should fail estimate for zero amount', async() => {
+
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                subject
+            } = deployment;
+
+            await expect(moxieBondingCurve.calculateTokensForSell(
+                subject.address,
+                '0'
+            )).to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_InvalidAmount");
+        });
+
     });
 });
