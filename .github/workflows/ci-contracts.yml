@@ -20,6 +20,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
+      - name: Enable corepack for modern yarn
+        shell: bash
+        run: corepack enable
+      
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'yarn'
+      
+      - name: Install dependencies
+        shell: bash
+        run: yarn --immutable
+      - name: Build
+        shell: bash
+        run: yarn build || yarn build
+      
       - name: Run tests
         run: |
           yarn coverage
