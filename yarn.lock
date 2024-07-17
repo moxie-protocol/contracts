@@ -3989,6 +3989,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/istanbul@npm:^0":
+  version: 0.4.34
+  resolution: "@types/istanbul@npm:0.4.34"
+  checksum: 10c0/d266ee0be9c3c5a81a269191b5257a7571ee6f231ced49d36da6f99aaba0e9881387a7611ace1629371d0baa0d8f0af0321173c88233068438ef6400817ef37c
+  languageName: node
+  linkType: hard
+
 "@types/json-schema@npm:^7.0.9":
   version: 7.0.15
   resolution: "@types/json-schema@npm:7.0.15"
@@ -11695,6 +11702,30 @@ __metadata:
   languageName: node
   linkType: hard
 
+"istanbul@npm:^0.4.5":
+  version: 0.4.5
+  resolution: "istanbul@npm:0.4.5"
+  dependencies:
+    abbrev: "npm:1.0.x"
+    async: "npm:1.x"
+    escodegen: "npm:1.8.x"
+    esprima: "npm:2.7.x"
+    glob: "npm:^5.0.15"
+    handlebars: "npm:^4.0.1"
+    js-yaml: "npm:3.x"
+    mkdirp: "npm:0.5.x"
+    nopt: "npm:3.x"
+    once: "npm:1.x"
+    resolve: "npm:1.1.x"
+    supports-color: "npm:^3.1.0"
+    which: "npm:^1.1.1"
+    wordwrap: "npm:^1.0.0"
+  bin:
+    istanbul: ./lib/cli.js
+  checksum: 10c0/1570af5beb5712b674bd5773d705dc702f88cc5dd6fb0a21fa5dbc726bff1cb75693a55deb69493c8a4bae27fe8751b1508a78a6e6f1ff64e8792e395ae2c90b
+  languageName: node
+  linkType: hard
+
 "jackspeak@npm:^3.1.2":
   version: 3.4.1
   resolution: "jackspeak@npm:3.4.1"
@@ -14725,11 +14756,13 @@ __metadata:
     "@typechain/ethers-v6": "npm:^0.5.0"
     "@typechain/hardhat": "npm:^9.0.0"
     "@types/chai": "npm:^4.2.0"
+    "@types/istanbul": "npm:^0"
     "@types/mocha": "npm:>=9.1.0"
     chai: "npm:^4.2.0"
     ethers: "npm:^6.13.1"
     hardhat: "npm:^2.22.4"
     hardhat-gas-reporter: "npm:^1.0.8"
+    istanbul: "npm:^0.4.5"
     prettier: "npm:^3.2.5"
     prettier-plugin-solidity: "npm:^1.3.1"
     solhint-community: "npm:^4.0.0"
@@ -17276,6 +17309,7 @@ __metadata:
     "@typechain/ethers-v5": "npm:^7.0.0"
     "@typechain/ethers-v6": "npm:^0.5.0"
     "@typechain/hardhat": "npm:^2.0.0"
+    "@types/istanbul": "npm:^0"
     "@types/mocha": "npm:^9.1.0"
     "@types/node": "npm:^16.11.0"
     "@types/sinon-chai": "npm:^3.2.12"
@@ -17293,6 +17327,7 @@ __metadata:
     hardhat-deploy: "npm:^0.7.0-beta.9"
     hardhat-gas-reporter: "npm:^1.0.1"
     inquirer: "npm:8.0.0"
+    istanbul: "npm:^0.4.5"
     lodash: "npm:^4.17.21"
     p-queue: "npm:^6.6.2"
     prettier: "npm:^3.2.5"

@@ -1,0 +1,26 @@
+name: CI - packages/contracts
+
+env:
+  CI: true
+
+on: push
+  #   branches: "*"
+  #   paths:
+  #     - packages/**
+  # pull_request:
+  #   branches: "*"
+  #   paths:
+  #     - packages/**
+  # workflow_dispatch:
+
+jobs:
+  test-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Run tests
+        run: |
+          yarn coverage
+          yarn check:coverage
