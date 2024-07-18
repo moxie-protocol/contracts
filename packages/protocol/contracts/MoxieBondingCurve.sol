@@ -58,16 +58,16 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     event UpdateFormula(address _formula);
 
     event BondingCurveInitialized(
-        address _subject,
-        address _subjectToken,
+        address indexed _subject,
+        address indexed _subjectToken,
         uint256 _initialSupply,
         uint256 _reserve,
         uint32 _reserveRatio
     );
 
     event SubjectSharePurchased(
-        address _subject,
-        address _sellToken,
+        address indexed _subject,
+        address indexed _sellToken,
         uint256 _sellAmount,
         address _spender,
         address _buyToken,
@@ -76,8 +76,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     );
 
     event SubjectShareSold(
-        address _subject,
-        address _sellToken,
+        address indexed _subject,
+        address indexed _sellToken,
         uint256 _sellAmount,
         address _spender,
         address _buyToken,
