@@ -58,31 +58,31 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     event UpdateFormula(address _formula);
 
     event BondingCurveInitialized(
-        address _subject,
-        address _subjectToken,
+        address indexed _subject,
+        address indexed _subjectToken,
         uint256 _initialSupply,
         uint256 _reserve,
         uint32 _reserveRatio
     );
 
     event SubjectSharePurchased(
-        address _subject,
-        address _sellToken,
+        address indexed _subject,
+        address indexed _sellToken,
         uint256 _sellAmount,
         address _spender,
         address _buyToken,
         uint256 _buyAmount,
-        address _beneficiary
+        address indexed _beneficiary
     );
 
     event SubjectShareSold(
-        address _subject,
-        address _sellToken,
+        address indexed _subject,
+        address indexed _sellToken,
         uint256 _sellAmount,
         address _spender,
         address _buyToken,
         uint256 _buyAmount,
-        address _beneficiary
+        address indexed _beneficiary
     );
     /// @dev Address of moxie token.
     IERC20Extended public token;
@@ -309,16 +309,12 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         uint256 vaultDeposit = _depositAmount - subjectFee - protocolFee;
 
         token.approve(address(vault), vaultDeposit);
-        uint256 subjectReserve = vault.balanceOf(
-            address(_subjectToken),
-            address(token)
-        );
 
         vault.deposit(address(_subjectToken), address(token), vaultDeposit);
 
         shares_ = formula.calculatePurchaseReturn(
             _subjectToken.totalSupply(),
-            subjectReserve,
+            vault.balanceOf(address(_subjectToken), address(token)),
             _subjectReserveRatio,
             vaultDeposit
         );

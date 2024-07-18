@@ -4,17 +4,17 @@ pragma solidity ^0.8.24;
 
 contract ISubjectFactory {
     event SubjectOnboardingInitiated(
-        address _subject,
-        address _subjectToken,
+        address indexed _subject,
+        address indexed _subjectToken,
         uint256 _auctionAmount,
         address _biddingToken,
         uint256 auctionEndDate,
         uint256 _auctionId
     );
 
-     event SubjectOnboardingFinished(
-        address _subject,
-        address _subjectToken,
+    event SubjectOnboardingFinished(
+        address indexed _subject,
+        address indexed _subjectToken,
         uint256 _auctionId,
         uint256 _bondingSupply,
         uint256 _bondingAmount,
@@ -24,10 +24,7 @@ contract ISubjectFactory {
     );
 
     event UpdateBeneficiary(address _beneficiary);
-    event UpdateFees(
-        uint256 _protocolFeePct,
-        uint256 _subjectFeePct
-    );
+    event UpdateFees(uint256 _protocolFeePct, uint256 _subjectFeePct);
 
     event UpdateAuctionParam(
         uint256 _auctionDuration,
