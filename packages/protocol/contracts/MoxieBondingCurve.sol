@@ -69,6 +69,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _subject,
         address _sellToken,
         uint256 _sellAmount,
+        address _spender,
         address _buyToken,
         uint256 _buyAmount,
         address _beneficiary
@@ -78,6 +79,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _subject,
         address _sellToken,
         uint256 _sellAmount,
+        address _spender,
         address _buyToken,
         uint256 _buyAmount,
         address _beneficiary
@@ -298,7 +300,6 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     ) internal returns (uint256 shares_) {
         // moxie
         token.safeTransferFrom(msg.sender, address(this), _depositAmount);
-
         (uint256 protocolFee, uint256 subjectFee) = _calculateBuySideFee(
             _depositAmount
         );
@@ -313,12 +314,10 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             address(token)
         );
 
-        uint256 subjectSupply = _subjectToken.totalSupply();
-
         vault.deposit(address(_subjectToken), address(token), vaultDeposit);
 
         shares_ = formula.calculatePurchaseReturn(
-            subjectSupply,
+            _subjectToken.totalSupply(),
             subjectReserve,
             _subjectReserveRatio,
             vaultDeposit
@@ -336,6 +335,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _subject,
             address(token),
             _depositAmount,
+            msg.sender,
             address(_subjectToken),
             shares_,
             _onBehalfOf
@@ -359,14 +359,13 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _subject,
         uint32 _subjectReserveRatio
     ) internal returns (uint256 returnedAmount_) {
-        uint256 subjectSupply = _subjectToken.totalSupply();
         uint256 subjectReserve = vault.balanceOf(
             address(_subjectToken),
             address(token)
         );
 
         uint256 returnAmountWithoutFee = formula.calculateSaleReturn(
-            subjectSupply,
+            _subjectToken.totalSupply(),
             subjectReserve,
             _subjectReserveRatio,
             _sellAmount
@@ -383,6 +382,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _subject,
             address(_subjectToken),
             _sellAmount,
+            msg.sender,
             address(token),
             returnedAmount_,
             _onBehalfOf
