@@ -13,13 +13,13 @@ interface ITokenManager {
     error TokenManager_AddressAlreadyRemoved();
 
     event TokenDeployed(
-        address _beneficiary,
-        address _token,
+        address indexed _beneficiary,
+        address indexed _token,
         uint256 _initialSupply
     );
-    event TokenMinted(address _subject, address _token, uint256 _amount);
+    event TokenMinted(address indexed _subject, address indexed _token, uint256 _amount);
     
-    event TransferAllowListWalletAllowed(address _wallet, bool allowed);
+    event TransferAllowListWalletAllowed(address indexed _wallet, bool allowed);
 
     function tokens(address _subject) view external returns (address token_);
 
