@@ -19,7 +19,8 @@ contract ISubjectFactory {
         uint256 _bondingSupply,
         uint256 _bondingAmount,
         uint256 _protocolFee,
-        uint256 _subjectFee
+        uint256 _subjectFee, //In moxie token
+        uint256 _subjectFeeInSubjectToken //In subjectToken
     );
 
     event UpdateBeneficiary(address _beneficiary);
