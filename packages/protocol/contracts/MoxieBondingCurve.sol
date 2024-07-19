@@ -300,7 +300,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     ) internal returns (uint256 shares_) {
         // moxie
         token.safeTransferFrom(msg.sender, address(this), _depositAmount);
-        { //to solve stack too deep issue. 
+        {
+            //to solve stack too deep issue.
             (uint256 protocolFee, uint256 subjectFee) = _calculateBuySideFee(
                 _depositAmount
             );
@@ -502,7 +503,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
      * @return subjectReserve_ Total reserve of Subject.
      * @return subjectSupply_ Total supply of subject token.
      */
-    function validateSubjectInput(
+    function _validateSubjectInput(
         address _subject,
         uint256 _subjectTokenAmount
     )
@@ -725,7 +726,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             uint32 subjectReserveRatio_,
             uint256 subjectReserve_,
             uint256 subjectSupply_
-        ) = validateSubjectInput(_subject, _subjectTokenAmount);
+        ) = _validateSubjectInput(_subject, _subjectTokenAmount);
 
         uint256 estimatedAmount = formula.calculateFundCost(
             subjectSupply_,
@@ -761,7 +762,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             uint32 subjectReserveRatio_,
             uint256 subjectReserve_,
             uint256 subjectSupply_
-        ) = validateSubjectInput(_subject, _subjectTokenAmount);
+        ) = _validateSubjectInput(_subject, _subjectTokenAmount);
 
         uint256 estimatedAmount = formula.calculateSaleReturn(
             subjectSupply_,
