@@ -72,7 +72,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _spender,
         address _buyToken,
         uint256 _buyAmount,
-        address _beneficiary
+        address indexed _beneficiary
     );
 
     event SubjectShareSold(
@@ -82,7 +82,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _spender,
         address _buyToken,
         uint256 _buyAmount,
-        address _beneficiary
+        address indexed _beneficiary
     );
     /// @dev Address of moxie token.
     IERC20Extended public token;
