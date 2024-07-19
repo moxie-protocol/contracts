@@ -5,12 +5,7 @@ import "@nomicfoundation/hardhat-ignition-ethers";
 import "@nomicfoundation/hardhat-verify";
 
 const config: HardhatUserConfig = {
-  solidity: {
-    version: "0.8.24",
-    settings: {
-      viaIR: true,
-    },
-  },
+  solidity: "0.8.24",
 };
 
 

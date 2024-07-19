@@ -300,28 +300,30 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     ) internal returns (uint256 shares_) {
         // moxie
         token.safeTransferFrom(msg.sender, address(this), _depositAmount);
-        (uint256 protocolFee, uint256 subjectFee) = _calculateBuySideFee(
-            _depositAmount
-        );
+        { //to solve stack too deep issue. 
+            (uint256 protocolFee, uint256 subjectFee) = _calculateBuySideFee(
+                _depositAmount
+            );
 
-        token.safeTransfer(_subject, subjectFee);
-        token.safeTransfer(feeBeneficiary, protocolFee);
-        uint256 vaultDeposit = _depositAmount - subjectFee - protocolFee;
+            token.safeTransfer(_subject, subjectFee);
+            token.safeTransfer(feeBeneficiary, protocolFee);
+            uint256 vaultDeposit = _depositAmount - subjectFee - protocolFee;
 
-        token.approve(address(vault), vaultDeposit);
-        uint256 subjectReserve = vault.balanceOf(
-            address(_subjectToken),
-            address(token)
-        );
+            token.approve(address(vault), vaultDeposit);
+            uint256 subjectReserve = vault.balanceOf(
+                address(_subjectToken),
+                address(token)
+            );
 
-        vault.deposit(address(_subjectToken), address(token), vaultDeposit);
+            vault.deposit(address(_subjectToken), address(token), vaultDeposit);
 
-        shares_ = formula.calculatePurchaseReturn(
-            _subjectToken.totalSupply(),
-            subjectReserve,
-            _subjectReserveRatio,
-            vaultDeposit
-        );
+            shares_ = formula.calculatePurchaseReturn(
+                _subjectToken.totalSupply(),
+                subjectReserve,
+                _subjectReserveRatio,
+                vaultDeposit
+            );
+        }
 
         if (shares_ < _minReturnAmountAfterFee)
             revert MoxieBondingCurve_SlippageExceedsLimit();
