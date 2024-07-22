@@ -20,5 +20,6 @@
   "ProtocolContractsProxy#vaultProxyAdmin": "0x6B5eeC97FA431226beC9b80dfe2923cb15497924",
   "ProtocolContractsProxy#moxieBondingCurveProxy": "0x0f0EcB17575c232077075EF9d78fC9afad808B4D",
   "ProtocolContractsProxy#moxieBondingCurveInstance": "0x0f0EcB17575c232077075EF9d78fC9afad808B4D",
-  "ProtocolContractsProxy#moxieBondingCurveProxyAdmin": "0x19a94fF28879794686D5C90F998E698825187c88"
+  "ProtocolContractsProxy#moxieBondingCurveProxyAdmin": "0x19a94fF28879794686D5C90F998E698825187c88",
+  "UpgradeMoxieBondingCurve_1#MoxieBondingCurveV2": "0x8520552820CC31C49c23a42EEfaCfd2e395A8327"
 }
