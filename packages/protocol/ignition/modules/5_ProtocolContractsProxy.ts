@@ -1,10 +1,10 @@
 
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import ProtocolContract from "./3_ProtocolContracts";
+import ProtocolContract from "./4_ProtocolContracts";
 import MoxiePass from "./1_MoxiePass";
 import MoxieToken from "./2_MoxieToken";
 import config from "../config/config.json";
-import EasyAuction from "./4_EasyAuction";
+import EasyAuction from "./3_EasyAuction";
 
 const protocolBuyFeePct = config.protocolBuyFeePctForBC; // 1%
 const protocolSellFeePct = config.protocolSellFeePctForBC; // 2%
@@ -32,7 +32,6 @@ export default buildModule("ProtocolContractsProxy", (m) => {
 
     const deployer = m.getAccount(0);
     const owner = m.getAccount(1);
-    const feeBeneficiary = m.getAccount(3);
 
     const { moxiePass } = m.useModule(MoxiePass);
     const { moxieToken } = m.useModule(MoxieToken);
@@ -107,7 +106,8 @@ export default buildModule("ProtocolContractsProxy", (m) => {
 
     const subjectFactoryProxyAdmin = m.contractAt("ProxyAdmin", subjectFactoryProxyAdminAddress, { id: 'subjectFactoryProxyAdmin' });
 
-    //
+    const feeBeneficiary = config.feeBeneficiary;
+
     const moxieBondingCurveProxyData = m.encodeFunctionCall(moxieBondingCurve, "initialize", [
         moxieToken,
         formula,
