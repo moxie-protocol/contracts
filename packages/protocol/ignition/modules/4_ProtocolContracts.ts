@@ -72,7 +72,7 @@ export default buildModule("ProtocolContracts", (m) => {
     feeBeneficiary,
     AUCTION_DURATION,
     AUCTION_ORDER_CANCELLATION_DURATION
-  ]{ id: "initializeSubjectFactoryMasterCopy" });
+  ],{ id: "initializeSubjectFactoryMasterCopy" });
 
   return { subjectFactory, formula, vault, subjectERC20, moxiePassVerifier, tokenManager, moxieBondingCurve };
 });
