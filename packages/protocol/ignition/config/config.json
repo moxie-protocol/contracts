@@ -8,7 +8,7 @@
   "auctionDuration": 259200,
   "auctionOrderCancellationDuration": 259200,
   "proxyAdminOwner": "0x96feEd3b3071ebe641C2eCa422C6f57fd9EE4BbC",
-  "moxieTokenBeneficiary": "0x1626EB1B25F819377acb6d72913618FB93e2fcB9",
+  "moxieTokenBeneficiary": "0xefDD655156eFb323D2E5bED172A7b62499AF3e7c",
   "adminRoleBeneficiary": "0x96feEd3b3071ebe641C2eCa422C6f57fd9EE4BbC",
   "tokenLockManager": "0x01cca50Ba3A596f049Daa23b8D80B6957376225c",
   "moxiePassURL": "https://assets.airstack.xyz/moxiepass/metadata/0.json",
