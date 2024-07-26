@@ -5,7 +5,7 @@
   <h1 align="center">Moxie Smart Contracts</h1>
 </div>
 
-This repository contains the official source code for the Moxie snart contracts.
+This repository contains the official source code for the Moxie smart contracts.
 
 ## Table Of Contents
 
@@ -22,11 +22,27 @@ This repository contains the official source code for the Moxie snart contracts.
 
 ## Local Setup
 
-Install the dependencies for all the contract project under this repository by simply running the following commnand:
+- Install the dependencies for all the contract project under this repository by simply running the following commnand:
 
 ```sh
 yarn
 ```
+
+- Compile Contracts
+  
+```sh
+yarn compile
+```
+
+- Run tests
+```sh
+yarn test
+```
+- Calculate test coverage
+  
+```sh
+yarn coverage
+  ```
 
 ## Contract Deployment
 
