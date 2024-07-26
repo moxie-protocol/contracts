@@ -1,7 +1,7 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 import ProtocolContractsProxy from "./5_ProtocolContractsProxy";
 import MoxiePass from "./1_MoxiePass";
-import EasyAuction from "./4_EasyAuction";
+import EasyAuction from "./3_EasyAuction";
 import config from "../config/config.json"
 
 export default buildModule("Permissions", (m) => {
@@ -28,10 +28,17 @@ export default buildModule("Permissions", (m) => {
 
     const createRole = m.staticCall(tokenManagerInstance, "CREATE_ROLE");
     const mintRole = m.staticCall(tokenManagerInstance, "MINT_ROLE");
+    const allowListRole = m.staticCall(tokenManagerInstance, "ALLOW_LIST_ROLE");
 
     m.call(tokenManagerInstance, 'grantRole', [createRole, subjectFactoryInstance], { from: owner, id: 'createRoleSubjectFactory' });
     m.call(tokenManagerInstance, 'grantRole', [mintRole, subjectFactoryInstance,], { from: owner, id: 'mintRoleSubjectFactory' });
     m.call(tokenManagerInstance, 'grantRole', [mintRole, moxieBondingCurveInstance,], { from: owner, id: 'mintRoleMoxieBondingCurve' });
+    const allowListRoleOwner = m.call(tokenManagerInstance, 'grantRole', [allowListRole, owner,], { from: owner, id: 'allowListRoleOwner' });
+
+    m.call(tokenManagerInstance, "addToTransferAllowList", [tokenManagerInstance], { from: owner, id: "tokenManagerInAllowList", after: [allowListRoleOwner] })
+    m.call(tokenManagerInstance, "addToTransferAllowList", [easyAuction], { from: owner, id: "easyAuctionInAllowList", after: [allowListRoleOwner] })
+    m.call(tokenManagerInstance, "addToTransferAllowList", [moxieBondingCurveInstance], { from: owner, id: "moxieBondingCurveInAllowList", after: [allowListRoleOwner] })
+    m.call(tokenManagerInstance, "addToTransferAllowList", [subjectFactoryInstance], { from: owner, id: "subjectFactoryInAllowList", after: [allowListRoleOwner] })
 
 
     //provide admin role to multi-sig

@@ -1,15 +1,15 @@
 
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import ProtocolContract from "./3_ProtocolContracts";
+import ProtocolContract from "./4_ProtocolContracts";
 import MoxiePass from "./1_MoxiePass";
 import MoxieToken from "./2_MoxieToken";
 import config from "../config/config.json";
-import EasyAuction from "./4_EasyAuction";
+import EasyAuction from "./3_EasyAuction";
 
-const protocolBuyFeePct = config.protocolBuyFeePctForBC; // 1%
-const protocolSellFeePct = config.protocolSellFeePctForBC; // 2%
-const subjectBuyFeePct = config.subjectBuyFeePctForBC; // 3%
-const subjectSellFeePct = config.subjectSellFeePctForBC; // 4%
+const protocolBuyFeePct = config.protocolBuyFeePctForBC; 
+const protocolSellFeePct = config.protocolSellFeePctForBC;
+const subjectBuyFeePct = config.subjectBuyFeePctForBC;
+const subjectSellFeePct = config.subjectSellFeePctForBC;
 
 const feeInputBondingCurve = {
     protocolBuyFeePct,
@@ -23,8 +23,8 @@ const feeInputSubjectFactory = {
     subjectFeePct: config.subjectFeePctForSF
 };
 
-const AUCTION_DURATION = config.auctionDuration; // 2 sec block time so total 2 mins
-const AUCTION_ORDER_CANCELLATION_DURATION = config.auctionOrderCancellationDuration; // 2 sec block time so total 2 mins
+const AUCTION_DURATION = config.auctionDuration;
+const AUCTION_ORDER_CANCELLATION_DURATION = config.auctionOrderCancellationDuration;
 
 export default buildModule("ProtocolContractsProxy", (m) => {
 
@@ -32,7 +32,6 @@ export default buildModule("ProtocolContractsProxy", (m) => {
 
     const deployer = m.getAccount(0);
     const owner = m.getAccount(1);
-    const feeBeneficiary = m.getAccount(3);
 
     const { moxiePass } = m.useModule(MoxiePass);
     const { moxieToken } = m.useModule(MoxieToken);
@@ -107,7 +106,8 @@ export default buildModule("ProtocolContractsProxy", (m) => {
 
     const subjectFactoryProxyAdmin = m.contractAt("ProxyAdmin", subjectFactoryProxyAdminAddress, { id: 'subjectFactoryProxyAdmin' });
 
-    //
+    const feeBeneficiary = config.feeBeneficiary;
+
     const moxieBondingCurveProxyData = m.encodeFunctionCall(moxieBondingCurve, "initialize", [
         moxieToken,
         formula,

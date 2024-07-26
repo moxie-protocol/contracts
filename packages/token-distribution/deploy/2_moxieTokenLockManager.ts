@@ -17,6 +17,8 @@ const logger = consola.create({})
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const deploy = (name: string, options: DeployOptions) => hre.deployments.deploy(name, options)
   const { deployer } = await hre.getNamedAccounts()
+  const signers = await hre.ethers.getSigners()
+  const ownerSinger = signers[1]
 
 
   // -- Token Lock Manager --
@@ -25,7 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   logger.info('Deploying MoxieTokenLockWallet master copy...')
   const masterCopySaveName = await getDeploymentName('MoxieTokenLockWallet')
   const masterCopyDeploy = await deploy(masterCopySaveName, {
-    from: deployer,
+    from: ownerSinger.address,
     log: true,
     contract: 'MoxieTokenLockWallet',
   })
@@ -34,7 +36,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   logger.info('Deploying MoxieTokenLockManager...')
   const managerSaveName = await getDeploymentName('MoxieTokenLockManager')
   const managerDeploy = await deploy(managerSaveName, {
-    from: deployer,
+    from: ownerSinger.address,
     args: [cfg.MoxieTokenAddress, masterCopyDeploy.address],
     log: true,
     contract: 'MoxieTokenLockManager',
@@ -49,7 +51,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         managerDeploy.address,
       )) as MoxieTokenLockManager
 
-  await manager.setMoxiePassTokenAndUri(cfg.MoxiePassTokenAddress, cfg.MoxiePassTokenURI)
+  await manager.connect(ownerSinger).setMoxiePassTokenAndUri(cfg.MoxiePassTokenAddress, cfg.MoxiePassTokenURI)
 
   logger.info(`MoxieTokenLockManager set up with moxie pass token address: ${cfg.MoxiePassTokenAddress} and uri: ${cfg.MoxiePassTokenURI}`)
 

@@ -8,15 +8,20 @@ interface ITokenManager {
     error TokenManager_TokenNotFound();
     error TokenManager_InvalidOwner();
     error TokenManager_InvalidAmount();
+    error TokenManager_InvalidAddress();
+    error TokenManager_AddressAlreadyAdded();
+    error TokenManager_AddressAlreadyRemoved();
 
     event TokenDeployed(
-        address _beneficiary,
-        address _token,
+        address indexed _beneficiary,
+        address indexed _token,
         uint256 _initialSupply
     );
-    event TokenMinted(address _subject, address _token, uint256 _amount);
+    event TokenMinted(address indexed _subject, address indexed _token, uint256 _amount);
+    
+    event TransferAllowListWalletAllowed(address indexed _wallet, bool allowed);
 
-    function tokens(address _subject) external returns (address token_);
+    function tokens(address _subject) view external returns (address token_);
 
     function create(
         address _beneficiary,
@@ -31,4 +36,10 @@ interface ITokenManager {
         address _beneficiary,
         uint256 _amount
     ) external returns (bool);
+
+
+    function addToTransferAllowList(address _wallet) external;
+    function removeFromTransferAllowList(address _wallet) external;
+    function isWalletAllowedForTransfer(address _wallet) external returns(bool);
+
 }

@@ -15,6 +15,9 @@ task('manager-setup-auth', 'Setup default authorized functions in the manager')
     // Get contracts
     const manager = await getTokenLockManagerOrFail(hre, taskArgs.managerName)
 
+    const signers = await hre.ethers.getSigners()
+    const ownerSigner = signers[1]
+
     logger.info('Setting up authorized functions...')
     logger.log(`> MoxieTokenLockManager: ${manager.address}`)
     logger.log(`> TargetAddress: ${taskArgs.targetAddress}`)
@@ -39,13 +42,13 @@ task('manager-setup-auth', 'Setup default authorized functions in the manager')
      // Setup authorized functions
       logger.info('Setup authorized functions...')
       const targets = Array(signatures.length).fill(taskArgs.targetAddress)
-      const tx1 = await manager.setAuthFunctionCallMany(signatures, targets)
+      const tx1 = await manager.connect(ownerSigner).setAuthFunctionCallMany(signatures, targets)
       await waitTransaction(tx1)
       logger.success('Done!\n')
 
       // Setup authorized token destinations
       logger.info('Setup authorized destinations...')
-      const tx2 = await manager.addTokenDestination(taskArgs.targetAddress)
+      const tx2 = await manager.connect(ownerSigner).addTokenDestination(taskArgs.targetAddress)
       await waitTransaction(tx2)
     }
   })
@@ -94,6 +97,8 @@ task('manager-withdraw', 'Withdraw fund from the manager')
     // Get contracts
     const manager = await getTokenLockManagerOrFail(hre, taskArgs.managerName)
 
+    const accounts = await hre.ethers.getSigners()
+
     // Prepare
     logger.log(await prettyEnv(hre))
 
@@ -109,8 +114,8 @@ task('manager-withdraw', 'Withdraw fund from the manager')
     if (await askConfirm()) {
       const weiAmount = parseEther(taskArgs.amount)
 
-      logger.log('Deposit...')
-      const tx = await manager.withdraw(weiAmount)
+      logger.log('Withdraw...')
+      const tx = await manager.connect(accounts[1]).withdraw(weiAmount)
       await waitTransaction(tx)
     }
   })
@@ -145,8 +150,9 @@ task('manager-transfer-ownership', 'Transfer ownership of the manager')
 
     // Validate current owner
     const tokenLockManagerOwner = await manager.owner()
-    const { deployer } = await hre.getNamedAccounts()
-    if (tokenLockManagerOwner !== deployer) {
+    const signers = await hre.ethers.getSigners();
+    const  deployer = signers[1];
+    if (tokenLockManagerOwner !== deployer.address) {
       logger.error('Only the owner can transfer ownership')
       process.exit(1)
     }
@@ -161,7 +167,7 @@ task('manager-transfer-ownership', 'Transfer ownership of the manager')
     }
 
     // Transfer ownership
-    await manager.transferOwnership(taskArgs.owner)
+    await manager.connect(deployer).transferOwnership(taskArgs.owner)
   })
 
   task('set-token-manager', 'Set Token Manager contract address')  
@@ -172,8 +178,9 @@ task('manager-transfer-ownership', 'Transfer ownership of the manager')
 
     // Validate current owner
     const tokenLockManagerOwner = await manager.owner()
-    const { deployer } = await hre.getNamedAccounts()
-    if (tokenLockManagerOwner !== deployer) {
+    const signers = await hre.ethers.getSigners()
+    const ownerSigner = signers[1]
+    if (tokenLockManagerOwner !== ownerSigner.address) {
       logger.error('Only the owner can transfer ownership')
       process.exit(1)
     }
@@ -186,7 +193,7 @@ task('manager-transfer-ownership', 'Transfer ownership of the manager')
       process.exit(1)
     }
 
-    await manager.setTokenManager(taskArgs.tokenManagerAddress)
+    await manager.connect(ownerSigner).setTokenManager(taskArgs.tokenManagerAddress)
     logger.info(`Token Lock Manager is set`)
   })
 
@@ -198,8 +205,9 @@ task('manager-transfer-ownership', 'Transfer ownership of the manager')
 
     // Validate current owner
     const tokenLockManagerOwner = await manager.owner()
-    const { deployer } = await hre.getNamedAccounts()
-    if (tokenLockManagerOwner !== deployer) {
+    const signers = await hre.ethers.getSigners()
+    const ownerSigner = signers[1]
+    if (tokenLockManagerOwner !== ownerSigner.address) {
       logger.error('Only the owner can transfer ownership')
       process.exit(1)
     }
@@ -212,6 +220,6 @@ task('manager-transfer-ownership', 'Transfer ownership of the manager')
       process.exit(1)
     }
 
-    await manager.addSubjectTokenDestination(taskArgs.protocolContractAddress)
+    await manager.connect(ownerSigner).addSubjectTokenDestination(taskArgs.protocolContractAddress)
     logger.info(`Protocol contract address is whitelisted in token lock manager`)
   })

@@ -4,7 +4,8 @@ import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
 import { MoxieTokenLockManager } from "../test-artifact/MoxieTokenLockManager.sol/typechain/MoxieTokenLockManager";
 import { BigNumber} from "@ethersproject/bignumber";
-export const getExpectedBuyReturnAndFee = async (
+
+export const getExpectedSellReturnAndFee = async (
     subjectToken: SubjectERC20,
     vaultInstance: Vault,
     subjectTokenAddress: string,
@@ -37,7 +38,7 @@ export const getExpectedBuyReturnAndFee = async (
 
 }
 
-export const getExpectedSellReturnAndFee = async (
+export const getExpectedBuyAmountAndFee = async (
     subjectToken: SubjectERC20,
     vaultInstance: Vault,
     subjectTokenAddress: string,

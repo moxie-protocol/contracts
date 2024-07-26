@@ -6,7 +6,7 @@ describe("TokenManager", () => {
 
     const deploy = async () => {
 
-        const [deployer, owner] = await ethers.getSigners();
+        const [deployer, owner, wallet1, wallet2] = await ethers.getSigners();
 
         const SubjectERC20 = await hre.ethers.getContractFactory("SubjectERC20");
         const subjectErc20 = await SubjectERC20.deploy({ from: deployer.address });
@@ -37,7 +37,7 @@ describe("TokenManager", () => {
             .setErc721ContractAddress(await mockErc721.getAddress());
 
         return {
-            tokenManager, owner, deployer, subjectErc20Address, moxiePassVerifier, mockErc721
+            tokenManager, owner, deployer, subjectErc20Address, moxiePassVerifier, mockErc721, wallet1, wallet2
         };
     }
 
@@ -509,4 +509,224 @@ describe("TokenManager", () => {
         });
     })
 
+    describe('Add to allow list', () => {
+
+        it('should add to allow list', async () => {
+            const {
+                tokenManager,
+                owner,
+                deployer,
+                moxiePassVerifier,
+                wallet1
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole((await tokenManager.ALLOW_LIST_ROLE()), deployer.address);
+
+            expect(await tokenManager.connect(deployer).addToTransferAllowList(
+                wallet1.address
+            )).to.emit(
+                tokenManager, "TransferAllowListWalletAllowed"
+            ).withArgs(
+                wallet1.address,
+                true
+            );
+        });
+
+        it('should not add to allow list if already added', async () => {
+            const {
+                tokenManager,
+                owner,
+                deployer,
+                moxiePassVerifier,
+                wallet1
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole((await tokenManager.ALLOW_LIST_ROLE()), deployer.address);
+
+            expect(await tokenManager.connect(deployer).addToTransferAllowList(
+                wallet1.address
+            )).to.emit(
+                tokenManager, "TransferAllowListWalletAllowed"
+            ).withArgs(
+                wallet1.address,
+                true
+            );
+
+            await expect(tokenManager.connect(deployer).addToTransferAllowList(
+                wallet1.address
+            )).to.revertedWithCustomError(tokenManager, "TokenManager_AddressAlreadyAdded")
+        });
+
+        it('should not add to allow list with zero address', async () => {
+            const {
+                tokenManager,
+                owner,
+                deployer,
+                moxiePassVerifier,
+                wallet1
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole((await tokenManager.ALLOW_LIST_ROLE()), deployer.address);
+
+
+            await expect(tokenManager.connect(deployer).addToTransferAllowList(
+                ethers.ZeroAddress
+            )).to.revertedWithCustomError(tokenManager, "TokenManager_InvalidAddress")
+        });
+
+        it('should not add to allow list without permission', async () => {
+            const {
+                tokenManager,
+                owner,
+                deployer,
+                moxiePassVerifier,
+                wallet1
+            } = await loadFixture(deploy)
+
+            await expect(tokenManager.connect(deployer).addToTransferAllowList(
+                ethers.ZeroAddress
+            )).to.revertedWithCustomError(tokenManager, "AccessControlUnauthorizedAccount")
+                .withArgs(deployer.address, await tokenManager.ALLOW_LIST_ROLE());
+        });
+
+    });
+
+    describe('Remove from Allow list', () => {
+
+        it('should remove from allow list', async () => {
+            const {
+                tokenManager,
+                owner,
+                deployer,
+                moxiePassVerifier,
+                wallet1
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole((await tokenManager.ALLOW_LIST_ROLE()), deployer.address);
+
+            expect(await tokenManager.connect(deployer).addToTransferAllowList(
+                wallet1.address
+            )).to.emit(
+                tokenManager, "TransferAllowListWalletAllowed"
+            ).withArgs(
+                wallet1.address,
+                true
+            );
+
+            expect(await tokenManager.connect(deployer).removeFromTransferAllowList(
+                wallet1.address
+            )).to.emit(
+                tokenManager, "TransferAllowListWalletAllowed"
+            ).withArgs(
+                wallet1.address,
+                false
+            );
+        });
+
+        it('should not remove from allow list if already removed', async () => {
+            const {
+                tokenManager,
+                owner,
+                deployer,
+                moxiePassVerifier,
+                wallet1
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole((await tokenManager.ALLOW_LIST_ROLE()), deployer.address);
+
+            expect(await tokenManager.connect(deployer).addToTransferAllowList(
+                wallet1.address
+            )).to.emit(
+                tokenManager, "TransferAllowListWalletAllowed"
+            ).withArgs(
+                wallet1.address,
+                true
+            );
+
+            expect(await tokenManager.connect(deployer).removeFromTransferAllowList(
+                wallet1.address
+            )).to.emit(
+                tokenManager, "TransferAllowListWalletAllowed"
+            ).withArgs(
+                wallet1.address,
+                false
+            );
+
+            await expect(tokenManager.connect(deployer).removeFromTransferAllowList(
+                wallet1.address
+            )).to.revertedWithCustomError(tokenManager, "TokenManager_AddressAlreadyRemoved");
+        });
+
+        it('should not allow remove from allow list if wallet is zero address', async () => {
+            const {
+                tokenManager,
+                owner,
+                deployer,
+                moxiePassVerifier,
+                wallet1
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole((await tokenManager.ALLOW_LIST_ROLE()), deployer.address);
+
+
+            await expect(tokenManager.connect(deployer).removeFromTransferAllowList(
+                ethers.ZeroAddress
+            )).to.revertedWithCustomError(tokenManager, "TokenManager_InvalidAddress");
+        });
+
+        it('should not allow remove from allow list without permission', async () => {
+            const {
+                tokenManager,
+                owner,
+                deployer,
+                moxiePassVerifier,
+                wallet1
+            } = await loadFixture(deploy);
+
+
+            await expect(tokenManager.connect(deployer).removeFromTransferAllowList(
+                ethers.ZeroAddress
+            )).to.revertedWithCustomError(tokenManager, "AccessControlUnauthorizedAccount")
+                .withArgs(deployer.address, await tokenManager.ALLOW_LIST_ROLE());
+        });
+
+    });
+
+    describe('isWalletAllowed,', () => {
+
+        it('should return true if allow list is not set', async () => {
+            const {
+                tokenManager,
+                wallet1
+            } = await loadFixture(deploy);
+
+            expect(await tokenManager.isWalletAllowedForTransfer(wallet1.address)).to.be.true;
+        });
+
+
+        it('should return true if  added to  allow list & false in not added', async () => {
+            const {
+                tokenManager,
+                wallet1,
+                owner,
+                deployer,
+                wallet2
+            } = await loadFixture(deploy);
+
+            await tokenManager.connect(owner).grantRole((await tokenManager.ALLOW_LIST_ROLE()), deployer.address);
+
+            expect(await tokenManager.connect(deployer).addToTransferAllowList(
+                wallet1.address
+            )).to.emit(
+                tokenManager, "TransferAllowListWalletAllowed"
+            ).withArgs(
+                wallet1.address,
+                true
+            );
+
+            expect(await tokenManager.isWalletAllowedForTransfer(wallet1.address)).to.be.true;
+            expect(await tokenManager.isWalletAllowedForTransfer(wallet2.address)).to.be.false;
+        });
+
+    });
 });
