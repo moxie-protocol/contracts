@@ -9,5 +9,7 @@
     "compile": "yarn workspaces foreach --all --verbose run compile",
     "check": "yarn workspaces foreach --all --parallel --verbose run check",
     "test": "yarn workspaces foreach --all --parallel --verbose --interlaced run test",
-    "coverage": "yarn workspaces foreach --all --parallel --verbose --interlaced run coverage"  }
+    "coverage": "yarn workspaces foreach --all --parallel --verbose --interlaced run coverage",
+    "check:coverage": "yarn workspaces foreach --all run check:coverage"
+  }
 }

@@ -18,12 +18,14 @@
     "@typechain/ethers-v6": "^0.5.0",
     "@typechain/hardhat": "^9.0.0",
     "@types/chai": "^4.2.0",
+    "@types/istanbul": "^0",
     "@types/mocha": ">=9.1.0",
     "chai": "^4.2.0",
     "dotenv": "^16.4.5",
     "ethers": "^6.13.1",
     "hardhat": "^2.22.4",
     "hardhat-gas-reporter": "^1.0.8",
+    "istanbul": "^0.4.5",
     "prettier": "^3.2.5",
     "prettier-plugin-solidity": "^1.3.1",
     "solhint-community": "^4.0.0",
@@ -38,6 +40,7 @@
     "test": "hardhat test",
     "check": "hardhat check",
     "clean": "rm -rf artifacts/ cache/",
-    "coverage": "hardhat coverage"
+    "coverage": "hardhat coverage",
+    "check:coverage": "istanbul check-coverage ./coverage.json --statements 95 --branches 95 --functions 95 --lines 95"
   }
 }

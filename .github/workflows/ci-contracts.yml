@@ -1,0 +1,43 @@
+name: CI - packages/contracts
+
+env:
+  CI: true
+
+on: 
+  push:
+    branches: "*"
+    paths:
+      - packages/**
+  pull_request:
+    branches: "*"
+    paths:
+      - packages/**
+  workflow_dispatch:
+
+jobs:
+  test-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Enable corepack for modern yarn
+        shell: bash
+        run: corepack enable
+      
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'yarn'
+      
+      - name: Install dependencies
+        shell: bash
+        run: |
+          yarn set version 4.2.2
+          yarn install
+      
+      - name: Run tests
+        run: |
+          yarn coverage
+          yarn check:coverage
