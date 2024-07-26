@@ -6,10 +6,10 @@ import MoxieToken from "./2_MoxieToken";
 import config from "../config/config.json";
 import EasyAuction from "./3_EasyAuction";
 
-const protocolBuyFeePct = config.protocolBuyFeePctForBC; // 1%
-const protocolSellFeePct = config.protocolSellFeePctForBC; // 2%
-const subjectBuyFeePct = config.subjectBuyFeePctForBC; // 3%
-const subjectSellFeePct = config.subjectSellFeePctForBC; // 4%
+const protocolBuyFeePct = config.protocolBuyFeePctForBC; 
+const protocolSellFeePct = config.protocolSellFeePctForBC;
+const subjectBuyFeePct = config.subjectBuyFeePctForBC;
+const subjectSellFeePct = config.subjectSellFeePctForBC;
 
 const feeInputBondingCurve = {
     protocolBuyFeePct,
