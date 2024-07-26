@@ -60,7 +60,11 @@ const networkConfigs: NetworkConfig[] = [
     network: 'base-sepolia',
     chainId: 84532,
     url: 'https://sepolia.base.org',
-    gas: 3500000,
+  },
+  {
+    network: 'base',
+    chainId: 8453,
+    url: `https://base-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY as string}`
   },
 ]
 

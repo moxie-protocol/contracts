@@ -5,14 +5,16 @@
   <h1 align="center">Moxie Smart Contracts</h1>
 </div>
 
-This repository contains the official source code for the Moxie snart contracts.
+This repository contains the official source code for the Moxie smart contracts.
 
 ## Table Of Contents
 
+- [Table Of Contents](#table-of-contents)
 - [Pre-requisites](#pre-requisites)
 - [Local Setup](#local-setup)
-- [Deployment](#deployment)
-- [License](#License)
+- [Contract Deployment](#contract-deployment)
+- [Audit](#audit)
+- [License](#license)
 
 ## Pre-requisites
 
@@ -20,17 +22,40 @@ This repository contains the official source code for the Moxie snart contracts.
 
 ## Local Setup
 
-Install the dependencies for all the contract project under this repository by simply running the following commnand:
+- Install the dependencies for all the contract project under this repository by simply running the following commnand:
 
 ```sh
 yarn
 ```
+
+- Compile Contracts
+  
+```sh
+yarn compile
+```
+
+- Run tests
+```sh
+yarn test
+```
+- Calculate test coverage
+  
+```sh
+yarn coverage
+  ```
 
 ## Contract Deployment
 
 For contract deployment guide, you can follow the guide in each project's README below:
 - [Protocol](./packages/protocol/README.md)
 - [Token Distribution](./packages/token-distribution/DEPLOYMENT.md)
+
+## Audit 
+
+This solidity code was audited by code4rena. 
+
+- **Protocol Contracts** Audit report can be found [here](./audit//C4-Moxie-2024-06._Protocolpdf.pdf).
+- **Token Distribution** Audit report can be found [here](./audit//C4-Moxie-2024-07_Token_Distribution.pdf).
 
 ## License
 

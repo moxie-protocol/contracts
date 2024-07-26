@@ -1,7 +1,7 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 import ProtocolContractsProxy from "./5_ProtocolContractsProxy";
 import MoxiePass from "./1_MoxiePass";
-import EasyAuction from "./4_EasyAuction";
+import EasyAuction from "./3_EasyAuction";
 import config from "../config/config.json"
 
 export default buildModule("Permissions", (m) => {
