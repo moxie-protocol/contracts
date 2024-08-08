@@ -61,6 +61,11 @@ const networkConfigs: NetworkConfig[] = [
     chainId: 84532,
     url: 'https://sepolia.base.org',
   },
+  {
+    network: 'base',
+    chainId: 8453,
+    url: `https://base-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY as string}`
+  },
 ]
 
 function getAccountMnemonic() {
@@ -165,7 +170,7 @@ const config = {
   },
   namedAccounts: {
     deployer: {
-      default: 0,
+      default: 1,
     },
   },
   etherscan: {

@@ -53,4 +53,14 @@ interface IMoxieTokenLockManager {
     function getAuthFunctionCallTarget(bytes4 _sigHash) external view returns (address);
 
     function isAuthFunctionCall(bytes4 _sigHash) external view returns (bool);
+
+    function addSubjectTokenDestination(address _dst) external;
+
+    function removeSubjectTokenDestination(address _dst) external;
+
+    function isSubjectTokenDestination(address _dst) external view returns (bool);
+
+    function getSubjectTokenDestinations() external view returns (address[] memory);
+
+    function getSubjectTokenAddress(address _subject) external view returns (address);
 }

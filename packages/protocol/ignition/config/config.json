@@ -1,0 +1,16 @@
+{
+  "protocolBuyFeePctForBC": "0",
+  "protocolSellFeePctForBC": "25000000000000000",
+  "subjectBuyFeePctForBC": "0",
+  "subjectSellFeePctForBC": "25000000000000000",
+  "protocolFeePctForSF": "50000000000000000",
+  "subjectFeePctForSF": "50000000000000000",
+  "auctionDuration": 259200,
+  "auctionOrderCancellationDuration": 259200,
+  "proxyAdminOwner": "0x96feEd3b3071ebe641C2eCa422C6f57fd9EE4BbC",
+  "moxieTokenBeneficiary": "0xefDD655156eFb323D2E5bED172A7b62499AF3e7c",
+  "adminRoleBeneficiary": "0x96feEd3b3071ebe641C2eCa422C6f57fd9EE4BbC",
+  "tokenLockManager": "0x01cca50Ba3A596f049Daa23b8D80B6957376225c",
+  "moxiePassURL": "https://assets.airstack.xyz/moxiepass/metadata/0.json",
+  "feeBeneficiary": "0x7F472aaa6492a07BFfbE98664A11f76615150584"
+}

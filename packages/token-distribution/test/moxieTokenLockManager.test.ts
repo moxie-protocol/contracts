@@ -226,5 +226,19 @@ describe('MoxieTokenLockWallet', () => {
         await expect(tx).revertedWith('Amount cannot be zero')
       })
     })
+
+    // withdraw
+    describe('setTokenManager', function () {
+      it('should setTokenManager address', async function () {
+        const tokenManager = Wallet.createRandom().address
+        const tx = tokenLockManager.connect(deployer.signer).setTokenManager(tokenManager)
+        await expect(tx).emit(tokenLockManager, 'TokenManagerUpdated').withArgs(tokenManager)
+      })
+      it('revert if tokenManager address is zero', async function () {
+        const tokenManager = AddressZero
+        const tx = tokenLockManager.connect(deployer.signer).setTokenManager(tokenManager)
+        await expect(tx).revertedWith('Token Manager cannot be zero')
+      })
+    })
   })
 })

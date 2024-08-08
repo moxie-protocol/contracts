@@ -13,6 +13,9 @@ import "./MinimalProxyFactory.sol";
 import "./IMoxieTokenLockManager.sol";
 import { MoxieTokenLockWallet } from "./MoxieTokenLockWallet.sol";
 import "./IMoxiePass.sol";
+import "./IERC20Extended.sol";
+import {ITokenManager} from "./ITokenManager.sol";
+
 
 /**
  * @title MoxieTokenLockManager
@@ -34,11 +37,13 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
 
     mapping(bytes4 => address) public authFnCalls;
     EnumerableSet.AddressSet private _tokenDestinations;
+    EnumerableSet.AddressSet private _subjectTokenDestinations;
 
     address public masterCopy;
     IERC20 internal _token;
     IMoxiePass public moxiePassToken;
     string public moxiePassTokenUri;
+    ITokenManager public tokenManager;
 
     // -- Events --
 
@@ -63,6 +68,8 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
     event FunctionCallAuth(address indexed caller, bytes4 indexed sigHash, address indexed target, string signature);
     event TokenDestinationAllowed(address indexed dst, bool allowed);
     event MoxiePassTokenUpdated(address indexed moxiePassToken);
+    event SubjectTokenDestinationAllowed(address indexed dst, bool allowed);
+    event TokenManagerUpdated(address indexed tokenManager);
 
     /**
      * Constructor.
@@ -337,5 +344,69 @@ contract MoxieTokenLockManager is Ownable, MinimalProxyFactory, IMoxieTokenLockM
         moxiePassToken = IMoxiePass(_moxiePassToken);
         moxiePassTokenUri = _moxiePassTokenUri;
         emit MoxiePassTokenUpdated(_moxiePassToken);
+    }
+
+    // -- Subject Token Destinations --
+
+    /**
+     * @notice Adds an address that can be allowed by a protocol contracts to pull funds
+     * @param _dst Subject Token Destination address
+     */
+    function addSubjectTokenDestination(address _dst) external override onlyOwner {
+        require(_dst != address(0), "Subject Token Destination cannot be zero");
+        require(_subjectTokenDestinations.add(_dst), "Subject Token Destination is already added");
+        emit SubjectTokenDestinationAllowed(_dst, true);
+    }
+
+    /**
+     * @notice Removes an address that was allowed by protocol contracts to pull funds
+     * @param _dst Subject Token Destination address
+     */
+    function removeSubjectTokenDestination(address _dst) external override onlyOwner {
+        require(_subjectTokenDestinations.remove(_dst), "Subject Token Destination is already removed");
+        emit SubjectTokenDestinationAllowed(_dst, false);
+    }
+
+    /**
+     * @notice Returns True if the address is authorized to be a destination of subject tokens
+     * @param _dst Subject Token Destination address
+     * @return True if authorized
+     */
+    function isSubjectTokenDestination(address _dst) external view override returns (bool) {
+        return _subjectTokenDestinations.contains(_dst);
+    }
+
+    /**
+     * @notice Returns an array of authorized subject token destination addresses
+     * @return Array of addresses authorized to pull funds from subject token by protocol contracts
+     */
+    function getSubjectTokenDestinations() external view override returns (address[] memory) {
+        address[] memory dstList = new address[](_subjectTokenDestinations.length());
+        for (uint256 i = 0; i < _subjectTokenDestinations.length(); i++) {
+            dstList[i] = _subjectTokenDestinations.at(i);
+        }
+        return dstList;
+    }
+
+    /**
+     * @notice Sets the token manager contract address
+     * @param _tokenManager Address of the token manager contract
+     */
+     
+    function setTokenManager(address _tokenManager) external onlyOwner {
+        require(_tokenManager != address(0), "Token Manager cannot be zero");
+        tokenManager = ITokenManager(_tokenManager);
+        emit TokenManagerUpdated(_tokenManager);
+    }
+
+    /**
+     * @notice Gets the subject token address for a given subject
+     * @param _subject Address of the subject
+     * @return Address of the subject token
+     */
+    function getSubjectTokenAddress(address _subject) external view override returns (address) {
+        address subjectToken = tokenManager.tokens(_subject);
+        require(subjectToken != address(0), "Subject token not found");
+        return subjectToken;
     }
 }
