@@ -12,9 +12,7 @@ task("onboard", "Onboard Subject", async (taskArgs, hre) => {
 
     const [deployer, owner, minter, subject, subject1, subject2]  = await hre.ethers.getSigners();
 
-    // await moxiePass.connect(minter).mint('0x45b19Bafb4c035056E4a2Fe8667545a89C2E44a7', "uri");
-
-    // console.log(subject2.address)
+    await moxiePass.connect(minter).mint('', "uri");
 
     const auctionInput = {
         name: 'fid-3761',
@@ -28,16 +26,9 @@ task("onboard", "Onboard Subject", async (taskArgs, hre) => {
         accessManagerContractData: '0x' //0x00 can be hardcoded
     }
 
-    console.log(auctionInput)
-
-    await subjectFactory.connect(owner).grantRole(await subjectFactory.UPDATE_AUCTION_ROLE(), owner.address)
-
-    // Change auctionTime to 15 minutes
-    await subjectFactory.connect(owner).updateAuctionTime(600, 599);
-
-    // await subjectFactory.connect(owner).initiateSubjectOnboarding(
-    //     subject2.address,
-    //     auctionInput,
-    // )
+    await subjectFactory.connect(owner).initiateSubjectOnboarding(
+        subject2.address,
+        auctionInput,
+    )
 
 });

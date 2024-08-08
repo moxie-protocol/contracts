@@ -23,13 +23,13 @@ task("bid", "BId in auction", async (taskArgs, hre) => {
 
     await moxieToken.connect(owner).approve(MOXIE_BONDING_CURVE, sellAmount.toString());
 
-    // const queueStartElement =
-    //             "0x0000000000000000000000000000000000000000000000000000000000000001";
-    // await easyAuction.connect(owner).placeSellOrders(
-    //     AUCTION_ID,
-    //     [buyAmount.toString()],
-    //     [sellAmount.toString()],
-    //     [queueStartElement],
-    //     '0x'
-    // );
+    const queueStartElement =
+                "0x0000000000000000000000000000000000000000000000000000000000000001";
+    await easyAuction.connect(owner).placeSellOrders(
+        AUCTION_ID,
+        [buyAmount.toString()],
+        [sellAmount.toString()],
+        [queueStartElement],
+        '0x'
+    );
 });
