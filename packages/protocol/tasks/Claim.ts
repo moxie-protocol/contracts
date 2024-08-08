@@ -4,7 +4,7 @@ import EasyAuctionArtifact from "../test-artifact/easy-auction/artifacts/EasyAuc
 import { BigNumber} from "@ethersproject/bignumber";
 
 const AUCTION_ID = 5;
-const VESTING_CONTRACT_ADDRESS = '0xe2b1B4749896D3ACbdBaE20b7e2B3106a6F0F7E1'
+const VESTING_CONTRACT_ADDRESS = ''
 
 task("claim", "Claim from auction", async (taskArgs, hre) => {
 

@@ -1,6 +1,6 @@
 import { task } from "hardhat/config";
 
-const SUBJECT_FACTORY_ADDRESS = '0x830ABa2522399E0EEE39bad3b6eE8778d4614B51'
+const SUBJECT_FACTORY_ADDRESS = ''
 
 task("onboardrole", "Assign Onboard role", async (taskArgs, hre) => {
 

@@ -2,8 +2,8 @@
 import { task } from "hardhat/config";
 import { BigNumber} from "@ethersproject/bignumber";
 
-const MOXIE_BONDING_CURVE = '0xAE03AC8F00cD242f69f996BD06DE5Ab9363c20Ac'
-const SUBJECT_ADDRESS = '0xdbDa8904eEdA849C70DBbDED4D3B22651aD57973';
+const MOXIE_BONDING_CURVE = ''
+const SUBJECT_ADDRESS = '';
 
 task("buy", "buy from bonding curve ", async (taskArgs, hre) => {
 
@@ -23,7 +23,7 @@ task("buy", "buy from bonding curve ", async (taskArgs, hre) => {
     //     0
     // );
 
-    const subjectToken = await hre.ethers.getContractAt('SubjectERC20', '0xe272372AB0469cE91Df79fe42f5E5dc24c31ff67');
+    const subjectToken = await hre.ethers.getContractAt('SubjectERC20', '');
 
     await subjectToken.connect(owner).transfer(owner.address, "1", {
         gasLimit: 1000000

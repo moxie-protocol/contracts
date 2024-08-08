@@ -1,9 +1,9 @@
 import { task } from "hardhat/config";
 import { BigNumber} from "@ethersproject/bignumber";
 
-const SUBJECT_FACTORY_ADDRESS = '0x0b34EB0DE7977b1d3e7facD449b92a0Fe5772A40'
-const MOXIE_PASS = '0xA63D5a914F575F8Fe8832A2A9Fcb4A2d875Db2Ef'
-const MOXIE_PASS_VERIFIER_ADDRESS = '0x6BCF68EBc21f0b5Cb62C60F5900E95c7fAB2DE50'
+const SUBJECT_FACTORY_ADDRESS = ''
+const MOXIE_PASS = ''
+const MOXIE_PASS_VERIFIER_ADDRESS = ''
 
 task("onboard", "Onboard Subject", async (taskArgs, hre) => {
 
