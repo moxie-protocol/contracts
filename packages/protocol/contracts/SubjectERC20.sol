@@ -2,14 +2,15 @@
 
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "./interfaces/IMoxiePassVerifier.sol";
-import "./interfaces/ISubjectErc20.sol";
+import {IMoxiePassVerifier} from "./interfaces/IMoxiePassVerifier.sol";
+import {ISubjectErc20} from "./interfaces/ISubjectErc20.sol";
+import {ITokenManager} from "./interfaces/ITokenManager.sol";
 
 contract SubjectERC20 is
     ISubjectErc20,
@@ -23,6 +24,7 @@ contract SubjectERC20 is
 
     error SubjectERC20_NotAMoxiePassHolder();
     error SubjectERC20_InvalidOwner();
+    error SubjectERC20_InvalidTransfer();
 
     /**
      * @notice Initialize contract
@@ -51,6 +53,34 @@ contract SubjectERC20 is
     }
 
     /**
+     * @notice Verifiers if address is moxie pass holder.
+     * @param _address input address.
+     */
+    modifier onlyMoxiePassHolder(address _address) {
+        if (
+            _address != address(0) &&
+            !moxiePassVerifier.isMoxiePassHolder(_address)
+        ) revert SubjectERC20_NotAMoxiePassHolder();
+        _;
+    }
+
+    /**
+     * @notice Verify if transfer is valid based on allowlist.
+     * @param _from  From address of transfer.
+     * @param _to To address of transfer.
+     */
+    modifier onlyValidTransfers(address _from, address _to) {
+        if (
+            _from != address(0) &&
+            _to != address(0) &&
+            !_isValidTransfer(_from, _to)
+        ) {
+            revert SubjectERC20_InvalidTransfer();
+        }
+        _;
+    }
+
+    /**
      * @notice Mint tokens to address.
      * @param _to Address of beneficiary.
      * @param _amount Amount of tokens to be minted.
@@ -59,14 +89,39 @@ contract SubjectERC20 is
         _mint(_to, _amount);
     }
 
+    /**
+     * Only allow to & from whitelisted addresses.
+     * @param from From address of transfer.
+     * @param to To address of transfer.
+     */
+    function _isValidTransfer(
+        address from,
+        address to
+    ) internal returns (bool) {
+        return
+            ITokenManager(owner()).isWalletAllowedForTransfer(from) ||
+            ITokenManager(owner()).isWalletAllowedForTransfer(to);
+    }
+
+    /**
+     * @notice This function enforces
+     *  1. Only moxie pass holders can own Subject Tokens
+     *  2. Transfer of subject token between wallets are not allowed(except done from protocol contracts)
+     * @param from Address of from wallet.
+     * @param to Address of to wallet.
+     * @param value Amount of tokens.
+     */
     function _update(
         address from,
         address to,
         uint256 value
-    ) internal virtual override {
-        if (to != address(0) && !moxiePassVerifier.isMoxiePassHolder(to))
-            revert SubjectERC20_NotAMoxiePassHolder();
-
+    )
+        internal
+        virtual
+        override
+        onlyMoxiePassHolder(to)
+        onlyValidTransfers(from, to)
+    {
         super._update(from, to, value);
     }
 }

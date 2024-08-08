@@ -37,7 +37,7 @@ cached/
 /artifacts
 
 # Do not ignore the artifacts folder inside the test directory
-!packages/protocol/test/easy-auction/artifacts
+!packages/protocol/external-artifact/easy-auction/artifacts
 
 # TypeChain files
 */*/typechain
@@ -49,6 +49,7 @@ cached/
 
 # Hardhat Ignition default folder for deployments against a local node
 */*/ignition/deployments/chain-31337
+
 
 
 # Build artifacts
@@ -64,8 +65,15 @@ bin/
 .DS_Store
 .vscode
 
-coverage
 
 # Coverage and other reports
 reports/
 coverage.json
+coverage/
+
+*.html/
+
+venv
+
+# track aritifacts in ignition directory
+!*/*/ignition/deployments/*/artifacts
