@@ -3,8 +3,7 @@ import EasyAuctionArtifact from "../test-artifact/easy-auction/artifacts/EasyAuc
 import { EasyAuction } from "../test-artifact/easy-auction/typechain/EasyAuction";
 import { BigNumber} from "@ethersproject/bignumber";
 
-const VESTING_CONTRACT_ADDRESS = '0xe2b1B4749896D3ACbdBaE20b7e2B3106a6F0F7E1'
-// const EASY_AUCTION_ADDRESS = '0x64f1a4538844167560c5E8712472828634BA0Efb'
+const VESTING_CONTRACT_ADDRESS = ''
 const AUCTION_ID = 3;
 const USER_ID = '3';
 

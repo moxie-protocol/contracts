@@ -3,8 +3,8 @@ import EasyAuctionArtifact from "../test-artifact/easy-auction/artifacts/EasyAuc
 import { EasyAuction } from "../test-artifact/easy-auction/typechain/EasyAuction";
 import { BigNumber} from "@ethersproject/bignumber";
 
-const EASY_AUCTION_ADDRESS = '0x28E8A1817Af21d39d6820Fd930FDE618e03d4d8d'
-const MOXIE_BONDING_CURVE = "0x0f0EcB17575c232077075EF9d78fC9afad808B4D"
+const EASY_AUCTION_ADDRESS = ''
+const MOXIE_BONDING_CURVE = ""
 const AUCTION_ID = 19;
 
 task("bid", "BId in auction", async (taskArgs, hre) => {
@@ -19,7 +19,7 @@ task("bid", "BId in auction", async (taskArgs, hre) => {
     console.log(buyAmount.toString())
     console.log(sellAmount.toString())
 
-    const moxieToken = await hre.ethers.getContractAt("MoxieToken", "0xf80945Fc1436b0aE8b86c8835f09870dEEAf03d5");
+    const moxieToken = await hre.ethers.getContractAt("MoxieToken", "");
 
     await moxieToken.connect(owner).approve(MOXIE_BONDING_CURVE, sellAmount.toString());
 

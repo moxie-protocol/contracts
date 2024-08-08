@@ -3,7 +3,7 @@ import { setup } from "./utils";
 import { BigNumber} from "@ethersproject/bignumber";
 import * as contracts from "./config/deployed_addresses.json";
 
-const SUBJECT_FACTORY_ADDRESS = '0x3199219bda5dbC9ee45bb3DFad180be56A7ebfd0'
+const SUBJECT_FACTORY_ADDRESS = ''
 
 
 task("test1", "test1", async (taskArgs, hre) => {
@@ -20,7 +20,7 @@ task("test1", "test1", async (taskArgs, hre) => {
    await vestingContract.connect(beneficiary).approveProtocol()
 
    const signers = await hre.ethers.getSigners();
-   const subject_address = "0x3e0ea0e39dc5af19d5fd53b2628899b53ce3497b"
+   const subject_address = ""
    const owner = signers[1];
 
    console.log('beneficiary.address', beneficiary.address)
