@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+
+address constant SAMPLE_HOLDER = 0x59ebff2bE1e53691E819b953fE215d61135dD05F;
+address constant SAMPLE_SUBJECT_TOKEN = 0xdA1F83703621fC7F42cEaD2F2C625EA455f5FF37;
+address constant SAMPLE_SUBJECT = 0x59ebff2bE1e53691E819b953fE215d61135dD05F;
