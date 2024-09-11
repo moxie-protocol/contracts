@@ -3,17 +3,20 @@ pragma solidity ^0.8.24;
 
 interface IStaking {
     error EmptyIndexes();
-    error SubjectsDoesntMatch();
+    error SubjectsDoesntMatch(uint256 index);
     error AmountShouldBeGreaterThanZero();
     error InvalidSubjectToken();
     error TransferFailed();
-    error LockNotExpired();
+    error LockNotExpired(
+        uint256 index,
+        uint256 currentTime,
+        uint256 unlockTime
+    );
     error InvalidIndex(uint256 index);
     error NotOwner();
     error AlreadyWithdrawn();
     error InvalidOwner();
     error NotSameUser(uint256 index);
-
 
     struct LockInfo {
         uint256 amount;
@@ -36,7 +39,7 @@ interface IStaking {
         address indexed user,
         address indexed subject,
         address indexed subjectToken,
-        uint256[]  indexes,
+        uint256[] indexes,
         uint256 amount
     );
 
