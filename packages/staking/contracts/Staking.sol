@@ -8,15 +8,22 @@ import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
 import {IStaking} from "./interfaces/IStaking.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /**
  * @title Staking
  * @author  Moxie Team
  * @notice Staking contract allows staking of subject tokens for a lock period.
  */
-contract Staking is IStaking, SecurityModule, ReentrancyGuard {
+contract Staking is
+    IStaking,
+    SecurityModule,
+    ReentrancyGuard,
+    OwnableUpgradeable
+{
     using SafeERC20 for IERC20Extended;
-
+    bytes32 public constant CHANGE_LOCK_DURATION =
+        keccak256("CHANGE_LOCK_DURATION");
     uint256 private s_lockPeriod;
     uint256 private s_LockCount;
 
@@ -28,20 +35,32 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         address _tokenManager,
         address _moxieBondingCurve,
         address _moxieToken,
-        uint256 _lockPeriod
+        uint256 _lockPeriod,
+        address _defaultAdmin,
+        address _changeLockRole
     ) {
         i_tokenManager = ITokenManager(_tokenManager);
         i_moxieBondingCurve = IMoxieBondingCurve(_moxieBondingCurve);
         i_moxieToken = IERC20Extended(_moxieToken);
         s_lockPeriod = _lockPeriod;
+        _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
+        _grantRole(CHANGE_LOCK_DURATION, _changeLockRole);
     }
 
     mapping(uint256 lockId => LockInfo lockinfo) private s_locks;
 
+    function setChangeLockDurationRole(
+        address _changeLockRole
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _grantRole(CHANGE_LOCK_DURATION, _changeLockRole);
+    }
+
     /**
      * @notice Sets the lock period for staking. only owner can call this function.
      */
-    function setLockPeriod(uint256 _lockPeriod) external {
+    function setLockPeriod(
+        uint256 _lockPeriod
+    ) external onlyRole(CHANGE_LOCK_DURATION) {
         s_lockPeriod = _lockPeriod;
     }
 
@@ -194,6 +213,20 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             _indexes,
             totalAmount
         );
+    }
+
+    function extendLock(uint256[] memory _indexes) external {
+        for (uint256 i = 0; i < _indexes.length; i++) {
+            LockInfo storage lockInfo = s_locks[_indexes[i]];
+            if (lockInfo.unlockTime == 0) {
+                revert InvalidIndex(i);
+            }
+            if (lockInfo.user != msg.sender) {
+                revert NotSameUser(i);
+            }
+
+            lockInfo.unlockTime = lockInfo.unlockTime + s_lockPeriod;
+        }
     }
 
     function getLockInfo(

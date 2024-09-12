@@ -48,6 +48,8 @@ describe("Staking", () => {
       buyer2,
       seller2,
       subject2,
+      stakingAdmin,
+      changeLockRole,
       ...otherAccounts
     ] = await ethers.getSigners();
     const {
@@ -99,6 +101,8 @@ describe("Staking", () => {
       await moxieBondingCurve.getAddress(),
       await moxieToken.getAddress(),
       lockTime,
+      stakingAdmin.address,
+      changeLockRole.address,
       { from: deployer.address },
     );
 
@@ -277,13 +281,57 @@ describe("Staking", () => {
       subjectToken2,
       subjectToken2Address,
       subject2,
+      stakingAdmin,
+      changeLockRole,
     };
   };
+
+  describe("setChangeLockDurationRole", () => {
+    it("should set CHANGE_LOCK_DURATION role", async () => {
+      const { staking, stakingAdmin } = await deploy();
+      await staking
+        .connect(stakingAdmin)
+        .setChangeLockDurationRole(stakingAdmin.address);
+    });
+
+    it("should revert if not called by correct role", async () => {
+      const { staking, changeLockRole } = await deploy();
+      await expect(
+        staking
+          .connect(changeLockRole)
+          .setChangeLockDurationRole(changeLockRole.address),
+      ).to.be.revertedWithCustomError(
+        staking,
+        "AccessControlUnauthorizedAccount",
+      );
+    });
+  });
   describe("getLockPeriod", () => {
     it("should return the lock period", async () => {
       const { staking, lockTime } = await deploy();
       const result = await staking.getLockPeriod();
       expect(result).to.eq(lockTime);
+    });
+  });
+
+  describe("setLockPeriod", () => {
+    it("should set the lock period", async () => {
+      const { staking, changeLockRole } = await deploy();
+      const newLockTime = 100;
+      await staking.connect(changeLockRole).setLockPeriod(newLockTime);
+      const result = await staking.getLockPeriod();
+      expect(result).to.eq(newLockTime);
+    });
+    it("should revert if not called by correct role", async () => {
+      const { staking, stakingAdmin } = await deploy();
+      const newLockTime = 100;
+
+      await expect(
+        staking.connect(stakingAdmin).setLockPeriod(newLockTime),
+      ).to.be.revertedWithCustomError(
+        staking,
+        "AccessControlUnauthorizedAccount",
+      );
     });
   });
 
