@@ -12,73 +12,48 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 
 /**
  * @title Staking
- * @author  Moxie Team
+ * @author Moxie Team
  * @notice Staking contract allows staking of subject tokens for a lock period.
  */
-contract Staking is
-    IStaking,
-    SecurityModule,
-    ReentrancyGuard,
-    OwnableUpgradeable
-{
+contract Staking is IStaking, SecurityModule, ReentrancyGuard, OwnableUpgradeable {
     using SafeERC20 for IERC20Extended;
-    bytes32 public constant CHANGE_LOCK_DURATION =
-        keccak256("CHANGE_LOCK_DURATION");
-    uint256 private s_lockPeriod;
-    uint256 private s_LockCount;
 
-    ITokenManager private immutable i_tokenManager;
-    IMoxieBondingCurve private immutable i_moxieBondingCurve;
-    IERC20Extended private immutable i_moxieToken;
+    bytes32 public constant CHANGE_LOCK_DURATION = keccak256("CHANGE_LOCK_DURATION");
 
-    constructor(
-        address _tokenManager,
-        address _moxieBondingCurve,
-        address _moxieToken,
-        uint256 _lockPeriod,
-        address _defaultAdmin,
-        address _changeLockRole
-    ) {
-        i_tokenManager = ITokenManager(_tokenManager);
-        i_moxieBondingCurve = IMoxieBondingCurve(_moxieBondingCurve);
-        i_moxieToken = IERC20Extended(_moxieToken);
-        s_lockPeriod = _lockPeriod;
+    ITokenManager public tokenManager;
+    IMoxieBondingCurve public moxieBondingCurve;
+    IERC20Extended public moxieToken;
+
+    uint256 public lockCount;
+
+    mapping(uint256 lockId => LockInfo lockinfo) public locks;
+    mapping(uint256 lockPeriod => bool allowed) public lockPeriods;
+
+    function initialize(address _tokenManager, address _moxieBondingCurve, address _moxieToken, address _defaultAdmin)
+        external
+        initializer
+    {
+        __AccessControl_init();
+        __Pausable_init();
+        tokenManager = ITokenManager(_tokenManager);
+        moxieBondingCurve = IMoxieBondingCurve(_moxieBondingCurve);
+        moxieToken = IERC20Extended(_moxieToken);
         _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
-        _grantRole(CHANGE_LOCK_DURATION, _changeLockRole);
-
-        emit LockPeriodUpdated(_lockPeriod);
     }
-
-    mapping(uint256 lockId => LockInfo lockinfo) private s_locks;
-
-    function setChangeLockDurationRole(
-        address _changeLockRole
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _grantRole(CHANGE_LOCK_DURATION, _changeLockRole);
-    }
-
     /**
      * @notice Sets the lock period for staking. only owner can call this function.
      */
-    function setLockPeriod(
-        uint256 _lockPeriod
-    ) external onlyRole(CHANGE_LOCK_DURATION) {
-        s_lockPeriod = _lockPeriod;
-        emit LockPeriodUpdated(_lockPeriod);
+
+    function setLockPeriod(uint256 _lockPeriod, bool _allowed) external onlyRole(CHANGE_LOCK_DURATION) {
+        lockPeriods[_lockPeriod] = _allowed;
+        emit LockPeriodUpdated(_lockPeriod, _allowed);
     }
 
-    /**
-     * @notice Returns the lock period for staking.
-     */
-    function getLockPeriod() external view returns (uint256) {
-        return s_lockPeriod;
-    }
-
-    /**
-     * @notice Returns the total number of locks.
-     */
-    function getLockCount() external view returns (uint256) {
-        return s_LockCount;
+    modifier onlyValidLockPeriod(uint256 _lockPeriod) {
+        if (!lockPeriods[_lockPeriod]) {
+            revert InvalidLockPeriod();
+        }
+        _;
     }
 
     /**
@@ -86,42 +61,33 @@ contract Staking is
      * @param _subject subject address for which tokens are getting deposited.
      * @param _amount _Amount of tokens getting deposited.
      */
-    function _deposit(address _subject, uint256 _amount) internal {
+    function _deposit(address _subject, uint256 _amount, uint256 _lockPeriod)
+        internal
+        onlyValidLockPeriod(_lockPeriod)
+    {
         if (_amount == 0) {
             revert AmountShouldBeGreaterThanZero();
         }
-        IERC20Extended subjectToken = IERC20Extended(
-            i_tokenManager.tokens(_subject)
-        );
+        IERC20Extended subjectToken = IERC20Extended(tokenManager.tokens(_subject));
         if (address(subjectToken) == address(0)) {
             revert InvalidSubjectToken();
         }
-        uint256 _index = s_LockCount++;
-        uint256 unlockTime = block.timestamp + s_lockPeriod;
+        uint256 _index = lockCount++;
+        uint256 unlockTime = block.timestamp + _lockPeriod;
         LockInfo memory lockInfo = LockInfo({
             amount: _amount,
             unlockTime: unlockTime,
             subject: _subject,
             subjectToken: address(subjectToken),
-            user: msg.sender
+            user: msg.sender,
+            lockPeriod: _lockPeriod
         });
         // lock the tokens
-        s_locks[_index] = lockInfo;
+        locks[_index] = lockInfo;
         // emit event
-        emit Lock(
-            msg.sender,
-            _subject,
-            address(subjectToken),
-            _index,
-            _amount,
-            unlockTime
-        );
+        emit Lock(msg.sender, _subject, address(subjectToken), _index, _amount, unlockTime, _lockPeriod);
         // Transfer the tokens to this contract
-        bool success = subjectToken.transferFrom(
-            msg.sender,
-            address(this),
-            _amount
-        );
+        bool success = subjectToken.transferFrom(msg.sender, address(this), _amount);
         if (!success) {
             revert TransferFailed();
         }
@@ -131,12 +97,10 @@ contract Staking is
      * External function to deposit and lock tokens.
      * @param _subject Subject address for which tokens are getting deposited.
      * @param _amount amount of tokens getting deposited.
+     * @param _lockPeriod lock period for the tokens.
      */
-    function depositAndLock(
-        address _subject,
-        uint256 _amount
-    ) external nonReentrant {
-        _deposit(_subject, _amount);
+    function depositAndLock(address _subject, uint256 _amount, uint256 _lockPeriod) external nonReentrant {
+        _deposit(_subject, _amount, _lockPeriod);
     }
 
     /**
@@ -144,122 +108,103 @@ contract Staking is
      * @param _subject Subject address for which tokens are getting deposited.
      * @param _depositAmount amount of moxie tokens getting deposited.
      */
-
-    function buyAndLock(
-        address _subject,
-        uint256 _depositAmount,
-        uint256 _minReturnAmountAfterFee
-    ) external nonReentrant {
+    function buyAndLock(address _subject, uint256 _depositAmount, uint256 _minReturnAmountAfterFee, uint256 _lockPeriod)
+        external
+        onlyValidLockPeriod(_lockPeriod)
+        nonReentrant
+    {
         // transfer moxie to this contract
-        i_moxieToken.safeTransferFrom(
-            msg.sender,
-            address(this),
-            _depositAmount
-        );
+        moxieToken.safeTransferFrom(msg.sender, address(this), _depositAmount);
         // approve moxie bonding curve
-        i_moxieToken.approve(address(i_moxieBondingCurve), _depositAmount);
+        moxieToken.approve(address(moxieBondingCurve), _depositAmount);
         // pull moxie
-        uint256 _amount = i_moxieBondingCurve.buyShares(
-            _subject,
-            _depositAmount,
-            _minReturnAmountAfterFee
-        );
-        uint256 unlockTime = block.timestamp + s_lockPeriod;
-        address subjectToken = address(i_tokenManager.tokens(_subject));
+        uint256 _amount = moxieBondingCurve.buyShares(_subject, _depositAmount, _minReturnAmountAfterFee);
+        uint256 unlockTime = block.timestamp + _lockPeriod;
+        address subjectToken = address(tokenManager.tokens(_subject));
         LockInfo memory lockInfo = LockInfo({
             amount: _amount,
             unlockTime: unlockTime,
             subject: _subject,
             subjectToken: subjectToken,
-            user: msg.sender
+            user: msg.sender,
+            lockPeriod: _lockPeriod
         });
-        uint256 _index = s_LockCount++;
-        s_locks[_index] = lockInfo;
-        emit Lock(
-            msg.sender,
-            _subject,
-            subjectToken,
-            _index,
-            _amount,
-            unlockTime
-        );
+        uint256 _index = lockCount++;
+        locks[_index] = lockInfo;
+        emit Lock(msg.sender, _subject, subjectToken, _index, _amount, unlockTime, _lockPeriod);
     }
 
-    function withdraw(uint256[] memory _indexes) external nonReentrant {
+    function withdraw(uint256[] memory _indexes, address _subject) external nonReentrant {
         if (_indexes.length == 0) {
             revert EmptyIndexes();
         }
         uint256 totalAmount = 0;
-        LockInfo memory firstLockInfo = s_locks[_indexes[0]];
-        IERC20Extended subjectToken = IERC20Extended(
-            firstLockInfo.subjectToken
-        );
+        address _subjectToken;
         for (uint256 i = 0; i < _indexes.length; i++) {
             uint256 _index = _indexes[i];
-            LockInfo memory lockInfo = s_locks[_index];
-            if (firstLockInfo.subject != lockInfo.subject) {
+            LockInfo memory lockInfo = locks[_index];
+            if (_subject != lockInfo.subject) {
                 revert SubjectsDoesntMatch(_index);
             }
             if (lockInfo.unlockTime > block.timestamp) {
-                revert LockNotExpired(
-                    _index,
-                    block.timestamp,
-                    lockInfo.unlockTime
-                );
+                revert LockNotExpired(_index, block.timestamp, lockInfo.unlockTime);
             }
             if (lockInfo.user != msg.sender) {
                 revert NotOwner();
             }
+            if (_subjectToken == address(0)) {
+                _subjectToken = lockInfo.subjectToken;
+            }
             totalAmount += lockInfo.amount;
-            delete s_locks[_index];
+            delete locks[_index];
         }
+        IERC20Extended subjectToken = IERC20Extended(_subjectToken);
         subjectToken.transfer(msg.sender, totalAmount);
-        emit Withdraw(
-            msg.sender,
-            firstLockInfo.subject,
-            firstLockInfo.subjectToken,
-            _indexes,
-            totalAmount
-        );
+        emit Withdraw(msg.sender, _subject, _subjectToken, _indexes, totalAmount);
     }
 
-    function extendLock(uint256[] memory _indexes) external {
+    function extendLock(uint256[] memory _indexes, address _subject, uint256 _lockPeriod)
+        external
+        onlyValidLockPeriod(_lockPeriod)
+        nonReentrant
+    {
+        if (_indexes.length == 0) {
+            revert EmptyIndexes();
+        }
+        uint256 totalAmount = 0;
+        // loading first lock to memory
         for (uint256 i = 0; i < _indexes.length; i++) {
             uint256 _index = _indexes[i];
-
-            LockInfo storage lockInfo = s_locks[_index];
-            if (lockInfo.unlockTime == 0) {
-                // this means lock is not created or already withdrawn
-                revert InvalidIndex(_index);
+            LockInfo memory lockInfo = locks[_index];
+            if (lockInfo.subject != _subject) {
+                revert InvalidSubject();
+            }
+            if (lockInfo.unlockTime > block.timestamp) {
+                revert LockNotExpired(_index, block.timestamp, lockInfo.unlockTime);
             }
             if (lockInfo.user != msg.sender) {
                 revert NotSameUser(_index);
             }
-
-            lockInfo.unlockTime = lockInfo.unlockTime + s_lockPeriod;
+            totalAmount += lockInfo.amount;
+            delete locks[_index];
         }
         emit LockExtended(_indexes);
+        _deposit(_subject, totalAmount, _lockPeriod);
     }
 
-    function getLockInfo(
-        uint256 _index
-    ) external view returns (LockInfo memory) {
-        return s_locks[_index];
-    }
-
-    function getTotalStakedAmount(
-        address _user,
-        address _subject,
-        uint256[] calldata _indexes
-    ) external view returns (uint256) {
+    function getTotalStakedAmount(address _user, address _subject, uint256[] calldata _indexes)
+        external
+        view
+        returns (uint256)
+    {
         uint256 totalAmount;
         for (uint256 i = 0; i < _indexes.length; i++) {
-            LockInfo memory lockInfo = s_locks[_indexes[i]];
+            LockInfo memory lockInfo = locks[_indexes[i]];
             if (lockInfo.user != _user) {
                 revert NotSameUser(i);
             }
             if (lockInfo.subject != _subject) {
-                revert InvalidSubjectToken();
+                revert InvalidSubject();
             }
             totalAmount += lockInfo.amount;
         }

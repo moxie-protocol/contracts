@@ -10,7 +10,7 @@ export default {
       allowUnlimitedContractSize: false,
       forking: {
         url: process.env.TESTNET_RPC_URL || "",
-        blockNumber: 15189429,
+        blockNumber: 13548244,
       },
       accounts: {
         mnemonic: process.env.MNEMONIC as string,

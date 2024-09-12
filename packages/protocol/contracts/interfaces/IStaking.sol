@@ -5,18 +5,16 @@ interface IStaking {
     error EmptyIndexes();
     error SubjectsDoesntMatch(uint256 index);
     error AmountShouldBeGreaterThanZero();
+    error InvalidSubject();
     error InvalidSubjectToken();
     error TransferFailed();
-    error LockNotExpired(
-        uint256 index,
-        uint256 currentTime,
-        uint256 unlockTime
-    );
+    error LockNotExpired(uint256 index, uint256 currentTime, uint256 unlockTime);
     error InvalidIndex(uint256 index);
     error NotOwner();
     error AlreadyWithdrawn();
     error InvalidOwner();
     error NotSameUser(uint256 index);
+    error InvalidLockPeriod();
 
     struct LockInfo {
         address user;
@@ -24,6 +22,7 @@ interface IStaking {
         address subjectToken;
         uint256 unlockTime;
         uint256 amount;
+        uint256 lockPeriod;
     }
 
     event Lock(
@@ -32,38 +31,29 @@ interface IStaking {
         address indexed subjectToken,
         uint256 index,
         uint256 amount,
-        uint256 unlockTime
+        uint256 unlockTime,
+        uint256 lockPeriod
     );
 
     event LockExtended(uint256[] indexes);
 
-    event LockPeriodUpdated(uint256 indexed lockPeriod);
+    event LockPeriodUpdated(uint256 indexed lockPeriod, bool indexed allowed);
 
     event Withdraw(
-        address indexed user,
-        address indexed subject,
-        address indexed subjectToken,
-        uint256[] indexes,
-        uint256 amount
+        address indexed user, address indexed subject, address indexed subjectToken, uint256[] indexes, uint256 amount
     );
 
-    function depositAndLock(address _subject, uint256 _amount) external;
+    function depositAndLock(address _subject, uint256 _amount, uint256 _lockPeriod) external;
 
-    function buyAndLock(
-        address _subject,
-        uint256 _depositAmount,
-        uint256 _minReturnAmountAfterFee
-    ) external;
+    function buyAndLock(address _subject, uint256 _depositAmount, uint256 _minReturnAmountAfterFee, uint256 _lockPeriod)
+        external;
+    function withdraw(uint256[] memory _indexes, address _subject) external;
 
-    function withdraw(uint256[] memory _indexes) external;
+    function extendLock(uint256[] memory _indexes, address _subject, uint256 _lockPeriod) external;
+    function setLockPeriod(uint256 _lockPeriod, bool _allowed) external;
 
-    function getLockInfo(
-        uint256 _index
-    ) external view returns (LockInfo memory);
-
-    function getTotalStakedAmount(
-        address _user,
-        address _subject,
-        uint256[] calldata _indexes
-    ) external view returns (uint256);
+    function getTotalStakedAmount(address _user, address _subject, uint256[] calldata _indexes)
+        external
+        view
+        returns (uint256);
 }

@@ -214,6 +214,48 @@ describe("Staking", () => {
         );
     });
 
+    it("vesting ->should deposit and lock tokens and withdraw", async () => {
+
+      const { staking } = await loadFixture(deploy);
+      const subjectOwner = await actAs(SubjectTokenHolder);
+      await setNativeToken(subjectOwner.address, BigInt(1e18));
+      const subjectToken = await getERC20(SubjectToken);
+      let fanTokenBalance = await subjectToken.balanceOf(subjectOwner.address);
+      await subjectToken
+        .connect(subjectOwner)
+        .approve(staking, fanTokenBalance);
+      await expect(
+        staking.connect(subjectOwner).depositAndLock(Subject, fanTokenBalance),
+      )
+        .to.emit(staking, "Lock")
+        .withArgs(
+          subjectOwner.address,
+          Subject,
+          SubjectToken,
+          0,
+          fanTokenBalance,
+          anyValue,
+        );
+      let lockInfo = await staking.getLockInfo(0);
+      expect(lockInfo.amount).to.eq(fanTokenBalance);
+      expect(lockInfo.subject).to.eq(Subject);
+      expect(lockInfo.subjectToken).to.eq(SubjectToken);
+      expect(lockInfo.amount).to.eq(fanTokenBalance);
+      let currentBalance = await subjectToken.balanceOf(subjectOwner.address);
+      expect(currentBalance).to.eq(0);
+      await time.increaseTo(lockInfo.unlockTime + 1n);
+
+      await expect(staking.connect(subjectOwner).withdraw([0]))
+        .to.emit(staking, "Withdraw")
+        .withArgs(
+          subjectOwner.address,
+          Subject,
+          SubjectToken,
+          [0],
+          fanTokenBalance,
+        );
+    })
+
     // it("should revert if amount is zero", async () => {
     //   const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
     //     await loadFixture(deploy);
@@ -245,44 +287,52 @@ describe("Staking", () => {
         owner,
         moxieToken,
       } = await loadFixture(deploy);
-      const amt = (1e18).toString();
       const stakingAddress = await staking.getAddress();
+
       const moxieTokenHolder = await actAs(MoxieTokenHolder);
 
-      await moxieToken.connect(moxieTokenHolder).approve(stakingAddress, amt);
+      // await moxieToken.connect(moxieTokenHolder).transfer(SubjectTokenHolder, amt);
 
+      const subjectTokenHolder = await actAs(SubjectTokenHolder);
+      await setNativeToken(SubjectTokenHolder, BigInt(1e18));
+
+      const balance = (await moxieToken.balanceOf(SubjectTokenHolder));
+      await moxieToken.connect(subjectTokenHolder).approve(stakingAddress, balance);
       await expect(
         staking
-          .connect(moxieTokenHolder)
-          .buyAndLock(await subject.getAddress(), amt, 0),
+          .connect(subjectTokenHolder)
+          .buyAndLock(Subject, balance, 0),
       )
         .to.emit(staking, "Lock")
-        .withArgs(owner.address, Subject, SubjectToken, 0, anyValue, anyValue);
+        .withArgs(SubjectTokenHolder, Subject, SubjectToken, 0, anyValue, anyValue);
       let lockInfo = await staking.getLockInfo(0);
-      console.log(lockInfo);
-      // let oldOwnerBalance = await subjectToken.balanceOf(owner.address);
-      // await time.increaseTo(lockInfo.unlockTime);
+      const subjectToken = await getERC20(SubjectToken);
 
-      // await expect(staking.connect(owner).withdraw([0]))
-      //   .to.emit(staking, "Withdraw")
-      //   .withArgs(
-      //     owner.address,
-      //     subject.address,
-      //     await subjectToken.getAddress(),
-      //     [0],
-      //     lockInfo.amount,
-      //   );
-      // let newOwnerBalance = await subjectToken.balanceOf(owner.address);
 
-      // expect(newOwnerBalance - oldOwnerBalance).to.eq(lockInfo.amount);
-      // let newLockinfo = await staking.getLockInfo(0);
-      // expect(newLockinfo.amount).to.eq(0);
-      // expect(newLockinfo.unlockTime).to.eq(0);
-      // expect(newLockinfo.subject).to.eq(zeroAddress);
-      // expect(newLockinfo.subjectToken).to.eq(zeroAddress);
-      // expect(newLockinfo.user).to.eq(zeroAddress);
+      let oldOwnerBalance = await subjectToken.balanceOf(subjectTokenHolder.address);
+      await time.increaseTo(lockInfo.unlockTime);
+
+      await expect(staking.connect(subjectTokenHolder).withdraw([0]))
+        .to.emit(staking, "Withdraw")
+        .withArgs(
+          subjectTokenHolder.address,
+          Subject,
+          SubjectToken,
+          [0],
+          anyValue,
+        );
+      let newOwnerBalance = await subjectToken.balanceOf(subjectTokenHolder.address);
+
+      expect(newOwnerBalance - oldOwnerBalance).to.eq(lockInfo.amount);
+      let newLockinfo = await staking.getLockInfo(0);
+      expect(newLockinfo.amount).to.eq(0);
+      expect(newLockinfo.unlockTime).to.eq(0);
+      expect(newLockinfo.subject).to.eq(zeroAddress);
+      expect(newLockinfo.subjectToken).to.eq(zeroAddress);
+      expect(newLockinfo.user).to.eq(zeroAddress);
     });
   });
+
 
   // describe("withdraw", () => {
   //   it("should revert with EmptyIndexes", async () => {
