@@ -318,7 +318,9 @@ describe("Staking", () => {
     it("should set the lock period", async () => {
       const { staking, changeLockRole } = await deploy();
       const newLockTime = 100;
-      await staking.connect(changeLockRole).setLockPeriod(newLockTime);
+      await expect(staking.connect(changeLockRole).setLockPeriod(newLockTime))
+        .to.emit(staking, "LockPeriodUpdated")
+        .withArgs(newLockTime);
       const result = await staking.getLockPeriod();
       expect(result).to.eq(newLockTime);
     });
@@ -345,7 +347,7 @@ describe("Staking", () => {
       await expect(
         staking.connect(buyer).depositAndLock(subject, fanTokenBalance),
       )
-        .to.emit(staking, "Deposit")
+        .to.emit(staking, "Lock")
         .withArgs(
           buyer.address,
           subject.address,
@@ -405,7 +407,7 @@ describe("Staking", () => {
       await expect(
         staking.connect(owner).buyAndLock(await subject.getAddress(), amt, 0),
       )
-        .to.emit(staking, "Deposit")
+        .to.emit(staking, "Lock")
         .withArgs(
           owner.address,
           subject.address,
@@ -585,6 +587,131 @@ describe("Staking", () => {
       await expect(
         staking.connect(subject).withdraw([0]),
       ).to.be.revertedWithCustomError(staking, "NotOwner");
+    });
+  });
+
+  describe("getTotalStakedAmount", () => {
+    it("should return total staked amount", async () => {
+      const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
+        await deploy();
+      let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
+      await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
+      // get block number
+
+      // making 5 deposits
+      const depositAmount = BigInt(1e18);
+      for (let i = 0; i < 5; i++) {
+        await staking
+          .connect(buyer)
+          .depositAndLock(subject, depositAmount.toString());
+      }
+
+      let totalStaked = await staking.getTotalStakedAmount(
+        buyer.address,
+        await subject.getAddress(),
+        [0, 1, 2, 3, 4],
+      );
+      expect(totalStaked).to.eq(depositAmount * 5n);
+    });
+
+    it("should revert if subject passed is invalid", async () => {
+      const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
+        await deploy();
+      let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
+      await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
+      // get block number
+
+      // making 5 deposits
+      const depositAmount = BigInt(1e18);
+
+      await staking
+        .connect(buyer)
+        .depositAndLock(subject, depositAmount.toString());
+
+      await expect(
+        staking.getTotalStakedAmount(buyer.address, zeroAddress, [0]),
+      ).to.be.revertedWithCustomError(staking, "InvalidSubjectToken");
+    });
+
+    it("should revert trying to fetch incorrect user's total staked amount", async () => {
+      const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
+        await deploy();
+
+      await expect(
+        staking.getTotalStakedAmount(
+          buyer.address,
+          await subject.getAddress(),
+          [0],
+        ),
+      )
+        .to.be.revertedWithCustomError(staking, "NotSameUser")
+        .withArgs(0);
+    });
+  });
+
+  describe("extendLock", () => {
+    it("should revert with invalidIndex,since index does not exist", async () => {
+      const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
+        await deploy();
+      await expect(staking.connect(buyer).extendLock([10]))
+        .to.be.revertedWithCustomError(staking, "InvalidIndex")
+        .withArgs(10);
+    });
+
+    it("should revert with NotSameUser,since owner who called doesnt have the passed locked index", async () => {
+      const {
+        staking,
+        buyer,
+        subject,
+        subjectToken,
+        initialSupply,
+        lockTime,
+        buyer2,
+      } = await deploy();
+      let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
+      await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
+      const depositAmount = BigInt(1e18);
+      await staking
+        .connect(buyer)
+        .depositAndLock(subject, depositAmount.toString());
+
+      await expect(staking.connect(buyer2).extendLock([0]))
+        .to.be.revertedWithCustomError(staking, "NotSameUser")
+        .withArgs(0);
+    });
+
+    it("should extend lock", async () => {
+      const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
+        await deploy();
+      let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
+      await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
+      const depositAmount = BigInt(1e18);
+      for (let i = 0; i < 5; i++) {
+        await staking
+          .connect(buyer)
+          .depositAndLock(subject, depositAmount.toString());
+      }
+
+      await expect(staking.connect(buyer).extendLock([0, 1, 2, 3, 4]))
+        .to.emit(staking, "LockExtended")
+        .withArgs([0, 1, 2, 3, 4]);
+    });
+  });
+
+  describe("getLockCount", () => {
+    it("should return lock count", async () => {
+      const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
+        await deploy();
+      let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
+      await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
+      const depositAmount = BigInt(1e18);
+      for (let i = 0; i < 5; i++) {
+        await staking
+          .connect(buyer)
+          .depositAndLock(subject, depositAmount.toString());
+      }
+      let lockCount = await staking.getLockCount();
+      expect(lockCount).to.eq(5);
     });
   });
 });

@@ -45,6 +45,8 @@ contract Staking is
         s_lockPeriod = _lockPeriod;
         _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
         _grantRole(CHANGE_LOCK_DURATION, _changeLockRole);
+
+        emit LockPeriodUpdated(_lockPeriod);
     }
 
     mapping(uint256 lockId => LockInfo lockinfo) private s_locks;
@@ -62,6 +64,7 @@ contract Staking is
         uint256 _lockPeriod
     ) external onlyRole(CHANGE_LOCK_DURATION) {
         s_lockPeriod = _lockPeriod;
+        emit LockPeriodUpdated(_lockPeriod);
     }
 
     /**
@@ -93,7 +96,7 @@ contract Staking is
         if (address(subjectToken) == address(0)) {
             revert InvalidSubjectToken();
         }
-        uint256 index = s_LockCount++;
+        uint256 _index = s_LockCount++;
         uint256 unlockTime = block.timestamp + s_lockPeriod;
         LockInfo memory lockInfo = LockInfo({
             amount: _amount,
@@ -103,13 +106,13 @@ contract Staking is
             user: msg.sender
         });
         // lock the tokens
-        s_locks[index] = lockInfo;
+        s_locks[_index] = lockInfo;
         // emit event
-        emit Deposit(
+        emit Lock(
             msg.sender,
             _subject,
             address(subjectToken),
-            index,
+            _index,
             _amount,
             unlockTime
         );
@@ -170,13 +173,13 @@ contract Staking is
             subjectToken: subjectToken,
             user: msg.sender
         });
-        uint256 index = s_LockCount++;
-        s_locks[index] = lockInfo;
-        emit Deposit(
+        uint256 _index = s_LockCount++;
+        s_locks[_index] = lockInfo;
+        emit Lock(
             msg.sender,
             _subject,
             subjectToken,
-            index,
+            _index,
             _amount,
             unlockTime
         );
@@ -192,18 +195,23 @@ contract Staking is
             firstLockInfo.subjectToken
         );
         for (uint256 i = 0; i < _indexes.length; i++) {
-            LockInfo memory lockInfo = s_locks[_indexes[i]];
+            uint256 _index = _indexes[i];
+            LockInfo memory lockInfo = s_locks[_index];
             if (firstLockInfo.subject != lockInfo.subject) {
-                revert SubjectsDoesntMatch(i);
+                revert SubjectsDoesntMatch(_index);
             }
             if (lockInfo.unlockTime > block.timestamp) {
-                revert LockNotExpired(i, block.timestamp, lockInfo.unlockTime);
+                revert LockNotExpired(
+                    _index,
+                    block.timestamp,
+                    lockInfo.unlockTime
+                );
             }
             if (lockInfo.user != msg.sender) {
                 revert NotOwner();
             }
             totalAmount += lockInfo.amount;
-            delete s_locks[_indexes[i]];
+            delete s_locks[_index];
         }
         subjectToken.transfer(msg.sender, totalAmount);
         emit Withdraw(
@@ -217,16 +225,20 @@ contract Staking is
 
     function extendLock(uint256[] memory _indexes) external {
         for (uint256 i = 0; i < _indexes.length; i++) {
-            LockInfo storage lockInfo = s_locks[_indexes[i]];
+            uint256 _index = _indexes[i];
+
+            LockInfo storage lockInfo = s_locks[_index];
             if (lockInfo.unlockTime == 0) {
-                revert InvalidIndex(i);
+                // this means lock is not created or already withdrawn
+                revert InvalidIndex(_index);
             }
             if (lockInfo.user != msg.sender) {
-                revert NotSameUser(i);
+                revert NotSameUser(_index);
             }
 
             lockInfo.unlockTime = lockInfo.unlockTime + s_lockPeriod;
         }
+        emit LockExtended(_indexes);
     }
 
     function getLockInfo(
@@ -234,10 +246,6 @@ contract Staking is
     ) external view returns (LockInfo memory) {
         return s_locks[_index];
     }
-
-    // for a given user, how much user staked for a given subject input: array of indexes
-    // output: total amount staked
-    // we can use it for withdrawal
 
     function getTotalStakedAmount(
         address _user,

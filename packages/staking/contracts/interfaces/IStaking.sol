@@ -19,14 +19,14 @@ interface IStaking {
     error NotSameUser(uint256 index);
 
     struct LockInfo {
-        uint256 amount;
-        uint256 unlockTime;
+        address user;
         address subject;
         address subjectToken;
-        address user;
+        uint256 unlockTime;
+        uint256 amount;
     }
 
-    event Deposit(
+    event Lock(
         address indexed user,
         address indexed subject,
         address indexed subjectToken,
@@ -34,6 +34,10 @@ interface IStaking {
         uint256 amount,
         uint256 unlockTime
     );
+
+    event LockExtended(uint256[] indexes);
+
+    event LockPeriodUpdated(uint256 indexed lockPeriod);
 
     event Withdraw(
         address indexed user,
