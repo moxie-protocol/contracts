@@ -73,6 +73,7 @@ describe("Staking", () => {
     await vaultInstance.connect(deployer).initialize(owner.address);
     // subject deployment
     const subjectErc20 = await SubjectERC20.deploy({ from: deployer.address });
+    const subjectErc20Address = await subjectErc20.getAddress();
 
     // Moxie Pass
     const moxiePass = await MoxiePass.deploy(owner.address, minter.address);
@@ -84,7 +85,6 @@ describe("Staking", () => {
       .setErc721ContractAddress(await moxiePass.getAddress());
 
     //subjectErc20
-    const subjectErc20Address = await subjectErc20.getAddress();
 
     const tokenManager = await TokenManager.deploy({ from: deployer.address });
     await tokenManager
@@ -158,11 +158,11 @@ describe("Staking", () => {
     const subjectToken = SubjectERC20.attach(
       subjectTokenAddress,
     ) as unknown as SubjectERC20Type;
-    const subjectToken2Address = await tokenManager.tokens(subject.address);
-    const subjectToken2 = SubjectERC20.attach(
-      subjectTokenAddress,
-    ) as unknown as SubjectERC20Type;
 
+    const subjectToken2Address = await tokenManager.tokens(subject2.address);
+    const subjectToken2 = SubjectERC20.attach(
+      subjectToken2Address,
+    ) as unknown as SubjectERC20Type;
     await moxieToken
       .connect(owner)
       .transfer(subjectFactory.address, initialReserve);
@@ -212,8 +212,31 @@ describe("Staking", () => {
 
     await moxieToken
       .connect(owner)
+      .transfer(subjectFactory.address, initialReserve);
+    await moxieToken
+      .connect(subjectFactory)
+      .approve(moxieBondingCurveAddress, initialReserve);
+
+    await moxieBondingCurve
+      .connect(subjectFactory)
+      .initializeSubjectBondingCurve(
+        subject2.address,
+        reserveRatio,
+        initialSupply,
+        initialReserve,
+      );
+
+    await moxieToken
+      .connect(buyer)
+      .approve(moxieBondingCurveAddress, buyAmount);
+
+    await moxieBondingCurve
+      .connect(buyer)
+      .buySharesFor(subject2.address, buyAmount, buyer.address, 0);
+
+    await moxieToken
+      .connect(owner)
       .transfer(buyer2.address, (1 * 1e20).toString());
-    const PCT_BASE = BigInt(10 ** 18);
 
     return {
       owner,
@@ -248,7 +271,6 @@ describe("Staking", () => {
       seller,
       buyer2,
       seller2,
-      PCT_BASE,
       staking,
       lockTime,
       otherAccounts,
@@ -419,24 +441,102 @@ describe("Staking", () => {
         subject2,
         subjectToken2,
       } = await deploy();
-      let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
-      let fanTokenBalance2 = await subjectToken2.balanceOf(buyer.address);
-      await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
-      await subjectToken2.connect(buyer).approve(staking, fanTokenBalance2);
-      console.log(await subjectToken2.allowance(buyer.address, staking));
-      // get block number
+      const stakeAmount = BigInt(1e18);
+      // let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
+      // let fanTokenBalance2 = await subjectToken2.balanceOf(buyer.address);
+
+      await subjectToken
+        .connect(buyer)
+        .approve(await staking.getAddress(), stakeAmount);
+      await subjectToken2
+        .connect(buyer)
+        .approve(await staking.getAddress(), stakeAmount);
 
       // making 5 deposits
-      await staking.connect(buyer).depositAndLock(subject, fanTokenBalance);
+      await staking
+        .connect(buyer)
+        .depositAndLock(subject, stakeAmount.toString());
 
-      await staking.connect(buyer).depositAndLock(subject2, fanTokenBalance2);
+      await staking
+        .connect(buyer)
+        .depositAndLock(subject2, stakeAmount.toString());
 
       let lastLockInfo = await staking.getLockInfo(1);
       // move time to unlock time
       await time.increaseTo(lastLockInfo.unlockTime + 1n);
+      await expect(staking.connect(buyer).withdraw([0, 1]))
+        .to.be.revertedWithCustomError(staking, "SubjectsDoesntMatch")
+        .withArgs(1);
+    });
+
+    it("should revert if lock not expired", async () => {
+      const {
+        staking,
+        buyer,
+        subject,
+        subjectToken,
+        initialSupply,
+        lockTime,
+        subject2,
+        subjectToken2,
+      } = await deploy();
+      const stakeAmount = BigInt(1e18);
+      // let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
+      // let fanTokenBalance2 = await subjectToken2.balanceOf(buyer.address);
+
+      await subjectToken
+        .connect(buyer)
+        .approve(await staking.getAddress(), (stakeAmount * 2n).toString());
+
+      // making 5 deposits
+      await staking
+        .connect(buyer)
+        .depositAndLock(subject, stakeAmount.toString());
+      // pass 5 seconds
+      await time.increase(5);
+      await staking
+        .connect(buyer)
+        .depositAndLock(subject, stakeAmount.toString());
+      let lockInfo = await staking.getLockInfo(0);
+      // move time to unlock time
+      await time.increaseTo(lockInfo.unlockTime);
+      let firstLockInfo = await staking.getLockInfo(1);
+      await expect(staking.connect(buyer).withdraw([0, 1]))
+        .to.be.revertedWithCustomError(staking, "LockNotExpired")
+        .withArgs(1, anyValue, firstLockInfo.unlockTime);
+    });
+
+    it("should revert if owner is not same", async () => {
+      // have to whitelist for withdraw as well
+      const {
+        staking,
+        buyer,
+        subject,
+        subjectToken,
+        initialSupply,
+        lockTime,
+        subject2,
+        subjectToken2,
+      } = await deploy();
+      const stakeAmount = BigInt(1e18);
+      // let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
+      // let fanTokenBalance2 = await subjectToken2.balanceOf(buyer.address);
+
+      await subjectToken
+        .connect(buyer)
+        .approve(await staking.getAddress(), (stakeAmount * 2n).toString());
+
+      // making 5 deposits
+      await staking
+        .connect(buyer)
+        .depositAndLock(subject, stakeAmount.toString());
+
+      let lockInfo = await staking.getLockInfo(0);
+      // move time to unlock time
+      await time.increaseTo(lockInfo.unlockTime + 5n);
       await expect(
-        staking.connect(buyer).withdraw([0, 1]),
-      ).to.be.revertedWithCustomError(staking, "DifferentSubjects");
+        staking.connect(subject).withdraw([0]),
+      ).to.be.revertedWithCustomError(staking, "NotOwner");
     });
   });
 });
