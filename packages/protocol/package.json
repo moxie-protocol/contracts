@@ -36,6 +36,7 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
+       "test:fork": "hardhat test --config hardhat-fork.testnet.config.ts test/StakingFork.testnet.ts",
     "check": "hardhat check",
     "clean": "rm -rf artifacts/ cache/",
     "coverage": "hardhat coverage"

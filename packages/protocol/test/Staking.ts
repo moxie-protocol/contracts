@@ -288,14 +288,14 @@ describe("Staking", () => {
 
   describe("setChangeLockDurationRole", () => {
     it("should set CHANGE_LOCK_DURATION role", async () => {
-      const { staking, stakingAdmin } = await deploy();
+      const { staking, stakingAdmin } = await loadFixture(deploy);
       await staking
         .connect(stakingAdmin)
         .setChangeLockDurationRole(stakingAdmin.address);
     });
 
     it("should revert if not called by correct role", async () => {
-      const { staking, changeLockRole } = await deploy();
+      const { staking, changeLockRole } = await loadFixture(deploy);
       await expect(
         staking
           .connect(changeLockRole)
@@ -308,7 +308,7 @@ describe("Staking", () => {
   });
   describe("getLockPeriod", () => {
     it("should return the lock period", async () => {
-      const { staking, lockTime } = await deploy();
+      const { staking, lockTime } = await loadFixture(deploy);
       const result = await staking.getLockPeriod();
       expect(result).to.eq(lockTime);
     });
@@ -316,7 +316,7 @@ describe("Staking", () => {
 
   describe("setLockPeriod", () => {
     it("should set the lock period", async () => {
-      const { staking, changeLockRole } = await deploy();
+      const { staking, changeLockRole } = await loadFixture(deploy);
       const newLockTime = 100;
       await expect(staking.connect(changeLockRole).setLockPeriod(newLockTime))
         .to.emit(staking, "LockPeriodUpdated")
@@ -325,7 +325,7 @@ describe("Staking", () => {
       expect(result).to.eq(newLockTime);
     });
     it("should revert if not called by correct role", async () => {
-      const { staking, stakingAdmin } = await deploy();
+      const { staking, stakingAdmin } = await loadFixture(deploy);
       const newLockTime = 100;
 
       await expect(
@@ -340,7 +340,7 @@ describe("Staking", () => {
   describe("depositAndLock", () => {
     it("should deposit and lock tokens", async () => {
       const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
-        await deploy();
+        await loadFixture(deploy);
       let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       // get block number
@@ -365,7 +365,7 @@ describe("Staking", () => {
 
     it("should revert if amount is zero", async () => {
       const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
-        await deploy();
+        await loadFixture(deploy);
       let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       // get block number
@@ -376,7 +376,7 @@ describe("Staking", () => {
 
     it("should revert if subject is invalid", async () => {
       const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
-        await deploy();
+        await loadFixture(deploy);
       // let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       // await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       // get block number
@@ -398,7 +398,7 @@ describe("Staking", () => {
         owner,
         moxieToken,
         moxieBondingCurveAddress,
-      } = await deploy();
+      } = await loadFixture(deploy);
       const amt = (1e18).toString();
       const stakingAddress = await staking.getAddress();
 
@@ -444,7 +444,7 @@ describe("Staking", () => {
 
   describe("withdraw", () => {
     it("should revert with EmptyIndexes", async () => {
-      const { staking, owner } = await deploy();
+      const { staking, owner } = await loadFixture(deploy);
 
       await expect(
         staking.connect(owner).withdraw([]),
@@ -453,7 +453,7 @@ describe("Staking", () => {
 
     it("should withdraw multiple locks", async () => {
       const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
-        await deploy();
+        await loadFixture(deploy);
       let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       // get block number
@@ -490,7 +490,7 @@ describe("Staking", () => {
         lockTime,
         subject2,
         subjectToken2,
-      } = await deploy();
+      } = await loadFixture(deploy);
       const stakeAmount = BigInt(1e18);
       // let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       // let fanTokenBalance2 = await subjectToken2.balanceOf(buyer.address);
@@ -529,7 +529,7 @@ describe("Staking", () => {
         lockTime,
         subject2,
         subjectToken2,
-      } = await deploy();
+      } = await loadFixture(deploy);
       const stakeAmount = BigInt(1e18);
       // let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       // let fanTokenBalance2 = await subjectToken2.balanceOf(buyer.address);
@@ -567,7 +567,7 @@ describe("Staking", () => {
         lockTime,
         subject2,
         subjectToken2,
-      } = await deploy();
+      } = await loadFixture(deploy);
       const stakeAmount = BigInt(1e18);
       // let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       // let fanTokenBalance2 = await subjectToken2.balanceOf(buyer.address);
@@ -593,7 +593,7 @@ describe("Staking", () => {
   describe("getTotalStakedAmount", () => {
     it("should return total staked amount", async () => {
       const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
-        await deploy();
+        await loadFixture(deploy);
       let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       // get block number
@@ -616,7 +616,7 @@ describe("Staking", () => {
 
     it("should revert if subject passed is invalid", async () => {
       const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
-        await deploy();
+        await loadFixture(deploy);
       let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       // get block number
@@ -635,7 +635,7 @@ describe("Staking", () => {
 
     it("should revert trying to fetch incorrect user's total staked amount", async () => {
       const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
-        await deploy();
+        await loadFixture(deploy);
 
       await expect(
         staking.getTotalStakedAmount(
@@ -652,7 +652,7 @@ describe("Staking", () => {
   describe("extendLock", () => {
     it("should revert with invalidIndex,since index does not exist", async () => {
       const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
-        await deploy();
+        await loadFixture(deploy);
       await expect(staking.connect(buyer).extendLock([10]))
         .to.be.revertedWithCustomError(staking, "InvalidIndex")
         .withArgs(10);
@@ -667,7 +667,7 @@ describe("Staking", () => {
         initialSupply,
         lockTime,
         buyer2,
-      } = await deploy();
+      } = await loadFixture(deploy);
       let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       const depositAmount = BigInt(1e18);
@@ -682,7 +682,7 @@ describe("Staking", () => {
 
     it("should extend lock", async () => {
       const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
-        await deploy();
+        await loadFixture(deploy);
       let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       const depositAmount = BigInt(1e18);
@@ -701,7 +701,7 @@ describe("Staking", () => {
   describe("getLockCount", () => {
     it("should return lock count", async () => {
       const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
-        await deploy();
+        await loadFixture(deploy);
       let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       const depositAmount = BigInt(1e18);
