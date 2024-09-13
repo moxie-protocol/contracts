@@ -119,12 +119,12 @@ describe("Staking", () => {
     const stakingAddress = await staking.getAddress();
     await mintMoxiePass(await staking.getAddress(), moxiePass);
     // addTokenDestination to vesting manager
-    const vestingManager = await ethers.getContractAt("IMoxieTokenLockManager", AlreadyBoughtVestingManager)
-    const ownerOfManager = await actAs(AlreadyBoughtVestingManagerOwner)
-    await vestingManager.connect(ownerOfManager).addTokenDestination(await staking.getAddress())
+    // const vestingManager = await ethers.getContractAt("IMoxieTokenLockManager", AlreadyBoughtVestingManager)
+    // const ownerOfManager = await actAs(AlreadyBoughtVestingManagerOwner)
+    // await vestingManager.connect(ownerOfManager).addTokenDestination(await staking.getAddress())
     // setAuthFunctionCallMany to tokenLockManager ,with signatures (deposit,buy ,extend & withdraw)
-    const sigs = ["depositAndLock(address,uint256,uint256)", "buyAndLock(address,uint256,uint256,uint256)"]
-    await vestingManager.connect(ownerOfManager).setAuthFunctionCallMany(sigs, await staking.getAddress())
+    // const sigs = ["depositAndLock(address,uint256,uint256)", "buyAndLock(address,uint256,uint256,uint256)"]
+    // await vestingManager.connect(ownerOfManager).setAuthFunctionCallMany(sigs, await staking.getAddress())
     // initialize (address _tokenManager, address _moxieBondingCurve, address _moxieToken, address _defaultAdmin)
     // call approveProtocol() from tokenLockWallet
 
