@@ -150,6 +150,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             _lockPeriodInSec
         );
     }
+
     /**
      * @notice Extracts expired locks and deletes them.
      * @param _subject Subject address for which locks are being extracted.
@@ -161,7 +162,6 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         address _subject,
         uint256[] memory _indexes
     ) internal returns (address subjectToken_, uint256 totalAmount_) {
-
         if (_isZeroAddress(_subject)) {
             revert Staking_InvalidSubject();
         }
@@ -171,9 +171,8 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         }
         LockInfo memory lockInfo = locks[_indexes[0]];
         subjectToken_ = lockInfo.subjectToken;
-        
-        for (uint256 i = 0; i < _indexes.length; i++) {
 
+        for (uint256 i = 0; i < _indexes.length; i++) {
             uint256 index = _indexes[i];
             lockInfo = locks[index];
             if (lockInfo.subject != _subject) {
@@ -192,6 +191,54 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             totalAmount_ += lockInfo.amount;
             delete locks[index];
         }
+    }
+
+    /**
+     * @notice Deposits and locks tokens for a single subject.
+     * @param _subject Subject address for which tokens are being deposited.
+     * @param _amount Amount of tokens being deposited.
+     * @param _lockPeriodInSec Lock period for the tokens.
+     */
+    function _depositAndLock(
+        address _subject,
+        uint256 _amount,
+        uint256 _lockPeriodInSec
+    ) internal returns (uint256 unlockTimeInSec_) {
+        IERC20Extended subjectToken;
+        (subjectToken, unlockTimeInSec_) = _createLock(
+            _subject,
+            _amount,
+            _lockPeriodInSec
+        );
+
+        unlockTimeInSec_ = unlockTimeInSec_;
+        // Transfer the tokens to this contract
+        subjectToken.safeTransferFrom(msg.sender, address(this), _amount);
+    }
+
+    /**
+     * @notice Buys tokens and creates a lock.
+     * @param _subject Subject address for which tokens are being bought & deposited.
+     * @param _depositAmount Amount of moxie tokens getting deposited.
+     * @param _minReturnAmountAfterFee Slippage setting which determines minimum amount of tokens after fee.
+     * @param _lockPeriodInSec Lock period for the tokens.
+     * @return amount_ Amount of tokens bought.
+     * @return unlockTimeInSec_ Unlock time for the lock.
+     */
+    function _buyAndLock(
+        address _subject,
+        uint256 _depositAmount,
+        uint256 _minReturnAmountAfterFee,
+        uint256 _lockPeriodInSec
+    ) internal returns (uint256 amount_, uint256 unlockTimeInSec_) {
+        moxieToken.safeTransferFrom(msg.sender, address(this), _depositAmount);
+        moxieToken.approve(address(moxieBondingCurve), _depositAmount);
+        amount_ = moxieBondingCurve.buyShares(
+            _subject,
+            _depositAmount,
+            _minReturnAmountAfterFee
+        );
+        (, unlockTimeInSec_) = _createLock(_subject, amount_, _lockPeriodInSec);
     }
 
     /**
@@ -221,16 +268,36 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         uint256 _amount,
         uint256 _lockPeriodInSec
     ) external nonReentrant returns (uint256 unlockTimeInSec_) {
-        (IERC20Extended subjectToken, uint256 unlockTimeInSec) = _createLock(
-            _subject,
-            _amount,
-            _lockPeriodInSec
-        );
+        unlockTimeInSec_ = _depositAndLock(_subject, _amount, _lockPeriodInSec);
+    }
 
-        //todo use one variable
-        unlockTimeInSec_ = unlockTimeInSec;
-        // Transfer the tokens to this contract
-        subjectToken.safeTransferFrom(msg.sender, address(this), _amount);
+    /**
+     * External function to deposit and lock multiple tokens.
+     * @param _subjects Subject addresses for which tokens are getting deposited.
+     * @param _amounts Amounts of tokens getting deposited.
+     * @param _lockPeriodsInSec Lock periods for the tokens.
+     */
+    function depositAndLockMultiple(
+        address[] memory _subjects,
+        uint256[] memory _amounts,
+        uint256[] memory _lockPeriodsInSec
+    ) external nonReentrant returns (uint256[] memory unlockTimeInSec_) {
+        if (
+            _subjects.length != _amounts.length ||
+            _subjects.length != _lockPeriodsInSec.length
+        ) {
+            revert Staking_InvalidInputLength();
+        }
+
+        unlockTimeInSec_ = new uint256[](_subjects.length);
+
+        for (uint256 i = 0; i < _subjects.length; i++) {
+            unlockTimeInSec_[i] = _depositAndLock(
+                _subjects[i],
+                _amounts[i],
+                _lockPeriodsInSec[i]
+            );
+        }
     }
 
     /**
@@ -251,25 +318,52 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         nonReentrant
         returns (uint256 amount_, uint256 unlockTimeInSec_)
     {
-        // transfer moxie to this contract
-        moxieToken.safeTransferFrom(msg.sender, address(this), _depositAmount);
-        // approve moxie bonding curve
-        moxieToken.approve(address(moxieBondingCurve), _depositAmount);
-        // pull moxie
-        amount_ = moxieBondingCurve.buyShares(
-            _subject,
-            _depositAmount,
-            _minReturnAmountAfterFee
-        );
+        return
+            _buyAndLock(
+                _subject,
+                _depositAmount,
+                _minReturnAmountAfterFee,
+                _lockPeriodInSec
+            );
+    }
 
-        (, uint256 unlockTimeInSec) = _createLock(
-            _subject,
-            amount_,
-            _lockPeriodInSec
-        );
+    /**
+     * External function to buy & lock multiple tokens.
+     * @param _subjects Subject addresses for which tokens are being bought & deposited.
+     * @param _depositAmounts Amounts of moxie tokens getting deposited.
+     * @param _minReturnAmountsAfterFee Slippage settings which determine minimum amounts of tokens after fee.
+     * @param _lockPeriodsInSec Lock periods for the tokens.
+     * @return amounts_ Amounts of tokens bought & locked.
+     * @return unlockTimeInSec_ Unlock times for the locks.
+     */
+    function buyAndLockMultiple(
+        address[] memory _subjects,
+        uint256[] memory _depositAmounts,
+        uint256[] memory _minReturnAmountsAfterFee,
+        uint256 _lockPeriodsInSec
+    )
+        external
+        onlyValidLockPeriod(_lockPeriodsInSec)
+        nonReentrant
+        returns (uint256[] memory amounts_, uint256 unlockTimeInSec_)
+    {
+        if (
+            _subjects.length != _depositAmounts.length ||
+            _subjects.length != _minReturnAmountsAfterFee.length
+        ) {
+            revert Staking_InvalidInputLength();
+        }
 
-        //todo use one variable
-        unlockTimeInSec_ = unlockTimeInSec;
+        amounts_ = new uint256[](_subjects.length);
+
+        for (uint256 i = 0; i < _subjects.length; i++) {
+            (amounts_[i], unlockTimeInSec_) = _buyAndLock(
+                _subjects[i],
+                _depositAmounts[i],
+                _minReturnAmountsAfterFee[i],
+                _lockPeriodsInSec
+            );
+        }
     }
 
     /**
@@ -281,22 +375,22 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         address _subject,
         uint256[] memory _indexes
     ) external nonReentrant returns (uint256 totalAmount_) {
+        address subjectTokenAddress;
+
         (
-            address _subjectToken,
-            uint256 _totalAmount
+            subjectTokenAddress,
+            totalAmount_
         ) = _extractExpiredAndDeleteLocks(_subject, _indexes);
 
-        IERC20Extended subjectToken = IERC20Extended(_subjectToken);
+        IERC20Extended subjectToken = IERC20Extended(subjectTokenAddress);
 
-        //todo use one  variable
-        totalAmount_ = _totalAmount;
-        subjectToken.safeTransfer(msg.sender, _totalAmount);
+        subjectToken.safeTransfer(msg.sender, totalAmount_);
         emit Withdraw(
             msg.sender,
             _subject,
-            _subjectToken,
+            subjectTokenAddress,
             _indexes,
-            _totalAmount
+            totalAmount_
         );
     }
 
@@ -305,24 +399,30 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
      * @param _subject Subject address for which tokens are being extended.
      * @param _indexes Indexes of the locks to be extended.
      * @param _lockPeriodInSec New lock period for the tokens.
-     * @return totalAmount_ 
+     * @return totalAmount_
      * @return unlockTimeInSec_ unlock time is the timestamp of the extended lock.
      */
     function extendLock(
         address _subject,
         uint256[] memory _indexes,
         uint256 _lockPeriodInSec
-    ) external onlyValidLockPeriod(_lockPeriodInSec) nonReentrant returns (uint256 totalAmount_ , uint256 unlockTimeInSec_) {
-
-        (, uint256 _totalAmount) = _extractExpiredAndDeleteLocks(
+    )
+        external
+        onlyValidLockPeriod(_lockPeriodInSec)
+        nonReentrant
+        returns (uint256 totalAmount_, uint256 unlockTimeInSec_)
+    {
+        (, totalAmount_) = _extractExpiredAndDeleteLocks(
             _subject,
             _indexes
         );
         emit LockExtended(_indexes);
-        (, uint256 unlockTimeInSec) = _createLock(_subject, _totalAmount, _lockPeriodInSec);
+        (, uint256 unlockTimeInSec) = _createLock(
+            _subject,
+            totalAmount_,
+            _lockPeriodInSec
+        );
 
-        //todo use one variable
-        totalAmount_ = _totalAmount;    
         unlockTimeInSec_ = unlockTimeInSec;
     }
 
@@ -337,7 +437,6 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         address _subject,
         uint256[] calldata _indexes
     ) external view returns (uint256 totalAmount_) {
-
         for (uint256 i = 0; i < _indexes.length; i++) {
             uint256 _index = _indexes[i];
             LockInfo memory lockInfo = locks[_index];

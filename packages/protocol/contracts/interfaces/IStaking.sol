@@ -18,7 +18,8 @@ interface IStaking {
     error Staking_InvalidMoxieToken();
     error Staking_InvalidDefaultAdmin();
     error Staking_LockPeriodAlreadySet();
-
+    error Staking_InvalidInputLength();
+    
     struct LockInfo {
         address user;
         address subject;
