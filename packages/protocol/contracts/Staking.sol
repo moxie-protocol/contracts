@@ -341,8 +341,9 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         nonReentrant
         returns (uint256 totalAmount_, uint256 unlockTimeInSec_)
     {
-        (, totalAmount_) = _extractExpiredAndDeleteLocks(_subject, _indexes);
-        emit LockExtended(_indexes);
+        address subjectToken;
+        (subjectToken, totalAmount_) = _extractExpiredAndDeleteLocks(_subject, _indexes);
+        emit LockExtended(msg.sender, _subject, subjectToken, _indexes);
         (, uint256 unlockTimeInSec) = _createLock(_subject, totalAmount_, _lockPeriodInSec);
 
         unlockTimeInSec_ = unlockTimeInSec;

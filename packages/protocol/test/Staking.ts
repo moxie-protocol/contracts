@@ -912,7 +912,7 @@ describe("Staking", () => {
       await time.increaseTo(lockInfo.unlockTimeInSec + 1n);
       await expect(staking.connect(buyer).extendLock(subject.address, [0, 1, 2, 3, 4], lockTime))
         .to.emit(staking, "LockExtended")
-        .withArgs([0, 1, 2, 3, 4]).to.emit(staking, "Lock").withArgs(
+        .withArgs(buyer, subject, subjectToken, [0, 1, 2, 3, 4]).to.emit(staking, "Lock").withArgs(
           buyer.address,
           subject.address,
           await subjectToken.getAddress(),

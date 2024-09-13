@@ -19,7 +19,7 @@ interface IStaking {
     error Staking_InvalidDefaultAdmin();
     error Staking_LockPeriodAlreadySet();
     error Staking_InvalidInputLength();
-    
+
     struct LockInfo {
         address user;
         address subject;
@@ -39,21 +39,35 @@ interface IStaking {
         uint256 _lockPeriodInSec
     );
 
-    event LockExtended(uint256[] _indexes);
+    event LockExtended(
+        address indexed _user, address indexed _subject, address indexed _subjectToken, uint256[] _indexes
+    );
 
     event LockPeriodUpdated(uint256 indexed _lockPeriodInSec, bool indexed _allowed);
 
     event Withdraw(
-        address indexed _user, address indexed _subject, address indexed _subjectToken, uint256[] _indexes, uint256 _amount
+        address indexed _user,
+        address indexed _subject,
+        address indexed _subjectToken,
+        uint256[] _indexes,
+        uint256 _amount
     );
 
-    function depositAndLock(address _subject, uint256 _amount, uint256 _lockPeriodInSec) external returns (uint256 unlockTimeInSec_);
+    function depositAndLock(address _subject, uint256 _amount, uint256 _lockPeriodInSec)
+        external
+        returns (uint256 unlockTimeInSec_);
 
-    function buyAndLock(address _subject, uint256 _depositAmount, uint256 _minReturnAmountAfterFee, uint256 _lockPeriodInSec)
-        external returns (uint256 amount_, uint256 unlockTimeInSec_);
-    function withdraw(address _subject, uint256[] memory _indexes ) external returns (uint256 totalAmount_);
+    function buyAndLock(
+        address _subject,
+        uint256 _depositAmount,
+        uint256 _minReturnAmountAfterFee,
+        uint256 _lockPeriodInSec
+    ) external returns (uint256 amount_, uint256 unlockTimeInSec_);
+    function withdraw(address _subject, uint256[] memory _indexes) external returns (uint256 totalAmount_);
 
-    function extendLock(address _subject, uint256[] memory _indexes, uint256 _lockPeriodInSec) external returns (uint256 totalAmount_, uint256 unlockTimeInSec_);
+    function extendLock(address _subject, uint256[] memory _indexes, uint256 _lockPeriodInSec)
+        external
+        returns (uint256 totalAmount_, uint256 unlockTimeInSec_);
     function setLockPeriod(uint256 _lockPeriodInSec, bool _allowed) external;
 
     function getTotalStakedAmount(address _user, address _subject, uint256[] calldata _indexes)
