@@ -28,7 +28,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
     uint256 public lockCount;
 
     mapping(uint256 lockId => LockInfo lockInfo) public locks;
-    mapping(uint256 lockPeriod => bool allowed) public lockPeriods;
+    mapping(uint256 lockPeriodInSec => bool allowed) public lockPeriodsInSec;
 
     /**
      * @dev function to initialize the contract.
@@ -64,7 +64,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
      * @param _lockPeriod Lock period to check.
      */
     modifier onlyValidLockPeriod(uint256 _lockPeriod) {
-        if (!lockPeriods[_lockPeriod]) {
+        if (!lockPeriodsInSec[_lockPeriod]) {
             revert Staking_InvalidLockPeriod();
         }
         _;
@@ -203,10 +203,10 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         uint256 _lockPeriodInSec,
         bool _allowed
     ) external onlyRole(CHANGE_LOCK_DURATION) {
-        if (lockPeriods[_lockPeriodInSec] == _allowed) {
+        if (lockPeriodsInSec[_lockPeriodInSec] == _allowed) {
             revert Staking_LockPeriodAlreadySet();
         }
-        lockPeriods[_lockPeriodInSec] = _allowed;
+        lockPeriodsInSec[_lockPeriodInSec] = _allowed;
         emit LockPeriodUpdated(_lockPeriodInSec, _allowed);
     }
 
@@ -224,8 +224,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         (IERC20Extended subjectToken, uint256 unlockTimeInSec) = _createLock(
             _subject,
             _amount,
-            _lockPeriodInSec,
-            true
+            _lockPeriodInSec
         );
 
         //todo use one variable

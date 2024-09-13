@@ -1,13 +1,55 @@
+
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
+
+import MoxieToken from "./2_MoxieToken";
+import ProtocolContractsProxy from "./5_ProtocolContractsProxy";
+import config from "../config/config.json";
+import MoxiePass from "./1_MoxiePass";
+
 export default buildModule("Staking", (m) => {
-    // deploy the Staking contract
-    // mint moxie pass to staking contract
-    // addTokenDestination to vesting manager
-    // setAuthFunctionCallMany to tokenLockManager ,with signatures (deposit,buy ,extend & withdraw)
-    // initialize (address _tokenManager, address _moxieBondingCurve, address _moxieToken, address _defaultAdmin)
-    // call approveProtocol() from tokenLockWallet
+    
+    const proxyAdminOwner = config.proxyAdminOwner;
+
+
     const deployer = m.getAccount(0);
+    const owner = m.getAccount(1);
+    const minter = m.getAccount(2);
+
+    const { moxieToken } = m.useModule(MoxieToken);
+    const { moxiePass } = m.useModule(MoxiePass);
+
+    const {  tokenManagerInstance, moxieBondingCurveInstance } = m.useModule(ProtocolContractsProxy);
+
+    
     const staking = m.contract("Staking", [], { from: deployer });
 
-    return { staking };
+    m.call(staking, "initialize", [tokenManagerInstance, moxieBondingCurveInstance, moxieToken, owner], { from: deployer, id: "initializeStakingMasterCopy" });
+
+    const stakingCallData = m.encodeFunctionCall(staking, "initialize", [tokenManagerInstance, moxieBondingCurveInstance, moxieToken, owner]);
+
+    // deploy staking proxy
+    const stakingProxy = m.contract("TransparentUpgradeableProxy", [
+        staking,
+        proxyAdminOwner,
+        stakingCallData,
+    ], {
+        id: "stakingProxy",
+        from: deployer
+    });
+
+    const stakingInstance = m.contractAt('Staking', stakingProxy, { id: 'stakingInstance' });
+
+    // mint moxie pass for staking contract
+    m.call(moxiePass, "mint", [stakingInstance, config.moxiePassURL], { from: minter, id: 'stakingMoxiePass' });
+    
+    // add staking contract to transfer allow list
+    m.call(tokenManagerInstance, "addToTransferAllowList", [stakingInstance], { from: owner, id: "stakingInAllowList" })
+
+    const changeLockDurationRole = m.staticCall(stakingInstance, "CHANGE_LOCK_DURATION");
+
+   const assignChangeDurationRole = m.call(stakingInstance, 'grantRole', [changeLockDurationRole, owner], { from: owner, id: 'changeLockDurationRoleToOwner', after: [stakingProxy] });
+
+    m.call(stakingInstance, 'setLockPeriod', [config.stakingLockDurationInSec, true], { from: owner, id: 'setLockPeriodTo3Months', after: [assignChangeDurationRole] });
+
+    return { staking, stakingInstance };
 });
