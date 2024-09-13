@@ -23,7 +23,7 @@ import {
   AlreadyBoughtVestingManager,
   AlreadyBoughtVestingManagerOwner
 } from "./testnet.json";
-import { getDepositAndLockCalldata, getApproveCalldata, getWithdrawCalldata, getExtendLockCalldata } from "./Utils";
+import { getDepositAndLockCalldata, getApproveCalldata, getWithdrawCalldata, getExtendLockCalldata, getBuyAndLockCalldata } from "./Utils";
 // import {
 //  getExpectedSellReturnAndFee,
 //  getExpectedBuyAmountAndFee,
@@ -122,6 +122,7 @@ describe("Staking", () => {
     const vestingManager = await ethers.getContractAt("IMoxieTokenLockManager", AlreadyBoughtVestingManager)
     const ownerOfManager = await actAs(AlreadyBoughtVestingManagerOwner)
     await vestingManager.connect(ownerOfManager).addSubjectTokenDestination(stakingAddress)
+    await vestingManager.connect(ownerOfManager).addTokenDestination(stakingAddress)
 
     // setAuthFunctionCallMany to tokenLockManager ,with signatures (deposit,buy ,extend & withdraw)
     const sigs = [
@@ -134,11 +135,11 @@ describe("Staking", () => {
 
     const vestingBeneficiary = await actAs(AlreadyBoughtVestingBeneficiary);
     await setNativeToken(vestingBeneficiary.address, BigInt(1e18));
-    // call approveProtocol() from tokenLockWallet
 
     const tokenLockWallet = await ethers.getContractAt("IMoxieTokenLockWallet", AlreadyBoughtVesting)
     const subjectToken = await getERC20(AlreadyBoughtSubjectToken)
     await tokenLockWallet.connect(vestingBeneficiary).approveSubjectToken(AlreadyBoughtSubject)
+    await tokenLockWallet.connect(vestingBeneficiary).approveProtocol()
 
     await tokenManager.connect(owner).addToTransferAllowList(stakingAddress)
 
@@ -375,6 +376,169 @@ describe("Staking", () => {
       expect(newLockinfo.subject).to.eq(zeroAddress);
       expect(newLockinfo.subjectToken).to.eq(zeroAddress);
       expect(newLockinfo.user).to.eq(zeroAddress);
+    });
+
+    it("vesting -> should buy and lock tokens,extend & withdraw", async () => {
+      const { staking, lockTime, tokenManager, moxieToken } = await loadFixture(deploy);
+      const subjectToken = await getERC20(AlreadyBoughtSubjectToken);
+
+      // getting amount locked in vesting contract
+      const balance = await moxieToken.balanceOf(AlreadyBoughtVesting);
+      // to deposit this amount in staking contract
+      // 1. get calldata
+      const calldata = getBuyAndLockCalldata(
+        AlreadyBoughtSubject,
+        balance / 2n,
+        0,
+        lockTime,
+      );
+      const user = await actAs(AlreadyBoughtVestingBeneficiary);
+      let oldBalance = await subjectToken.balanceOf(AlreadyBoughtVesting);
+      await expect(user.sendTransaction({
+        to: AlreadyBoughtVesting,
+        value: 0,
+        data: calldata,
+      })).to.emit(staking, "Lock").withArgs(
+        AlreadyBoughtVesting,
+        AlreadyBoughtSubject,
+        AlreadyBoughtSubjectToken,
+        0,
+        anyValue,
+        anyValue,
+        lockTime
+      )
+      await expect(user.sendTransaction({
+        to: AlreadyBoughtVesting,
+        value: 0,
+        data: calldata,
+      })).to.emit(staking, "Lock").withArgs(
+        AlreadyBoughtVesting,
+        AlreadyBoughtSubject,
+        AlreadyBoughtSubjectToken,
+        1,
+        anyValue,
+        anyValue,
+        lockTime
+      )
+      let lockInfo = await staking.locks(0);
+      expect(lockInfo.user).to.eq(AlreadyBoughtVesting);
+      expect(lockInfo.subject).to.eq(AlreadyBoughtSubject);
+      expect(lockInfo.subjectToken).to.eq(AlreadyBoughtSubjectToken);
+      lockInfo = await staking.locks(1);
+      expect(lockInfo.user).to.eq(AlreadyBoughtVesting);
+      expect(lockInfo.subject).to.eq(AlreadyBoughtSubject);
+      expect(lockInfo.subjectToken).to.eq(AlreadyBoughtSubjectToken);
+
+      // forward time to unlock time
+      await time.increaseTo(lockInfo.unlockTime + 1n);
+      // extend lock
+      const extendCalldata = getExtendLockCalldata([0, 1], AlreadyBoughtSubject, lockTime);
+      await user.sendTransaction({
+        to: AlreadyBoughtVesting,
+        value: 0,
+        data: extendCalldata,
+      })
+
+      lockInfo = await staking.locks(2);
+      await time.increaseTo(lockInfo.unlockTime + 1n);
+      let stakedAmount = lockInfo.amount;
+      // withdraw
+      const withdrawCalldata = getWithdrawCalldata([2], AlreadyBoughtSubject);
+      await expect(user.sendTransaction({
+        to: AlreadyBoughtVesting,
+        value: 0,
+        data: withdrawCalldata,
+      })).to.emit(staking, "Withdraw").withArgs(
+        AlreadyBoughtVesting,
+        AlreadyBoughtSubject,
+        AlreadyBoughtSubjectToken,
+        [2],
+        anyValue
+      )
+      lockInfo = await staking.locks(0);
+      expect(lockInfo.user).to.eq(zeroAddress);
+
+      let beneficiaryBalance = await subjectToken.balanceOf(AlreadyBoughtVesting);
+      expect(beneficiaryBalance).to.eq(oldBalance + stakedAmount);
+    });
+
+    it("vesting -> should buy and lock tokens & withdraw", async () => {
+      const { staking, lockTime, tokenManager, moxieToken } = await loadFixture(deploy);
+      const subjectToken = await getERC20(AlreadyBoughtSubjectToken);
+
+      // getting amount locked in vesting contract
+      const balance = await moxieToken.balanceOf(AlreadyBoughtVesting);
+      // to deposit this amount in staking contract
+      // 1. get calldata
+      const calldata = getBuyAndLockCalldata(
+        AlreadyBoughtSubject,
+        balance / 2n,
+        0,
+        lockTime,
+      );
+      const user = await actAs(AlreadyBoughtVestingBeneficiary);
+      let oldBalance = await subjectToken.balanceOf(AlreadyBoughtVesting);
+      await expect(user.sendTransaction({
+        to: AlreadyBoughtVesting,
+        value: 0,
+        data: calldata,
+      })).to.emit(staking, "Lock").withArgs(
+        AlreadyBoughtVesting,
+        AlreadyBoughtSubject,
+        AlreadyBoughtSubjectToken,
+        0,
+        anyValue,
+        anyValue,
+        lockTime
+      )
+      await expect(user.sendTransaction({
+        to: AlreadyBoughtVesting,
+        value: 0,
+        data: calldata,
+      })).to.emit(staking, "Lock").withArgs(
+        AlreadyBoughtVesting,
+        AlreadyBoughtSubject,
+        AlreadyBoughtSubjectToken,
+        1,
+        anyValue,
+        anyValue,
+        lockTime
+      )
+      let lockInfo = await staking.locks(1);
+      expect(lockInfo.user).to.eq(AlreadyBoughtVesting);
+      expect(lockInfo.subject).to.eq(AlreadyBoughtSubject);
+      expect(lockInfo.subjectToken).to.eq(AlreadyBoughtSubjectToken);
+      lockInfo = await staking.locks(1);
+      expect(lockInfo.user).to.eq(AlreadyBoughtVesting);
+      expect(lockInfo.subject).to.eq(AlreadyBoughtSubject);
+      expect(lockInfo.subjectToken).to.eq(AlreadyBoughtSubjectToken);
+
+
+      lockInfo = await staking.locks(1);
+      let stakedAmount = 0n;
+      for (let i = 0; i < 2; i++) {
+        lockInfo = await staking.locks(i);
+        stakedAmount = stakedAmount + lockInfo.amount;
+      }
+      await time.increaseTo(lockInfo.unlockTime + 1n);
+      // withdraw
+      const withdrawCalldata = getWithdrawCalldata([0, 1], AlreadyBoughtSubject);
+      await expect(user.sendTransaction({
+        to: AlreadyBoughtVesting,
+        value: 0,
+        data: withdrawCalldata,
+      })).to.emit(staking, "Withdraw").withArgs(
+        AlreadyBoughtVesting,
+        AlreadyBoughtSubject,
+        AlreadyBoughtSubjectToken,
+        [0, 1],
+        anyValue
+      )
+      lockInfo = await staking.locks(0);
+      expect(lockInfo.user).to.eq(zeroAddress);
+
+      let beneficiaryBalance = await subjectToken.balanceOf(AlreadyBoughtVesting);
+      expect(beneficiaryBalance).to.eq(oldBalance + stakedAmount);
     });
   });
 });
