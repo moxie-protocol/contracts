@@ -3,7 +3,7 @@
 pragma solidity ^0.8.24;
 
 interface IMoxieTokenLockWallet {
-    function approveProtocol() external;
+    function approveSubjectToken(address _subject) external;
 
     fallback() external;
 }

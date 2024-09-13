@@ -8,10 +8,10 @@
   "SubjectTokenHolder": "0x8EB6A9275637358Fea56D8431e85B6BB6F260853",
   "SubjectToken": "0x397ECB38499731e3E2Bbc03997682Fd713eE5c4E",
   "Subject": "0x485c6aB93F276260fb9718Df921d46854Fe62962",
-  "AlreadyBoughtVesting": "0x78b0208291d8457ebdb58d34bdedaef7b428f7ae",
+  "AlreadyBoughtVesting": "0x78B0208291d8457EBDB58D34BdEdaEf7b428f7ae",
   "AlreadyBoughtVestingBeneficiary": "0x8e2d39591a720467e5324ad8b163d1c69a8c8193",
   "AlreadyBoughtVestingManager": "0x31391fd2fa4c4ab7c4770c78ea7641f5dadf4bb3",
   "AlreadyBoughtVestingManagerOwner": "0x9313eDE439fC91852D4Fd8f753C5569255286790",
-  "AlreadyBoughtSubjectToken": "0xff5b8938951092faef338f5015b84a9a57452548",
+  "AlreadyBoughtSubjectToken": "0xFf5b8938951092FaEf338F5015B84a9a57452548",
   "AlreadyBoughtSubject": "0x7FEbaDA1daEFdA307c6F52f4818De6fE190C5B82"
 }

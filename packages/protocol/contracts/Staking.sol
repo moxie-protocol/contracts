@@ -107,7 +107,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard, OwnableUpgradeabl
      * @param _subject subject address for which tokens are getting deposited.
      * @param _amount _Amount of tokens getting deposited.
      */
-    function _deposit(address _subject, uint256 _amount, uint256 _lockPeriod)
+    function _deposit(address _subject, uint256 _amount, uint256 _lockPeriod, bool _takeSubjectToken)
         internal
         onlyValidLockPeriod(_lockPeriod)
     {
@@ -133,9 +133,8 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard, OwnableUpgradeabl
         // emit event
         emit Lock(msg.sender, _subject, address(subjectToken), _index, _amount, unlockTime, _lockPeriod);
         // Transfer the tokens to this contract
-        bool success = subjectToken.transferFrom(msg.sender, address(this), _amount);
-        if (!success) {
-            revert Staking_TransferFailed();
+        if (_takeSubjectToken) {
+            subjectToken.safeTransferFrom(msg.sender, address(this), _amount);
         }
     }
 
@@ -146,7 +145,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard, OwnableUpgradeabl
      * @param _lockPeriod lock period for the tokens.
      */
     function depositAndLock(address _subject, uint256 _amount, uint256 _lockPeriod) external nonReentrant {
-        _deposit(_subject, _amount, _lockPeriod);
+        _deposit(_subject, _amount, _lockPeriod, true);
     }
 
     /**
@@ -191,7 +190,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard, OwnableUpgradeabl
         _subjectToken = lockInfo.subjectToken;
         for (uint256 i = 0; i < _indexes.length; i++) {
             uint256 _index = _indexes[i];
-            LockInfo memory lockInfo = locks[_index];
+            lockInfo = locks[_index];
             if (lockInfo.subject != _subject) {
                 revert Staking_SubjectsDoesntMatch(_index);
             }
@@ -218,9 +217,9 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard, OwnableUpgradeabl
         onlyValidLockPeriod(_lockPeriod)
         nonReentrant
     {
-        (address _subjectToken, uint256 _totalAmount) = _extractExpiredAndDeleteLocks(_indexes, _subject);
+        (, uint256 _totalAmount) = _extractExpiredAndDeleteLocks(_indexes, _subject);
         emit LockExtended(_indexes);
-        _deposit(_subject, _totalAmount, _lockPeriod);
+        _deposit(_subject, _totalAmount, _lockPeriod, false);
     }
 
     function getTotalStakedAmount(address _user, address _subject, uint256[] calldata _indexes)

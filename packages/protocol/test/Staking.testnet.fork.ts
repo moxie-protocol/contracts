@@ -23,7 +23,7 @@ import {
   AlreadyBoughtVestingManager,
   AlreadyBoughtVestingManagerOwner
 } from "./testnet.json";
-import { getDepositAndLockCalldata, getApproveCalldata } from "./Utils";
+import { getDepositAndLockCalldata, getApproveCalldata, getWithdrawCalldata, getExtendLockCalldata } from "./Utils";
 // import {
 //  getExpectedSellReturnAndFee,
 //  getExpectedBuyAmountAndFee,
@@ -118,17 +118,29 @@ describe("Staking", () => {
     // mint moxie pass to staking contract
     const stakingAddress = await staking.getAddress();
     await mintMoxiePass(await staking.getAddress(), moxiePass);
-    // addTokenDestination to vesting manager
-    // const vestingManager = await ethers.getContractAt("IMoxieTokenLockManager", AlreadyBoughtVestingManager)
-    // const ownerOfManager = await actAs(AlreadyBoughtVestingManagerOwner)
-    // await vestingManager.connect(ownerOfManager).addTokenDestination(await staking.getAddress())
+    // addSubjectTokenDestination to vesting manager
+    const vestingManager = await ethers.getContractAt("IMoxieTokenLockManager", AlreadyBoughtVestingManager)
+    const ownerOfManager = await actAs(AlreadyBoughtVestingManagerOwner)
+    await vestingManager.connect(ownerOfManager).addSubjectTokenDestination(stakingAddress)
+
     // setAuthFunctionCallMany to tokenLockManager ,with signatures (deposit,buy ,extend & withdraw)
-    // const sigs = ["depositAndLock(address,uint256,uint256)", "buyAndLock(address,uint256,uint256,uint256)"]
-    // await vestingManager.connect(ownerOfManager).setAuthFunctionCallMany(sigs, await staking.getAddress())
-    // initialize (address _tokenManager, address _moxieBondingCurve, address _moxieToken, address _defaultAdmin)
+    const sigs = [
+      "depositAndLock(address,uint256,uint256)"
+      , "buyAndLock(address,uint256,uint256,uint256)"
+      , "withdraw(uint256[],address)"
+      , "extendLock(uint256[],address,uint256)"
+    ]
+    await vestingManager.connect(ownerOfManager).setAuthFunctionCallMany(sigs, [stakingAddress, stakingAddress, stakingAddress, stakingAddress])
+
+    const vestingBeneficiary = await actAs(AlreadyBoughtVestingBeneficiary);
+    await setNativeToken(vestingBeneficiary.address, BigInt(1e18));
     // call approveProtocol() from tokenLockWallet
 
+    const tokenLockWallet = await ethers.getContractAt("IMoxieTokenLockWallet", AlreadyBoughtVesting)
+    const subjectToken = await getERC20(AlreadyBoughtSubjectToken)
+    await tokenLockWallet.connect(vestingBeneficiary).approveSubjectToken(AlreadyBoughtSubject)
 
+    await tokenManager.connect(owner).addToTransferAllowList(stakingAddress)
 
     return {
       owner,
@@ -233,7 +245,7 @@ describe("Staking", () => {
         );
     });
 
-    it("vesting -> should deposit and lock tokens and withdraw", async () => {
+    it("vesting -> should deposit and lock tokens,extend & withdraw", async () => {
       const { staking, lockTime, tokenManager } = await loadFixture(deploy);
       const subjectToken = await getERC20(AlreadyBoughtSubjectToken);
 
@@ -246,107 +258,63 @@ describe("Staking", () => {
         balance,
         lockTime,
       );
-      // 2. add addTokenDestination to vesting manager
-      // 3. call approveProtocol() on vesting manager
-      // 4. authorize function signature and contract address
-      const sig = "depositAndLock(address,uint256,uint256)"
-      const vestingManager = await ethers.getContractAt("IMoxieTokenLockManager", AlreadyBoughtVestingManager)
-      const ownerOfManager = await actAs(AlreadyBoughtVestingManagerOwner)
-
-      console.log("staking address::", await staking.getAddress())
-      let tx = await vestingManager.connect(ownerOfManager).setAuthFunctionCall(sig, await staking.getAddress())
-      let resp = await tx.wait()
-      console.log(resp!.logs)
-      // 3. call the function
       const user = await actAs(AlreadyBoughtVestingBeneficiary);
-      await setNativeToken(user.address, BigInt(1e18));
-      await subjectToken.connect(user).approve(AlreadyBoughtVesting, balance);
-      await setNativeToken(user.address, BigInt(1e18));
-
-      const approvalCalldata = await getApproveCalldata(
-        await staking.getAddress(),
-        balance,
-      )
-      console.log("approval:", await user.sendTransaction({
-        to: AlreadyBoughtVesting,
-        value: 0,
-        data: approvalCalldata,
-      }))
-      console.log("deposit:", await user.sendTransaction({
+      await expect(user.sendTransaction({
         to: AlreadyBoughtVesting,
         value: 0,
         data: calldata,
-      }))
-      // console.log(await vesting.connect(user).call(calldata))
+      })).to.emit(staking, "Lock").withArgs(
+        AlreadyBoughtVesting,
+        AlreadyBoughtSubject,
+        AlreadyBoughtSubjectToken,
+        0,
+        balance,
+        anyValue,
+        lockTime
+      )
+      let lockInfo = await staking.locks(0);
+      expect(lockInfo.user).to.eq(AlreadyBoughtVesting);
+      expect(lockInfo.subject).to.eq(AlreadyBoughtSubject);
+      expect(lockInfo.subjectToken).to.eq(AlreadyBoughtSubjectToken);
+      expect(lockInfo.amount).to.eq(balance);
 
-      // const subjectOwner = await actAs(SubjectTokenHolder);
-      // await setNativeToken(subjectOwner.address, BigInt(1e18));
-      // const subjectToken = await getERC20(SubjectToken);
-      // let fanTokenBalance = await subjectToken.balanceOf(subjectOwner.address);
-      // await subjectToken
-      //   .connect(subjectOwner)
-      //   .approve(staking, fanTokenBalance);
-      // await expect(
-      //   staking.connect(subjectOwner).depositAndLock(Subject, fanTokenBalance),
-      // )
-      //   .to.emit(staking, "Lock")
-      //   .withArgs(
-      //     subjectOwner.address,
-      //     Subject,
-      //     SubjectToken,
-      //     0,
-      //     fanTokenBalance,
-      //     anyValue,
-      //     lockTime
-      //   );
-      // let lockInfo = await staking.locks(0);
-      // expect(lockInfo.amount).to.eq(fanTokenBalance);
-      // expect(lockInfo.subject).to.eq(Subject);
-      // expect(lockInfo.subjectToken).to.eq(SubjectToken);
-      // expect(lockInfo.amount).to.eq(fanTokenBalance);
-      // let currentBalance = await subjectToken.balanceOf(subjectOwner.address);
-      // expect(currentBalance).to.eq(0);
-      // await time.increaseTo(lockInfo.unlockTime + 1n);
 
-      // await expect(staking.connect(subjectOwner).withdraw([0], Subject))
-      //   .to.emit(staking, "Withdraw")
-      //   .withArgs(
-      //     subjectOwner.address,
-      //     Subject,
-      //     SubjectToken,
-      //     [0],
-      //     fanTokenBalance,
-      //   );
+      // forward time to unlock time
+      await time.increaseTo(lockInfo.unlockTime + 1n);
+      // extend lock
+      const extendCalldata = getExtendLockCalldata([0], AlreadyBoughtSubject, lockTime);
+      await user.sendTransaction({
+        to: AlreadyBoughtVesting,
+        value: 0,
+        data: extendCalldata,
+      })
+
+      lockInfo = await staking.locks(1);
+      await time.increaseTo(lockInfo.unlockTime + 1n);
+
+      // withdraw
+      const withdrawCalldata = getWithdrawCalldata([1], AlreadyBoughtSubject);
+      await expect(user.sendTransaction({
+        to: AlreadyBoughtVesting,
+        value: 0,
+        data: withdrawCalldata,
+      })).to.emit(staking, "Withdraw").withArgs(
+        AlreadyBoughtVesting,
+        AlreadyBoughtSubject,
+        AlreadyBoughtSubjectToken,
+        [1],
+        balance
+      )
+      lockInfo = await staking.locks(0);
+      expect(lockInfo.user).to.eq(zeroAddress);
     });
 
-    // it("should revert if amount is zero", async () => {
-    //   const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
-    //     await loadFixture(deploy);
-    //   let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
-    //   await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
-    //   // get block number
-    //   await expect(
-    //     staking.connect(buyer).depositAndLock(subject, 0),
-    //   ).to.be.revertedWithCustomError(staking, "AmountShouldBeGreaterThanZero");
-    // });
-
-    // it("should revert if subject is invalid", async () => {
-    //   const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
-    //     await loadFixture(deploy);
-    //   // let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
-    //   // await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
-    //   // get block number
-    //   await expect(
-    //     staking.connect(buyer).depositAndLock(zeroAddress, "1"),
-    //   ).to.be.revertedWithCustomError(staking, "InvalidSubjectToken");
-    // });
   });
 
   describe("buyAndLock", () => {
     it("should buy and lock tokens & withdraw", async () => {
       const {
         staking,
-
         owner,
         moxieToken,
         lockTime,
