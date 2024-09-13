@@ -2,9 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-
 interface IMoxieTokenLockManager {
-   
     // -- Function Call Authorization --
 
     function setAuthFunctionCall(string calldata _signature, address _target) external;
@@ -17,4 +15,5 @@ interface IMoxieTokenLockManager {
 
     function isAuthFunctionCall(bytes4 _sigHash) external view returns (bool);
 
+    function addTokenDestination(address _dst) external;
 }
