@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 interface IStaking {
     error Staking_EmptyIndexes();
-    error Staking_SubjectsDoesnotMatch(uint256 index);
+    error Staking_SubjectsDoesNotMatch(uint256 index);
     error Staking_AmountShouldBeGreaterThanZero();
     error Staking_InvalidSubjectToken();
     error Staking_InvalidSubject();
