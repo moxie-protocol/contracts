@@ -35,8 +35,7 @@
   },
   "scripts": {
     "compile": "hardhat compile",
-    "test": "find test -type f -name '*.ts' ! -name '*.fork.ts' | xargs hardhat test",
-    "test:fork": "hardhat test --config hardhat-fork.testnet.config.ts test/*.fork.ts",
+    "test": "hardhat test",
     "check": "hardhat check",
     "clean": "rm -rf artifacts/ cache/",
     "coverage": "hardhat coverage"
