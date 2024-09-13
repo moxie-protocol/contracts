@@ -29,29 +29,75 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard, OwnableUpgradeabl
     mapping(uint256 lockId => LockInfo lockinfo) public locks;
     mapping(uint256 lockPeriod => bool allowed) public lockPeriods;
 
+    /**
+     * @dev function to initialize the contract.
+     * @param _tokenManager  Address of the token manager.
+     * @param _moxieBondingCurve Address of the moxie bonding curve.
+     * @param _moxieToken Address of the moxie token.
+     * @param _defaultAdmin Address of the staking admin.
+     */
     function initialize(address _tokenManager, address _moxieBondingCurve, address _moxieToken, address _defaultAdmin)
         external
         initializer
     {
         __AccessControl_init();
         __Pausable_init();
+        _validateInput(_tokenManager, _moxieBondingCurve, _moxieToken, _defaultAdmin);
         tokenManager = ITokenManager(_tokenManager);
         moxieBondingCurve = IMoxieBondingCurve(_moxieBondingCurve);
         moxieToken = IERC20Extended(_moxieToken);
         _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
+    }
+
+    /**
+     * @dev Internal function to validate initialization input.
+     * @param _tokenManager  Address of the token manager.
+     * @param _moxieBondingCurve Address of the moxie bonding curve.
+     * @param _moxieToken Address of the moxie token.
+     * @param _defaultAdmin Address of the staking admin.
+     */
+    function _validateInput(
+        address _tokenManager,
+        address _moxieBondingCurve,
+        address _moxieToken,
+        address _defaultAdmin
+    ) internal pure {
+        if (_isZeroAddress(_tokenManager)) {
+            revert Staking_InvalidTokenManager();
+        }
+        if (_isZeroAddress(_moxieBondingCurve)) {
+            revert Staking_InvalidMoxieBondingCurve();
+        }
+        if (_isZeroAddress(_moxieToken)) {
+            revert Staking_InvalidMoxieToken();
+        }
+        if (_isZeroAddress(_defaultAdmin)) {
+            revert Staking_InvalidDefaultAdmin();
+        }
+    }
+    /**
+     * @dev Internal function to validate address.
+     * @param _address  Address to validate.
+     */
+
+    function _isZeroAddress(address _address) internal pure returns (bool) {
+        return _address == address(0);
     }
     /**
      * @notice Sets the lock period for staking. only owner can call this function.
      */
 
     function setLockPeriod(uint256 _lockPeriod, bool _allowed) external onlyRole(CHANGE_LOCK_DURATION) {
+        if (lockPeriods[_lockPeriod] == _allowed) {
+            revert Staking_LockPeriodAlreadySet();
+        }
         lockPeriods[_lockPeriod] = _allowed;
         emit LockPeriodUpdated(_lockPeriod, _allowed);
     }
 
     modifier onlyValidLockPeriod(uint256 _lockPeriod) {
         if (!lockPeriods[_lockPeriod]) {
-            revert InvalidLockPeriod();
+            revert Staking_InvalidLockPeriod();
         }
         _;
     }
@@ -66,11 +112,11 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard, OwnableUpgradeabl
         onlyValidLockPeriod(_lockPeriod)
     {
         if (_amount == 0) {
-            revert AmountShouldBeGreaterThanZero();
+            revert Staking_AmountShouldBeGreaterThanZero();
         }
         IERC20Extended subjectToken = IERC20Extended(tokenManager.tokens(_subject));
         if (address(subjectToken) == address(0)) {
-            revert InvalidSubjectToken();
+            revert Staking_InvalidSubjectToken();
         }
         uint256 _index = lockCount++;
         uint256 unlockTime = block.timestamp + _lockPeriod;
@@ -89,7 +135,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard, OwnableUpgradeabl
         // Transfer the tokens to this contract
         bool success = subjectToken.transferFrom(msg.sender, address(this), _amount);
         if (!success) {
-            revert TransferFailed();
+            revert Staking_TransferFailed();
         }
     }
 
@@ -134,33 +180,37 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard, OwnableUpgradeabl
         emit Lock(msg.sender, _subject, subjectToken, _index, _amount, unlockTime, _lockPeriod);
     }
 
-    function withdraw(uint256[] memory _indexes, address _subject) external nonReentrant {
+    function _extractExpiredAndDeleteLocks(uint256[] memory _indexes, address _subject)
+        internal
+        returns (address _subjectToken, uint256 _totalAmount)
+    {
         if (_indexes.length == 0) {
-            revert EmptyIndexes();
+            revert Staking_EmptyIndexes();
         }
-        uint256 totalAmount = 0;
-        address _subjectToken;
+        LockInfo memory lockInfo = locks[_indexes[0]];
+        _subjectToken = lockInfo.subjectToken;
         for (uint256 i = 0; i < _indexes.length; i++) {
             uint256 _index = _indexes[i];
             LockInfo memory lockInfo = locks[_index];
-            if (_subject != lockInfo.subject) {
-                revert SubjectsDoesntMatch(_index);
+            if (lockInfo.subject != _subject) {
+                revert Staking_SubjectsDoesntMatch(_index);
             }
             if (lockInfo.unlockTime > block.timestamp) {
-                revert LockNotExpired(_index, block.timestamp, lockInfo.unlockTime);
+                revert Staking_LockNotExpired(_index, block.timestamp, lockInfo.unlockTime);
             }
             if (lockInfo.user != msg.sender) {
-                revert NotOwner();
+                revert Staking_NotOwner(_index);
             }
-            if (_subjectToken == address(0)) {
-                _subjectToken = lockInfo.subjectToken;
-            }
-            totalAmount += lockInfo.amount;
+            _totalAmount += lockInfo.amount;
             delete locks[_index];
         }
+    }
+
+    function withdraw(uint256[] memory _indexes, address _subject) external nonReentrant {
+        (address _subjectToken, uint256 _totalAmount) = _extractExpiredAndDeleteLocks(_indexes, _subject);
         IERC20Extended subjectToken = IERC20Extended(_subjectToken);
-        subjectToken.transfer(msg.sender, totalAmount);
-        emit Withdraw(msg.sender, _subject, _subjectToken, _indexes, totalAmount);
+        subjectToken.transfer(msg.sender, _totalAmount);
+        emit Withdraw(msg.sender, _subject, _subjectToken, _indexes, _totalAmount);
     }
 
     function extendLock(uint256[] memory _indexes, address _subject, uint256 _lockPeriod)
@@ -168,28 +218,9 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard, OwnableUpgradeabl
         onlyValidLockPeriod(_lockPeriod)
         nonReentrant
     {
-        if (_indexes.length == 0) {
-            revert EmptyIndexes();
-        }
-        uint256 totalAmount = 0;
-        // loading first lock to memory
-        for (uint256 i = 0; i < _indexes.length; i++) {
-            uint256 _index = _indexes[i];
-            LockInfo memory lockInfo = locks[_index];
-            if (lockInfo.subject != _subject) {
-                revert InvalidSubject();
-            }
-            if (lockInfo.unlockTime > block.timestamp) {
-                revert LockNotExpired(_index, block.timestamp, lockInfo.unlockTime);
-            }
-            if (lockInfo.user != msg.sender) {
-                revert NotSameUser(_index);
-            }
-            totalAmount += lockInfo.amount;
-            delete locks[_index];
-        }
+        (address _subjectToken, uint256 _totalAmount) = _extractExpiredAndDeleteLocks(_indexes, _subject);
         emit LockExtended(_indexes);
-        _deposit(_subject, totalAmount, _lockPeriod);
+        _deposit(_subject, _totalAmount, _lockPeriod);
     }
 
     function getTotalStakedAmount(address _user, address _subject, uint256[] calldata _indexes)
@@ -199,12 +230,13 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard, OwnableUpgradeabl
     {
         uint256 totalAmount;
         for (uint256 i = 0; i < _indexes.length; i++) {
-            LockInfo memory lockInfo = locks[_indexes[i]];
+            uint256 _index = _indexes[i];
+            LockInfo memory lockInfo = locks[_index];
             if (lockInfo.user != _user) {
-                revert NotSameUser(i);
+                revert Staking_NotSameUser(_index);
             }
             if (lockInfo.subject != _subject) {
-                revert InvalidSubject();
+                revert Staking_SubjectsDoesntMatch(_index);
             }
             totalAmount += lockInfo.amount;
         }

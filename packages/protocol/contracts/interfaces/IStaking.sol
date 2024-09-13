@@ -2,19 +2,23 @@
 pragma solidity ^0.8.24;
 
 interface IStaking {
-    error EmptyIndexes();
-    error SubjectsDoesntMatch(uint256 index);
-    error AmountShouldBeGreaterThanZero();
-    error InvalidSubject();
-    error InvalidSubjectToken();
-    error TransferFailed();
-    error LockNotExpired(uint256 index, uint256 currentTime, uint256 unlockTime);
-    error InvalidIndex(uint256 index);
-    error NotOwner();
-    error AlreadyWithdrawn();
-    error InvalidOwner();
-    error NotSameUser(uint256 index);
-    error InvalidLockPeriod();
+    error Staking_EmptyIndexes();
+    error Staking_SubjectsDoesntMatch(uint256 index);
+    error Staking_AmountShouldBeGreaterThanZero();
+    error Staking_InvalidSubjectToken();
+    error Staking_TransferFailed();
+    error Staking_LockNotExpired(uint256 index, uint256 currentTime, uint256 unlockTime);
+    error Staking_InvalidIndex(uint256 index);
+    error Staking_NotOwner(uint256 index);
+    error Staking_AlreadyWithdrawn();
+    error Staking_InvalidOwner();
+    error Staking_NotSameUser(uint256 index);
+    error Staking_InvalidLockPeriod();
+    error Staking_InvalidTokenManager();
+    error Staking_InvalidMoxieBondingCurve();
+    error Staking_InvalidMoxieToken();
+    error Staking_InvalidDefaultAdmin();
+    error Staking_LockPeriodAlreadySet();
 
     struct LockInfo {
         address user;

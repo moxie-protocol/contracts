@@ -311,6 +311,12 @@ describe("Staking", () => {
       const result3 = await staking.lockPeriods(newLockTime);
       expect(result3).to.false;
     });
+
+    it("should revert if lockperiod is already set", async () => {
+      const { staking, changeLockRole, lockTime } = await loadFixture(deploy);
+      await expect(staking.connect(changeLockRole).setLockPeriod(lockTime, true))
+        .to.be.revertedWithCustomError(staking, "Staking_LockPeriodAlreadySet");
+    });
     it("should revert if not called by correct role", async () => {
       const { staking, stakingAdmin } = await loadFixture(deploy);
       const newLockTime = 100;
@@ -359,7 +365,7 @@ describe("Staking", () => {
       // get block number
       await expect(
         staking.connect(buyer).depositAndLock(subject, 0, lockTime),
-      ).to.be.revertedWithCustomError(staking, "AmountShouldBeGreaterThanZero");
+      ).to.be.revertedWithCustomError(staking, "Staking_AmountShouldBeGreaterThanZero");
     });
 
     it("should revert if subject is invalid", async () => {
@@ -370,7 +376,7 @@ describe("Staking", () => {
       // get block number
       await expect(
         staking.connect(buyer).depositAndLock(zeroAddress, "1", lockTime),
-      ).to.be.revertedWithCustomError(staking, "InvalidSubjectToken");
+      ).to.be.revertedWithCustomError(staking, "Staking_InvalidSubjectToken");
     });
   });
 
@@ -383,7 +389,7 @@ describe("Staking", () => {
       // get block number
       await expect(
         staking.connect(buyer).buyAndLock(subject, fanTokenBalance, 0, 0),
-      ).to.be.revertedWithCustomError(staking, "InvalidLockPeriod");
+      ).to.be.revertedWithCustomError(staking, "Staking_InvalidLockPeriod");
     })
     it("should buy and lock tokens & withdraw", async () => {
       const {
@@ -416,7 +422,6 @@ describe("Staking", () => {
           lockTime
         );
       let lockInfo = await staking.locks(0);
-
       let oldOwnerBalance = await subjectToken.balanceOf(owner.address);
       await time.increaseTo(lockInfo.unlockTime);
 
@@ -430,7 +435,6 @@ describe("Staking", () => {
           lockInfo.amount,
         );
       let newOwnerBalance = await subjectToken.balanceOf(owner.address);
-
       expect(newOwnerBalance - oldOwnerBalance).to.eq(lockInfo.amount);
       let newLockinfo = await staking.locks(0);
       expect(newLockinfo.amount).to.eq(0);
@@ -447,7 +451,7 @@ describe("Staking", () => {
 
       await expect(
         staking.connect(owner).withdraw([], subject.address),
-      ).to.be.revertedWithCustomError(staking, "EmptyIndexes");
+      ).to.be.revertedWithCustomError(staking, "Staking_EmptyIndexes");
     });
 
     it("should withdraw multiple locks", async () => {
@@ -514,7 +518,7 @@ describe("Staking", () => {
       // move time to unlock time
       await time.increaseTo(lastLockInfo.unlockTime + 1n);
       await expect(staking.connect(buyer).withdraw([0, 1], subject.address))
-        .to.be.revertedWithCustomError(staking, "SubjectsDoesntMatch")
+        .to.be.revertedWithCustomError(staking, "Staking_SubjectsDoesntMatch")
         .withArgs(1);
     });
 
@@ -551,7 +555,7 @@ describe("Staking", () => {
       await time.increaseTo(lockInfo.unlockTime);
       let firstLockInfo = await staking.locks(1);
       await expect(staking.connect(buyer).withdraw([0, 1], subject.address))
-        .to.be.revertedWithCustomError(staking, "LockNotExpired")
+        .to.be.revertedWithCustomError(staking, "Staking_LockNotExpired")
         .withArgs(1, anyValue, firstLockInfo.unlockTime);
     });
 
@@ -585,7 +589,7 @@ describe("Staking", () => {
       await time.increaseTo(lockInfo.unlockTime + 5n);
       await expect(
         staking.connect(subject).withdraw([0], subject.address),
-      ).to.be.revertedWithCustomError(staking, "NotOwner");
+      ).to.be.revertedWithCustomError(staking, "Staking_NotOwner");
     });
   });
 
@@ -613,7 +617,7 @@ describe("Staking", () => {
       expect(totalStaked).to.eq(depositAmount * 5n);
     });
 
-    it("should revert if subject passed is invalid", async () => {
+    it("should revert if subject passed is not matching", async () => {
       const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
         await loadFixture(deploy);
       let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
@@ -629,7 +633,7 @@ describe("Staking", () => {
 
       await expect(
         staking.getTotalStakedAmount(buyer.address, zeroAddress, [0]),
-      ).to.be.revertedWithCustomError(staking, "InvalidSubject");
+      ).to.be.revertedWithCustomError(staking, "Staking_SubjectsDoesntMatch").withArgs(0);
     });
 
     it("should revert trying to fetch incorrect user's total staked amount", async () => {
@@ -643,7 +647,7 @@ describe("Staking", () => {
           [0],
         ),
       )
-        .to.be.revertedWithCustomError(staking, "NotSameUser")
+        .to.be.revertedWithCustomError(staking, "Staking_NotSameUser")
         .withArgs(0);
     });
   });
@@ -653,10 +657,10 @@ describe("Staking", () => {
       const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
         await loadFixture(deploy);
       await expect(staking.connect(buyer).extendLock([], subject, lockTime))
-        .to.be.revertedWithCustomError(staking, "EmptyIndexes")
+        .to.be.revertedWithCustomError(staking, "Staking_EmptyIndexes")
     });
 
-    it("should revert with NotSameUser,since owner who called doesnt have the passed locked index", async () => {
+    it("should revert with Staking_NotOwner,since owner who called doesnt have the passed locked index", async () => {
       const {
         staking,
         buyer,
@@ -676,10 +680,10 @@ describe("Staking", () => {
       let lockInfo = await staking.locks(0);
       await time.increaseTo(lockInfo.unlockTime + 1n);
       await expect(staking.connect(buyer2).extendLock([0], subject.address, lockTime))
-        .to.be.revertedWithCustomError(staking, "NotSameUser")
+        .to.be.revertedWithCustomError(staking, "Staking_NotOwner")
         .withArgs(0);
     });
-    it("should revert with InvalidSubject", async () => {
+    it("should revert with Staking_SubjectsDoesntMatch", async () => {
       const {
         staking,
         buyer,
@@ -699,7 +703,7 @@ describe("Staking", () => {
       let lockInfo = await staking.locks(0);
       await time.increaseTo(lockInfo.unlockTime + 1n);
       await expect(staking.connect(buyer).extendLock([0], zeroAddress, lockTime))
-        .to.be.revertedWithCustomError(staking, "InvalidSubject")
+        .to.be.revertedWithCustomError(staking, "Staking_SubjectsDoesntMatch").withArgs(0);
     })
 
     it("should revert with LockNotExpired", async () => {
@@ -719,7 +723,7 @@ describe("Staking", () => {
         .connect(buyer)
         .depositAndLock(subject, depositAmount.toString(), lockTime);
       await expect(staking.connect(buyer).extendLock([0], subject.address, lockTime))
-        .to.be.revertedWithCustomError(staking, "LockNotExpired")
+        .to.be.revertedWithCustomError(staking, "Staking_LockNotExpired")
         .withArgs(0, anyValue, anyValue);
     })
     it("should extend lock", async () => {
