@@ -40,7 +40,11 @@ interface IStaking {
     );
 
     event LockExtended(
-        address indexed _user, address indexed _subject, address indexed _subjectToken, uint256[] _indexes
+        address indexed _user,
+        address indexed _subject,
+        address indexed _subjectToken,
+        uint256[] _indexes,
+        uint256 _amount
     );
 
     event LockPeriodUpdated(uint256 indexed _lockPeriodInSec, bool indexed _allowed);
