@@ -27,7 +27,6 @@ depositAndLock()
  })
 
 // RUN : npx hardhat run scripts/staking/deposit-and-lock.ts --network base-sepolia
-// https://sepolia.basescan.org/tx/0x7939f6439a3e57b62e3cfaaa2d3bf21355d75462116227739c8cf938017e3253
 
 // DATA FETCHED USING
 // protocol-analytics-testnet subgraph

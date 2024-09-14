@@ -29,4 +29,3 @@ buyAndLock()
  })
 
 // RUN : npx hardhat run scripts/staking/buy-and-lock.ts --network base-sepolia
-// txhash: 0x9a88858c2a616a0b5376816d7145957d395d6de98e5a94cd13acc72a8d948f31
