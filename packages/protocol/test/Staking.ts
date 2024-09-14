@@ -348,7 +348,8 @@ describe("Staking", () => {
           0,
           fanTokenBalance,
           anyValue,
-          lockTime
+          lockTime,
+          false
         );
       let lockInfo = await staking.locks(0);
       expect(lockInfo.amount).to.eq(fanTokenBalance);
@@ -400,7 +401,8 @@ describe("Staking", () => {
           0,
           fanTokenBalance,
           anyValue,
-          lockTime
+          lockTime,
+          false
         ).to.emit(staking, "Lock")
         .withArgs(
           buyer.address,
@@ -409,7 +411,8 @@ describe("Staking", () => {
           1,
           fanTokenBalance2,
           anyValue,
-          lockTime
+          lockTime,
+          false
         );
       let lockInfo = await staking.locks(0);
       expect(lockInfo.amount).to.eq(fanTokenBalance);
@@ -479,7 +482,8 @@ describe("Staking", () => {
           0,
           anyValue,
           anyValue,
-          lockTime
+          lockTime,
+          true
         );
       let lockInfo = await staking.locks(0);
       let oldOwnerBalance = await subjectToken.balanceOf(owner.address);
@@ -558,7 +562,8 @@ describe("Staking", () => {
           0,
           anyValue,
           anyValue,
-          lockTime
+          lockTime,
+          true
         ).to.emit(staking, "Lock")
         .withArgs(
           owner.address,
@@ -567,7 +572,8 @@ describe("Staking", () => {
           1,
           anyValue,
           anyValue,
-          lockTime
+          lockTime,
+          true
         );
       let lockInfo = await staking.locks(0);
       let lockInfo2 = await staking.locks(1);
@@ -920,6 +926,7 @@ describe("Staking", () => {
           depositAmount * 5n,
           anyValue,
           lockTime,
+          false
         )
     });
   });
