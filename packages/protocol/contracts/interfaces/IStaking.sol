@@ -36,7 +36,8 @@ interface IStaking {
         uint256 _index,
         uint256 _amount,
         uint256 _unlockTimeInSec,
-        uint256 _lockPeriodInSec
+        uint256 _lockPeriodInSec,
+        bool _isBuy
     );
 
     event LockExtended(

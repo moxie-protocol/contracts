@@ -102,7 +102,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
      * @param _subject subject address for which tokens are getting deposited.
      * @param _amount _Amount of tokens getting deposited.
      */
-    function _createLock(address _subject, uint256 _amount, uint256 _lockPeriodInSec)
+    function _createLock(address _subject, uint256 _amount, uint256 _lockPeriodInSec, bool _isBuy)
         internal
         onlyValidLockPeriod(_lockPeriodInSec)
         returns (IERC20Extended _subjectToken, uint256 unlockTimeInSec_)
@@ -130,7 +130,9 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         // lock the tokens
         locks[_index] = lockInfo;
         // emit event
-        emit Lock(msg.sender, _subject, address(_subjectToken), _index, _amount, unlockTimeInSec_, _lockPeriodInSec);
+        emit Lock(
+            msg.sender, _subject, address(_subjectToken), _index, _amount, unlockTimeInSec_, _lockPeriodInSec, _isBuy
+        );
     }
 
     /**
@@ -182,7 +184,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         returns (uint256 unlockTimeInSec_)
     {
         IERC20Extended subjectToken;
-        (subjectToken, unlockTimeInSec_) = _createLock(_subject, _amount, _lockPeriodInSec);
+        (subjectToken, unlockTimeInSec_) = _createLock(_subject, _amount, _lockPeriodInSec, false);
 
         unlockTimeInSec_ = unlockTimeInSec_;
         // Transfer the tokens to this contract
@@ -207,7 +209,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         moxieToken.safeTransferFrom(msg.sender, address(this), _depositAmount);
         moxieToken.approve(address(moxieBondingCurve), _depositAmount);
         amount_ = moxieBondingCurve.buyShares(_subject, _depositAmount, _minReturnAmountAfterFee);
-        (, unlockTimeInSec_) = _createLock(_subject, amount_, _lockPeriodInSec);
+        (, unlockTimeInSec_) = _createLock(_subject, amount_, _lockPeriodInSec, true);
     }
 
     /**
@@ -344,7 +346,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         address subjectToken;
         (subjectToken, totalAmount_) = _extractExpiredAndDeleteLocks(_subject, _indexes);
         emit LockExtended(msg.sender, _subject, subjectToken, _indexes, totalAmount_);
-        (, uint256 unlockTimeInSec) = _createLock(_subject, totalAmount_, _lockPeriodInSec);
+        (, uint256 unlockTimeInSec) = _createLock(_subject, totalAmount_, _lockPeriodInSec, false);
 
         unlockTimeInSec_ = unlockTimeInSec;
     }
