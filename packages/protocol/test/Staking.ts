@@ -338,7 +338,7 @@ describe("Staking", () => {
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       // get block number
       await expect(
-        staking.connect(buyer).depositAndLock(subject, fanTokenBalance, lockTime, buyer.address),
+        staking.connect(buyer).depositAndLock(subject, fanTokenBalance, lockTime),
       )
         .to.emit(staking, "Lock")
         .withArgs(
@@ -365,7 +365,7 @@ describe("Staking", () => {
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       // get block number
       await expect(
-        staking.connect(buyer).depositAndLock(subject, 0, lockTime, buyer.address),
+        staking.connect(buyer).depositAndLock(subject, 0, lockTime),
       ).to.be.revertedWithCustomError(staking, "Staking_AmountShouldBeGreaterThanZero");
     });
 
@@ -376,7 +376,7 @@ describe("Staking", () => {
       // await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       // get block number
       await expect(
-        staking.connect(buyer).depositAndLock(zeroAddress, "1", lockTime, buyer.address),
+        staking.connect(buyer).depositAndLock(zeroAddress, "1", lockTime),
       ).to.be.revertedWithCustomError(staking, "Staking_InvalidSubject");
     });
   });
@@ -391,7 +391,7 @@ describe("Staking", () => {
       await subjectToken2.connect(buyer).approve(staking, fanTokenBalance2);
       // get block number
       await expect(
-        staking.connect(buyer).depositAndLockMultiple([subject, subject2], [fanTokenBalance, fanTokenBalance2], lockTime, buyer.address),
+        staking.connect(buyer).depositAndLockMultiple([subject, subject2], [fanTokenBalance, fanTokenBalance2], lockTime),
       )
         .to.emit(staking, "Lock")
         .withArgs(
@@ -434,11 +434,11 @@ describe("Staking", () => {
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       await subjectToken2.connect(buyer).approve(staking, fanTokenBalance2);
       await expect(
-        staking.connect(buyer).depositAndLockMultiple([subject, subject2], [fanTokenBalance], lockTime, buyer.address),
+        staking.connect(buyer).depositAndLockMultiple([subject, subject2], [fanTokenBalance], lockTime),
       ).to.be.revertedWithCustomError(staking, "Staking_InvalidInputLength");
 
       await expect(
-        staking.connect(buyer).depositAndLockMultiple([subject], [fanTokenBalance, fanTokenBalance2], lockTime, buyer.address),
+        staking.connect(buyer).depositAndLockMultiple([subject], [fanTokenBalance, fanTokenBalance2], lockTime),
       ).to.be.revertedWithCustomError(staking, "Staking_InvalidInputLength");
     });
   });
@@ -451,7 +451,7 @@ describe("Staking", () => {
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       // get block number
       await expect(
-        staking.connect(buyer).buyAndLock(subject, fanTokenBalance, 0, 0, buyer.address),
+        staking.connect(buyer).buyAndLock(subject, fanTokenBalance, 0, 0),
       ).to.be.revertedWithCustomError(staking, "Staking_InvalidLockPeriod");
     })
     it("should buy and lock tokens & withdraw", async () => {
@@ -472,7 +472,7 @@ describe("Staking", () => {
       await moxieToken.connect(owner).approve(stakingAddress, amt);
 
       await expect(
-        staking.connect(owner).buyAndLock(await subject.getAddress(), amt, 0, lockTime, owner.address),
+        staking.connect(owner).buyAndLock(await subject.getAddress(), amt, 0, lockTime),
       )
         .to.emit(staking, "Lock")
         .withArgs(
@@ -526,7 +526,7 @@ describe("Staking", () => {
       await moxieToken.connect(owner).approve(stakingAddress, amt);
 
       await expect(
-        staking.connect(owner).buyAndLock(await subject.getAddress(), amt, 0, lockTime, buyer.address),
+        staking.connect(owner).buyAndLockFor(await subject.getAddress(), amt, 0, lockTime, buyer.address),
       )
         .to.emit(staking, "Lock")
         .withArgs(
@@ -574,15 +574,15 @@ describe("Staking", () => {
       await subjectToken2.connect(buyer).approve(staking, fanTokenBalance2);
       // get block number
       await expect(
-        staking.connect(buyer).buyAndLockMultiple([subject, subject2], [fanTokenBalance, fanTokenBalance2], [0], lockTime, buyer.address),
+        staking.connect(buyer).buyAndLockMultiple([subject, subject2], [fanTokenBalance, fanTokenBalance2], [0], lockTime),
       ).to.be.revertedWithCustomError(staking, "Staking_InvalidInputLength");
 
       await expect(
-        staking.connect(buyer).buyAndLockMultiple([subject], [fanTokenBalance, fanTokenBalance2], [0, 0], lockTime, buyer.address),
+        staking.connect(buyer).buyAndLockMultiple([subject], [fanTokenBalance, fanTokenBalance2], [0, 0], lockTime),
       ).to.be.revertedWithCustomError(staking, "Staking_InvalidInputLength");
 
       await expect(
-        staking.connect(buyer).buyAndLockMultiple([subject, subject2], [fanTokenBalance], [0, 0], lockTime, buyer.address),
+        staking.connect(buyer).buyAndLockMultiple([subject, subject2], [fanTokenBalance], [0, 0], lockTime),
       ).to.be.revertedWithCustomError(staking, "Staking_InvalidInputLength");
     })
     it("should buy and lock tokens & withdraw", async () => {
@@ -606,7 +606,7 @@ describe("Staking", () => {
       // let subjectAddress = await subject.getAddress();
       // let subject2Address = await subject2.getAddress();
       await expect(
-        staking.connect(owner).buyAndLockMultiple([subject, subject2], [amt, amt], [0, 0], lockTime, owner.address),
+        staking.connect(owner).buyAndLockMultiple([subject, subject2], [amt, amt], [0, 0], lockTime),
       )
         .to.emit(staking, "Lock")
         .withArgs(
@@ -696,7 +696,7 @@ describe("Staking", () => {
       for (let i = 0; i < 5; i++) {
         await staking
           .connect(buyer)
-          .depositAndLock(subject, depositAmount.toString(), lockTime, buyer.address);
+          .depositAndLock(subject, depositAmount.toString(), lockTime);
       }
       let balanceAfterDeposit = await subjectToken.balanceOf(buyer.address);
       let lastLockInfo = await staking.locks(4);
@@ -738,11 +738,11 @@ describe("Staking", () => {
       // making 5 deposits
       await staking
         .connect(buyer)
-        .depositAndLock(subject, stakeAmount.toString(), lockTime, buyer.address);
+        .depositAndLock(subject, stakeAmount.toString(), lockTime);
 
       await staking
         .connect(buyer)
-        .depositAndLock(subject2, stakeAmount.toString(), lockTime, buyer.address);
+        .depositAndLock(subject2, stakeAmount.toString(), lockTime);
 
       let lastLockInfo = await staking.locks(1);
       // move time to unlock time
@@ -774,12 +774,12 @@ describe("Staking", () => {
 
       await staking
         .connect(buyer)
-        .depositAndLock(subject, stakeAmount.toString(), lockTime, buyer.address);
+        .depositAndLock(subject, stakeAmount.toString(), lockTime);
       // pass 5 seconds
       await time.increase(5);
       await staking
         .connect(buyer)
-        .depositAndLock(subject, stakeAmount.toString(), lockTime, buyer.address);
+        .depositAndLock(subject, stakeAmount.toString(), lockTime);
       let lockInfo = await staking.locks(0);
       // move time to unlock time
       await time.increaseTo(lockInfo.unlockTimeInSec);
@@ -812,7 +812,7 @@ describe("Staking", () => {
       // making 5 deposits
       await staking
         .connect(buyer)
-        .depositAndLock(subject, stakeAmount.toString(), lockTime, buyer.address);
+        .depositAndLock(subject, stakeAmount.toString(), lockTime);
 
       let lockInfo = await staking.locks(0);
       // move time to unlock time
@@ -836,7 +836,7 @@ describe("Staking", () => {
       for (let i = 0; i < 5; i++) {
         await staking
           .connect(buyer)
-          .depositAndLock(subject, depositAmount.toString(), lockTime, buyer.address);
+          .depositAndLock(subject, depositAmount.toString(), lockTime);
       }
 
       let totalStaked = await staking.getTotalStakedAmount(
@@ -859,7 +859,7 @@ describe("Staking", () => {
 
       await staking
         .connect(buyer)
-        .depositAndLock(subject, depositAmount.toString(), lockTime, buyer.address);
+        .depositAndLock(subject, depositAmount.toString(), lockTime);
 
       await expect(
         staking.getTotalStakedAmount(buyer.address, zeroAddress, [0]),
@@ -886,7 +886,7 @@ describe("Staking", () => {
     it("should revert with index is empty", async () => {
       const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
         await loadFixture(deploy);
-      await expect(staking.connect(buyer).extendLock(subject, [], lockTime, buyer.address))
+      await expect(staking.connect(buyer).extendLock(subject, [], lockTime))
         .to.be.revertedWithCustomError(staking, "Staking_EmptyIndexes")
     });
 
@@ -905,11 +905,11 @@ describe("Staking", () => {
       const depositAmount = BigInt(1e18);
       await staking
         .connect(buyer)
-        .depositAndLock(subject, depositAmount.toString(), lockTime, buyer.address);
+        .depositAndLock(subject, depositAmount.toString(), lockTime);
       // forward time to unlock time
       let lockInfo = await staking.locks(0);
       await time.increaseTo(lockInfo.unlockTimeInSec + 1n);
-      await expect(staking.connect(buyer2).extendLock(subject.address, [0], lockTime, buyer.address))
+      await expect(staking.connect(buyer2).extendLock(subject.address, [0], lockTime))
         .to.be.revertedWithCustomError(staking, "Staking_NotOwner")
         .withArgs(0);
     });
@@ -928,11 +928,11 @@ describe("Staking", () => {
       const depositAmount = BigInt(1e18);
       await staking
         .connect(buyer)
-        .depositAndLock(subject, depositAmount.toString(), lockTime, buyer.address);
+        .depositAndLock(subject, depositAmount.toString(), lockTime);
       // forward time to unlock time
       let lockInfo = await staking.locks(0);
       await time.increaseTo(lockInfo.unlockTimeInSec + 1n);
-      await expect(staking.connect(buyer).extendLock(zeroAddress, [0], lockTime, buyer.address))
+      await expect(staking.connect(buyer).extendLock(zeroAddress, [0], lockTime))
         .to.be.revertedWithCustomError(staking, "Staking_InvalidSubject")
     })
 
@@ -951,8 +951,8 @@ describe("Staking", () => {
       const depositAmount = BigInt(1e18);
       await staking
         .connect(buyer)
-        .depositAndLock(subject, depositAmount.toString(), lockTime, buyer.address);
-      await expect(staking.connect(buyer).extendLock(subject.address, [0], lockTime, buyer.address))
+        .depositAndLock(subject, depositAmount.toString(), lockTime);
+      await expect(staking.connect(buyer).extendLock(subject.address, [0], lockTime))
         .to.be.revertedWithCustomError(staking, "Staking_LockNotExpired")
         .withArgs(0, anyValue, anyValue);
     })
@@ -965,12 +965,12 @@ describe("Staking", () => {
       for (let i = 0; i < 5; i++) {
         await staking
           .connect(buyer)
-          .depositAndLock(subject, depositAmount.toString(), lockTime, buyer.address);
+          .depositAndLock(subject, depositAmount.toString(), lockTime);
       }
       // forward time to unlock time
       let lockInfo = await staking.locks(4);
       await time.increaseTo(lockInfo.unlockTimeInSec + 1n);
-      await expect(staking.connect(buyer).extendLock(subject.address, [0, 1, 2, 3, 4], lockTime, buyer.address))
+      await expect(staking.connect(buyer).extendLock(subject.address, [0, 1, 2, 3, 4], lockTime))
         .to.emit(staking, "LockExtended")
         .withArgs(buyer, subject, subjectToken, [0, 1, 2, 3, 4], depositAmount * 5n).to.emit(staking, "Lock").withArgs(
           buyer.address,
@@ -995,7 +995,7 @@ describe("Staking", () => {
       for (let i = 0; i < 5; i++) {
         await staking
           .connect(buyer)
-          .depositAndLock(subject, depositAmount.toString(), lockTime, buyer.address);
+          .depositAndLock(subject, depositAmount.toString(), lockTime);
       }
       let lockCount = await staking.lockCount();
       expect(lockCount).to.eq(5);
