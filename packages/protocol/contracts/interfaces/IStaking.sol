@@ -19,6 +19,7 @@ interface IStaking {
     error Staking_InvalidDefaultAdmin();
     error Staking_LockPeriodAlreadySet();
     error Staking_InvalidInputLength();
+    error Staking_InvalidBeneficiary();
 
     struct LockInfo {
         address user;
