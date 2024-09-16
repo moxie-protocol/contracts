@@ -59,7 +59,7 @@ interface IStaking {
         uint256 _amount
     );
 
-    function depositAndLock(address _subject, uint256 _amount, uint256 _lockPeriodInSec)
+    function depositAndLock(address _subject, uint256 _amount, uint256 _lockPeriodInSec, address _beneficiary)
         external
         returns (uint256 unlockTimeInSec_);
 
@@ -67,11 +67,12 @@ interface IStaking {
         address _subject,
         uint256 _depositAmount,
         uint256 _minReturnAmountAfterFee,
-        uint256 _lockPeriodInSec
+        uint256 _lockPeriodInSec,
+        address _beneficiary
     ) external returns (uint256 amount_, uint256 unlockTimeInSec_);
     function withdraw(address _subject, uint256[] memory _indexes) external returns (uint256 totalAmount_);
 
-    function extendLock(address _subject, uint256[] memory _indexes, uint256 _lockPeriodInSec)
+    function extendLock(address _subject, uint256[] memory _indexes, uint256 _lockPeriodInSec, address _beneficiary)
         external
         returns (uint256 totalAmount_, uint256 unlockTimeInSec_);
     function setLockPeriod(uint256 _lockPeriodInSec, bool _allowed) external;
