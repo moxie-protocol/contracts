@@ -290,6 +290,18 @@ describe("Staking", () => {
     };
   };
 
+  describe("deployment", () => {
+    it("should initialise if already initialised", async () => {
+      const { deployer, staking } = await loadFixture(deploy);
+      await expect(staking.connect(deployer).initialize(
+        zeroAddress,
+        zeroAddress,
+        zeroAddress,
+        zeroAddress,
+      )).to.be.revertedWithCustomError(staking, "InvalidInitialization");
+    });
+  });
+
 
   describe("validations", () => {
     it("should revert if invalid tokenmanager is set", async () => {
@@ -379,6 +391,14 @@ describe("Staking", () => {
   });
 
   describe("depositAndLock", () => {
+    it("should revert if subject token is invalid", async () => {
+      const { staking, buyer, tokenManager, subjectToken, initialSupply, lockTime } =
+        await loadFixture(deploy);
+      const invalidTokenAddress = "0x0000000000000000000000000000000000000099"
+      await expect(staking.connect(buyer).depositAndLock(invalidTokenAddress, 1, lockTime))
+        .to.be.revertedWithCustomError(staking, "Staking_InvalidSubjectToken")
+    })
+
     it("should deposit and lock tokens", async () => {
       const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
         await loadFixture(deploy);
@@ -870,6 +890,19 @@ describe("Staking", () => {
   });
 
   describe("buyAndLockMultiple", () => {
+    it("should revert if lockduration is invalid", async () => {
+      const { staking, buyer, owner, subject, subjectToken, subject2, subjectToken2, initialSupply, lockTime } =
+        await loadFixture(deploy);
+      let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
+      let fanTokenBalance2 = await subjectToken.balanceOf(buyer.address);
+      await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
+      await subjectToken2.connect(buyer).approve(staking, fanTokenBalance2);
+      // get block number
+      await expect(
+        staking.connect(owner).buyAndLockMultiple([subject, subject2], [fanTokenBalance, fanTokenBalance2], [0, 0], 0),
+      ).to.be.revertedWithCustomError(staking, "Staking_InvalidLockPeriod");
+    })
+
     it("should revert with Staking_InvalidInputLength if param lengths doesnt match ", async () => {
       const { staking, buyer, subject, subjectToken, subject2, subjectToken2, initialSupply, lockTime } =
         await loadFixture(deploy);
@@ -981,6 +1014,19 @@ describe("Staking", () => {
   });
 
   describe("buyAndLockMultipleFor", () => {
+    it("should revert if lockduration is invalid", async () => {
+      const { staking, buyer, owner, subject, subjectToken, subject2, subjectToken2, initialSupply, lockTime } =
+        await loadFixture(deploy);
+      let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
+      let fanTokenBalance2 = await subjectToken.balanceOf(buyer.address);
+      await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
+      await subjectToken2.connect(buyer).approve(staking, fanTokenBalance2);
+      // get block number
+      await expect(
+        staking.connect(owner).buyAndLockMultipleFor([subject, subject2], [fanTokenBalance, fanTokenBalance2], [0], 0, buyer.address),
+      ).to.be.revertedWithCustomError(staking, "Staking_InvalidLockPeriod");
+    })
+
     it("should revert with Staking_InvalidInputLength if param lengths doesnt match ", async () => {
       const { staking, buyer, owner, subject, subjectToken, subject2, subjectToken2, initialSupply, lockTime } =
         await loadFixture(deploy);
@@ -1304,6 +1350,13 @@ describe("Staking", () => {
         .to.be.revertedWithCustomError(staking, "Staking_EmptyIndexes")
     });
 
+    it("should revert if lockduration is invalid", async () => {
+      const { staking, buyer, subject, subjectToken, initialSupply, lockTime } =
+        await loadFixture(deploy);
+      await expect(staking.connect(buyer).extendLock(subject, [0], 0))
+        .to.be.revertedWithCustomError(staking, "Staking_InvalidLockPeriod")
+    });
+
     it("should revert with Staking_NotOwner,since owner who called doesnt have the passed locked index", async () => {
       const {
         staking,
@@ -1405,6 +1458,13 @@ describe("Staking", () => {
         await loadFixture(deploy);
       await expect(staking.connect(buyer).extendLockFor(subject, [], lockTime, owner.address))
         .to.be.revertedWithCustomError(staking, "Staking_EmptyIndexes")
+    });
+
+    it("should revert if lockduration is invalid", async () => {
+      const { staking, buyer, owner, subject, subjectToken, initialSupply, lockTime } =
+        await loadFixture(deploy);
+      await expect(staking.connect(buyer).extendLockFor(subject, [0], 0, owner.address))
+        .to.be.revertedWithCustomError(staking, "Staking_InvalidLockPeriod")
     });
 
     it("should revert with Staking_NotOwner,since owner who called doesnt have the passed locked index", async () => {

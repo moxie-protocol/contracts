@@ -105,9 +105,8 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
      * @param _beneficiary Address of the beneficiary for the lock.
      * @param _isBuy Whether the lock is created from a buy operation.
      */
-    function _createLock(address _subject,uint256 _amount,uint256 _lockPeriodInSec, address _beneficiary, bool _isBuy)
+     function _createLock(address _subject,uint256 _amount,uint256 _lockPeriodInSec, address _beneficiary, bool _isBuy)
         internal
-        onlyValidLockPeriod(_lockPeriodInSec)
         returns (IERC20Extended _subjectToken, uint256 unlockTimeInSec_)
     {
         if (_isZeroAddress(_subject)) {
@@ -240,7 +239,6 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
      */
     function depositAndLock(address _subject, uint256 _amount, uint256 _lockPeriodInSec)
         external
-        nonReentrant
         returns (uint256 unlockTimeInSec_)
     {
         unlockTimeInSec_ = _depositAndLock(_subject, _amount, _lockPeriodInSec, msg.sender);
@@ -256,7 +254,6 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
      */
     function depositAndLockFor(address _subject, uint256 _amount, uint256 _lockPeriodInSec, address _beneficiary)
         external
-        nonReentrant
         returns (uint256 unlockTimeInSec_)
     {
         unlockTimeInSec_ = _depositAndLock(_subject, _amount, _lockPeriodInSec, _beneficiary);
@@ -271,7 +268,6 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
      */
     function depositAndLockMultiple(address[] memory _subjects, uint256[] memory _amounts, uint256 _lockPeriodsInSec)
         external
-        nonReentrant
         returns (uint256[] memory unlockTimeInSec_)
     {
         if (_subjects.length != _amounts.length) {
@@ -296,7 +292,6 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
      */
     function depositAndLockMultipleFor(address[] memory _subjects, uint256[] memory _amounts, uint256 _lockPeriodsInSec, address _beneficiary)
         external
-        nonReentrant
         returns (uint256[] memory unlockTimeInSec_)
     {
         if (_subjects.length != _amounts.length) {
@@ -324,7 +319,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         uint256 _depositAmount,
         uint256 _minReturnAmountAfterFee,
         uint256 _lockPeriodInSec
-    ) external onlyValidLockPeriod(_lockPeriodInSec) nonReentrant returns (uint256 amount_, uint256 unlockTimeInSec_) {
+    ) external onlyValidLockPeriod(_lockPeriodInSec) returns (uint256 amount_, uint256 unlockTimeInSec_) {
         return _buyAndLock(_subject, _depositAmount, _minReturnAmountAfterFee, _lockPeriodInSec, msg.sender);
     }
 
@@ -344,7 +339,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         uint256 _minReturnAmountAfterFee,
         uint256 _lockPeriodInSec,
         address _beneficiary
-    ) external onlyValidLockPeriod(_lockPeriodInSec) nonReentrant returns (uint256 amount_, uint256 unlockTimeInSec_) {
+    ) external onlyValidLockPeriod(_lockPeriodInSec) returns (uint256 amount_, uint256 unlockTimeInSec_) {
         return _buyAndLock(_subject, _depositAmount, _minReturnAmountAfterFee, _lockPeriodInSec, _beneficiary);
     }
 
@@ -365,7 +360,6 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
     )
         external
         onlyValidLockPeriod(_lockPeriodsInSec)
-        nonReentrant
         returns (uint256[] memory amounts_, uint256 unlockTimeInSec_)
     {
         if (_subjects.length != _depositAmounts.length || _subjects.length != _minReturnAmountsAfterFee.length) {
@@ -399,7 +393,6 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
     )
         external
         onlyValidLockPeriod(_lockPeriodsInSec)
-        nonReentrant
         returns (uint256[] memory amounts_, uint256 unlockTimeInSec_)
     {
         if (_subjects.length != _depositAmounts.length || _subjects.length != _minReturnAmountsAfterFee.length) {
@@ -422,7 +415,6 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
      */
     function withdraw(address _subject, uint256[] memory _indexes)
         external
-        nonReentrant
         returns (uint256 totalAmount_)
     {
         address subjectTokenAddress;
@@ -446,7 +438,6 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
     function extendLock(address _subject, uint256[] memory _indexes, uint256 _lockPeriodInSec)
         external
         onlyValidLockPeriod(_lockPeriodInSec)
-        nonReentrant
         returns (uint256 totalAmount_, uint256 unlockTimeInSec_)
     {
         address subjectToken;
@@ -469,7 +460,6 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
     function extendLockFor(address _subject, uint256[] memory _indexes, uint256 _lockPeriodInSec, address _beneficiary)
         external
         onlyValidLockPeriod(_lockPeriodInSec)
-        nonReentrant
         returns (uint256 totalAmount_, uint256 unlockTimeInSec_)
     {
         address subjectToken;
