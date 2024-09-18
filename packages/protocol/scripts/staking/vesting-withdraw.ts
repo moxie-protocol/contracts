@@ -9,7 +9,7 @@ const vestingBuyAndLock = async () => {
  const subject = "0x2f51A3A2ed6589649B9D55d50c5D8a41f06b7Cf6"
  // SHOULD APPROVE THE TOKEN LOCK WALLET TO SPEND THE MOXIE TOKENS
  // console.log(await tokenLockWallet.connect(owner).approveProtocol())
- const calldata = getWithdrawCalldata(subject, ["2"])
+ const calldata = getWithdrawCalldata(subject, ["30"]);
 
  // HERE we're trying to evoke the withdraw function from the tokenLockWallet contract(fallback method)
  console.log(await owner.sendTransaction({
