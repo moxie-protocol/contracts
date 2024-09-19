@@ -12,3 +12,14 @@
 9. npx hardhat ignition deploy ignition/modules/8_TransferOwnership.ts --network base-sepolia --deployment-id testnet
 10. npx hardhat ignition deploy ignition/modules/9_Staking.ts --network base-sepolia --deployment-id testnet
 11. npx hardhat ignition verify testnet --network base-sepolia
+
+
+
+
+Wiping - to remove old deployments from journal
+npx hardhat ignition wipe testnet Staking#stakingInAllowList
+npx hardhat ignition wipe testnet Staking#stakingInstance
+npx hardhat ignition wipe testnet Staking#stakingProxy
+npx hardhat ignition wipe testnet Staking#initializeStakingMasterCopy
+npx hardhat ignition wipe testnet Staking#encodeFunctionCall(Staking#Staking.initialize)   
+npx hardhat ignition wipe testnet Staking#Staking   
