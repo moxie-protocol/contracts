@@ -21,7 +21,7 @@
   "ProtocolContractsProxy#moxieBondingCurveProxy": "0x56147e70A57012ade3003fe93a394BFC35d747e3",
   "ProtocolContractsProxy#moxieBondingCurveInstance": "0x56147e70A57012ade3003fe93a394BFC35d747e3",
   "ProtocolContractsProxy#moxieBondingCurveProxyAdmin": "0x73eB398583548ac0278656EF6c3805389fF46ccf",
-  "Staking#Staking": "0xE1aa8017B37817b52420E37349DBfF2565d3c11A",
-  "Staking#stakingProxy": "0x0D12413Bac7545640d7e714BB0F564fFeD1Da620",
-  "Staking#stakingInstance": "0x0D12413Bac7545640d7e714BB0F564fFeD1Da620"
+  "Staking#Staking": "0x7f5D862C491523f034Ae1fC4D709d672F936628D",
+  "Staking#stakingProxy": "0xf55bdC4c6820Ce670185edE0f3F4FB3aDc972266",
+  "Staking#stakingInstance": "0xf55bdC4c6820Ce670185edE0f3F4FB3aDc972266"
 }
