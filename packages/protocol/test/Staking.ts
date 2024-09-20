@@ -395,14 +395,21 @@ describe("Staking", () => {
   describe("depositAndLock", () => {
 
     it("should deposit and lock tokens", async () => {
-      const { staking, buyer, subject, subjectToken, lockTime } =
-        await loadFixture(deploy);
+      const {
+        staking,
+        buyer,
+        subject,
+        subjectToken,
+        lockTime,
+        stakingAddress,
+      } = await loadFixture(deploy);
       const fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
 
       const block = await hre.ethers.provider.getBlock('latest');
 
       const expectedUnlockTime = block!.timestamp + lockTime + 1;
+      const balanceBefore = await subjectToken.balanceOf(stakingAddress);
       await expect(
         staking.connect(buyer).depositAndLock(subject, fanTokenBalance, lockTime),
       )
@@ -417,25 +424,27 @@ describe("Staking", () => {
           lockTime,
           false
         );
-
+      const balanceAfter = await subjectToken.balanceOf(stakingAddress);
       const lockInfo = await staking.locks(0);
-
+      
       expect(lockInfo.user).to.eq(buyer.address);
       expect(lockInfo.lockPeriodInSec).to.eq(lockTime);
       expect(lockInfo.amount).to.eq(fanTokenBalance);
       expect(lockInfo.subject).to.eq(subject.address);
       expect(lockInfo.subjectToken).to.eq(await subjectToken.getAddress());
       expect(lockInfo.unlockTimeInSec).to.eq(expectedUnlockTime);
+
+      expect(balanceAfter-balanceBefore).to.eq(fanTokenBalance);
     });
 
     it("should allow multiple deposits", async () => {
-      const { staking, buyer, subject, subjectToken, lockTime } =
+      const { staking, buyer, subject, subjectToken, lockTime, stakingAddress } =
         await loadFixture(deploy);
       const fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       let block = await hre.ethers.provider.getBlock('latest');
       let expectedUnlockTime = block!.timestamp + lockTime + 1;
-
+      const balanceBefore = await subjectToken.balanceOf(stakingAddress);
       const halfBalance = BigInt(fanTokenBalance) / BigInt(2);
       await expect(staking.connect(buyer).depositAndLock(subject, halfBalance, lockTime))
         .to.emit(staking, "Lock")
@@ -464,6 +473,9 @@ describe("Staking", () => {
           lockTime,
           false
         );
+      const balanceAfter = await subjectToken.balanceOf(stakingAddress);
+
+      expect(balanceAfter - balanceBefore).to.eq(2n * halfBalance);
     });
 
     it("should revert if amount is zero", async () => {
@@ -530,13 +542,13 @@ describe("Staking", () => {
   describe("depositAndLockFor", () => {
 
     it("should deposit and lock tokens for a beneficiary", async () => {
-      const { staking, buyer, subject, subjectToken, lockTime, owner } =
+      const { staking, buyer, subject, subjectToken, lockTime, owner,stakingAddress } =
         await loadFixture(deploy);
       const fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
 
       const block = await hre.ethers.provider.getBlock('latest');
-
+      const balanceBefore = await subjectToken.balanceOf(stakingAddress);
       const expectedUnlockTime = block!.timestamp + lockTime + 1;
       await expect(
         staking.connect(buyer).depositAndLockFor(subject, fanTokenBalance, lockTime, owner.address),
@@ -561,16 +573,27 @@ describe("Staking", () => {
       expect(lockInfo.subject).to.eq(subject.address);
       expect(lockInfo.subjectToken).to.eq(await subjectToken.getAddress());
       expect(lockInfo.unlockTimeInSec).to.eq(expectedUnlockTime);
+      const balanceAfter = await subjectToken.balanceOf(stakingAddress);
+
+      expect(balanceAfter - balanceBefore).to.eq(fanTokenBalance);
     });
 
     it("should allow multiple deposits for a beneficiary", async () => {
-      const { staking, buyer, subject, subjectToken, lockTime, owner } =
-        await loadFixture(deploy);
+      const {
+        staking,
+        buyer,
+        subject,
+        subjectToken,
+        lockTime,
+        owner,
+        stakingAddress,
+      } = await loadFixture(deploy);
       const fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
       let block = await hre.ethers.provider.getBlock('latest');
       let expectedUnlockTime = block!.timestamp + lockTime + 1;
 
+      const balanceBefore = await subjectToken.balanceOf(stakingAddress);
       const halfBalance = BigInt(fanTokenBalance) / BigInt(2);
       await expect(staking.connect(buyer).depositAndLockFor(subject, halfBalance, lockTime, owner.address))
         .to.emit(staking, "Lock")
@@ -599,6 +622,9 @@ describe("Staking", () => {
           lockTime,
           false
         );
+      const balanceAfter = await subjectToken.balanceOf(stakingAddress);
+
+      expect(balanceAfter - balanceBefore).to.eq(2n * halfBalance);
     });
 
     it("should revert if amount is zero", async () => {
@@ -665,8 +691,16 @@ describe("Staking", () => {
 
   describe("depositAndLockMultiple", () => {
     it("should deposit and lock tokens", async () => {
-      const { staking, buyer, subject, subjectToken, subject2, subjectToken2, lockTime } =
-        await loadFixture(deploy);
+      const {
+        staking,
+        buyer,
+        subject,
+        subjectToken,
+        subject2,
+        subjectToken2,
+        lockTime,
+        stakingAddress,
+      } = await loadFixture(deploy);
       const fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       const fanTokenBalance2 = await subjectToken2.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
@@ -674,6 +708,9 @@ describe("Staking", () => {
 
       const block = await hre.ethers.provider.getBlock('latest');
       const expectedUnlockTime = block!.timestamp + lockTime + 1;
+
+      const balanceBefore1 = await subjectToken.balanceOf(stakingAddress);
+      const balanceBefore2 = await subjectToken2.balanceOf(stakingAddress);
       // get block number
       await expect(
         staking.connect(buyer).depositAndLockMultiple([subject, subject2], [fanTokenBalance, fanTokenBalance2], lockTime),
@@ -714,6 +751,12 @@ describe("Staking", () => {
       expect(lockInfo.amount).to.eq(fanTokenBalance2);
       expect(lockInfo.subject).to.eq(subject2.address);
       expect(lockInfo.subjectToken).to.eq(await subjectToken2.getAddress());
+
+      const balanceAfter1 = await subjectToken.balanceOf(stakingAddress);
+      const balanceAfter2 = await subjectToken2.balanceOf(stakingAddress);
+
+      expect(balanceAfter2 - balanceBefore2).to.eq(fanTokenBalance2);
+      expect(balanceAfter1 - balanceBefore1).to.eq(fanTokenBalance);
 
     });
 
@@ -800,7 +843,7 @@ describe("Staking", () => {
 
   describe("depositAndLockMultipleFor", () => {
     it("should deposit and lock tokens", async () => {
-      const { staking, buyer, subject, subjectToken, subject2, subjectToken2, lockTime, owner } =
+      const { staking, buyer, subject, subjectToken, subject2, subjectToken2, lockTime, owner,stakingAddress } =
         await loadFixture(deploy);
       const fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       const fanTokenBalance2 = await subjectToken2.balanceOf(buyer.address);
@@ -809,6 +852,9 @@ describe("Staking", () => {
 
       const block = await hre.ethers.provider.getBlock('latest');
       const expectedUnlockTime = block!.timestamp + lockTime + 1;
+
+      const balanceBefore1 = await subjectToken.balanceOf(stakingAddress);
+      const balanceBefore2 = await subjectToken2.balanceOf(stakingAddress);
       await expect(
         staking.connect(buyer).depositAndLockMultipleFor([subject, subject2], [fanTokenBalance, fanTokenBalance2], lockTime, owner.address),
       )
@@ -849,6 +895,11 @@ describe("Staking", () => {
       expect(lockInfo.subject).to.eq(subject2.address);
       expect(lockInfo.subjectToken).to.eq(await subjectToken2.getAddress());
 
+      const balanceAfter1 = await subjectToken.balanceOf(stakingAddress);
+      const balanceAfter2 = await subjectToken2.balanceOf(stakingAddress);
+
+      expect(balanceAfter2 - balanceBefore2).to.eq(fanTokenBalance2);
+      expect(balanceAfter1 - balanceBefore1).to.eq(fanTokenBalance);
     });
 
     it("should revert input passed are of incorrect length", async () => {
@@ -952,6 +1003,8 @@ describe("Staking", () => {
       const block = await hre.ethers.provider.getBlock('latest');
 
       const estimatedUnlockTime = block!.timestamp + lockTime + 1;
+
+      const balanceBefore = await subjectToken.balanceOf(stakingAddress);
       await expect(
         staking.connect(owner).buyAndLock(subject.address, estimatedBuyAmount.moxieAmount_, 0, lockTime),
       )
@@ -973,6 +1026,9 @@ describe("Staking", () => {
       expect(lockInfo.amount).to.eq(amt);
       expect(lockInfo.subject).to.eq(subject.address);
       expect(lockInfo.subjectToken).to.eq(await subjectToken.getAddress());
+
+      const balanceAfter = await subjectToken.balanceOf(stakingAddress);  
+      expect(balanceAfter - balanceBefore).to.eq(amt);
     });
 
     it("should revert with InvalidLockPeriod ", async () => {
@@ -1082,10 +1138,9 @@ describe("Staking", () => {
         lockTime,
         owner,
         moxieToken,
-        stakingAddress,
         moxieBondingCurve,
-        buyer
-
+        buyer,
+        stakingAddress
       } = await loadFixture(deploy);
       const amt = (10e18).toString();
 
@@ -1094,6 +1149,7 @@ describe("Staking", () => {
 
       const block = await hre.ethers.provider.getBlock('latest');
 
+      const balanceBefore = await subjectToken.balanceOf(stakingAddress);
       const estimatedUnlockTime = block!.timestamp + lockTime + 1;
       await expect(
         staking.connect(owner).buyAndLockFor(subject.address, estimatedBuyAmount.moxieAmount_, 0, lockTime, buyer.address),
@@ -1116,6 +1172,9 @@ describe("Staking", () => {
       expect(lockInfo.amount).to.eq(amt);
       expect(lockInfo.subject).to.eq(subject.address);
       expect(lockInfo.subjectToken).to.eq(await subjectToken.getAddress());
+
+      const balanceAfter = await subjectToken.balanceOf(stakingAddress);
+      expect(balanceAfter - balanceBefore).to.eq(amt);
     });
 
     it("should revert with InvalidLockPeriod ", async () => {
@@ -1265,9 +1324,9 @@ describe("Staking", () => {
         lockTime,
         owner,
         moxieToken,
-        moxieBondingCurve
+        moxieBondingCurve,
+        stakingAddress
       } = await loadFixture(deploy);
-      const stakingAddress = await staking.getAddress();
 
       const amt = (10e18).toString();
 
@@ -1278,6 +1337,9 @@ describe("Staking", () => {
 
       const block = await hre.ethers.provider.getBlock('latest');
       const estimatedUnlockTime = block!.timestamp + lockTime + 1;
+
+      const balanceBefore1 = await subjectToken.balanceOf(stakingAddress);
+      const balanceBefore2 = await subjectToken2.balanceOf(stakingAddress);
       await expect(
         staking.connect(owner).buyAndLockMultiple([subject, subject2], [estimatedBuyAmountSubject1.moxieAmount_, estimatedBuyAmountSubject2.moxieAmount_], [0, 0], lockTime),
       )
@@ -1318,6 +1380,12 @@ describe("Staking", () => {
       expect(lockInfo2.user).to.eq(owner.address);
       expect(lockInfo2.unlockTimeInSec).to.eq(estimatedUnlockTime);
       expect(lockInfo2.lockPeriodInSec).to.eq(lockTime);
+
+      const balanceAfter1 = await subjectToken.balanceOf(stakingAddress);
+      const balanceAfter2 = await subjectToken2.balanceOf(stakingAddress);
+
+      expect(balanceAfter1 - balanceBefore1).to.eq(amt);
+      expect(balanceAfter2 - balanceBefore2).to.eq(amt);
 
     });
 
@@ -1463,9 +1531,9 @@ describe("Staking", () => {
         lockTime,
         owner,
         moxieToken,
-        moxieBondingCurve
+        moxieBondingCurve,
+        stakingAddress
       } = await loadFixture(deploy);
-      const stakingAddress = await staking.getAddress();
 
       const amt = (10e18).toString();
 
@@ -1474,6 +1542,8 @@ describe("Staking", () => {
 
       await moxieToken.connect(owner).approve(stakingAddress, estimatedBuyAmountSubject1.moxieAmount_ + estimatedBuyAmountSubject2.moxieAmount_);
 
+      const balanceBefore1 = await subjectToken.balanceOf(stakingAddress);
+      const balanceBefore2 = await subjectToken2.balanceOf(stakingAddress);
       const block = await hre.ethers.provider.getBlock('latest');
       const estimatedUnlockTime = block!.timestamp + lockTime + 1;
       await expect(
@@ -1516,6 +1586,12 @@ describe("Staking", () => {
       expect(lockInfo2.user).to.eq(buyer.address);
       expect(lockInfo2.unlockTimeInSec).to.eq(estimatedUnlockTime);
       expect(lockInfo2.lockPeriodInSec).to.eq(lockTime);
+
+      const balanceAfter1 = await subjectToken.balanceOf(stakingAddress);
+      const balanceAfter2 = await subjectToken2.balanceOf(stakingAddress);
+
+      expect(balanceAfter1 - balanceBefore1).to.eq(amt);
+      expect(balanceAfter2 - balanceBefore2).to.eq(amt);
 
     });
 
@@ -1616,7 +1692,7 @@ describe("Staking", () => {
   describe("withdraw", () => {
 
     it("should withdraw multiple locks", async () => {
-      const { staking, buyer, subject, subjectToken, lockTime } =
+      const { staking, buyer, subject, subjectToken, lockTime,stakingAddress } =
         await loadFixture(deploy);
       let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
@@ -1628,6 +1704,8 @@ describe("Staking", () => {
           .connect(buyer)
           .depositAndLock(subject, depositAmount.toString(), lockTime);
       }
+
+      const stakingBalance = await subjectToken.balanceOf(stakingAddress)
       const balanceAfterDeposit = await subjectToken.balanceOf(buyer.address);
       let lastLockInfo = await staking.locks(4);
       // move time to unlock time
@@ -1643,9 +1721,11 @@ describe("Staking", () => {
         );
 
       const balanceAfterWithdraw = await subjectToken.balanceOf(buyer.address);
-
+      const stakingBalanceAfterWithdraw = await subjectToken.balanceOf(stakingAddress);
       const totalDepositAmount = depositAmount * 5n;
       expect(balanceAfterWithdraw).to.eq(BigInt(balanceAfterDeposit) + BigInt(totalDepositAmount));
+
+      expect(stakingBalanceAfterWithdraw).to.eq(BigInt(stakingBalance) - BigInt(totalDepositAmount));
 
     });
 
