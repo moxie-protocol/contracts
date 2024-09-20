@@ -10,7 +10,7 @@ const vestingDepositAndLock = async () => {
     TOKEN_LOCK_WALLET,
   );
   const subject = "0x2f51A3A2ed6589649B9D55d50c5D8a41f06b7Cf6";
-  const amount = "3479005757600083068";
+  const amount = "3451562833846412142";
   const lockPeriod = 60 * 2;
   console.log(`Buying ${amount} moxie and locking for ${lockPeriod} seconds`);
   // SHOULD APPROVE THE TOKEN LOCK WALLET TO SPEND SUBJECT TOKEN, ONE TIME

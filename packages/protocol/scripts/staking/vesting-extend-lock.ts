@@ -8,7 +8,7 @@ const extendLock = async () => {
  const subject = "0x2f51A3A2ed6589649B9D55d50c5D8a41f06b7Cf6"
  const lockPeriod = 60 * 2
  console.log(`extending lock`)
- const calldata = getExtendLockCalldata(subject, ["29"], lockPeriod.toString());
+ const calldata = getExtendLockCalldata(subject, ["0","1"], lockPeriod.toString());
 
  // HERE we're trying to evoke the depositAndLock function from the tokenLockWallet contract(fallback method)
  console.log(await owner.sendTransaction({
