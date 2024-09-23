@@ -257,6 +257,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         uint256 _lockPeriodInSec
     )
         external
+        whenNotPaused
         onlyValidLockPeriod(_lockPeriodInSec)
         returns (uint256 unlockTimeInSec_)
     {
@@ -283,6 +284,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         address _beneficiary
     )
         external
+        whenNotPaused
         onlyValidLockPeriod(_lockPeriodInSec)
         returns (uint256 unlockTimeInSec_)
     {
@@ -307,6 +309,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         uint256 _lockPeriodInSec
     )
         external
+        whenNotPaused
         onlyValidLockPeriod(_lockPeriodInSec)
         returns (uint256[] memory unlockTimeInSec_)
     {
@@ -341,6 +344,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         address _beneficiary
     )
         external
+        whenNotPaused
         onlyValidLockPeriod(_lockPeriodInSec)
         returns (uint256[] memory unlockTimeInSec_)
     {
@@ -376,6 +380,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         uint256 _lockPeriodInSec
     )
         external
+        whenNotPaused
         onlyValidLockPeriod(_lockPeriodInSec)
         returns (uint256 amount_, uint256 unlockTimeInSec_)
     {
@@ -414,6 +419,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         address _beneficiary
     )
         external
+        whenNotPaused
         onlyValidLockPeriod(_lockPeriodInSec)
         returns (uint256 amount_, uint256 unlockTimeInSec_)
     {
@@ -449,6 +455,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         uint256 _lockPeriodInSec
     )
         external
+        whenNotPaused
         onlyValidLockPeriod(_lockPeriodInSec)
         returns (uint256[] memory amounts_, uint256 unlockTimeInSec_)
     {
@@ -509,6 +516,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         address _beneficiary
     )
         external
+        whenNotPaused
         onlyValidLockPeriod(_lockPeriodInSec)
         returns (uint256[] memory amounts_, uint256 unlockTimeInSec_)
     {
@@ -559,7 +567,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
     function withdraw(
         address _subject,
         uint256[] memory _indexes
-    ) external returns (uint256 totalAmount_) {
+    ) external whenNotPaused returns (uint256 totalAmount_) {
         address subjectTokenAddress;
 
         (subjectTokenAddress, totalAmount_) = _extractExpiredAndDeleteLocks(
@@ -593,6 +601,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         uint256 _lockPeriodInSec
     )
         external
+        whenNotPaused
         onlyValidLockPeriod(_lockPeriodInSec)
         returns (uint256 totalAmount_, uint256 unlockTimeInSec_)
     {
@@ -635,6 +644,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         address _beneficiary
     )
         external
+        whenNotPaused
         onlyValidLockPeriod(_lockPeriodInSec)
         returns (uint256 totalAmount_, uint256 unlockTimeInSec_)
     {
