@@ -50,6 +50,7 @@ describe("Staking", () => {
       subject2,
       stakingAdmin,
       changeLockRole,
+      pauseRole,
       ...otherAccounts
     ] = await ethers.getSigners();
     const {
@@ -108,7 +109,9 @@ describe("Staking", () => {
       stakingAdmin.address,
     )
     await staking.connect(stakingAdmin).grantRole(await staking.CHANGE_LOCK_DURATION(), changeLockRole.address);
-
+    await staking
+      .connect(stakingAdmin)
+      .grantRole(await staking.PAUSE_ROLE(), pauseRole.address);
     await staking.connect(changeLockRole).setLockPeriod(lockTime, true)
 
     const stakingAddress = await staking.getAddress();
@@ -288,7 +291,8 @@ describe("Staking", () => {
       subject2,
       stakingAdmin,
       changeLockRole,
-      stakingAddress
+      stakingAddress,
+      pauseRole
     };
   };
 
@@ -426,7 +430,7 @@ describe("Staking", () => {
         );
       const balanceAfter = await subjectToken.balanceOf(stakingAddress);
       const lockInfo = await staking.locks(0);
-      
+
       expect(lockInfo.user).to.eq(buyer.address);
       expect(lockInfo.lockPeriodInSec).to.eq(lockTime);
       expect(lockInfo.amount).to.eq(fanTokenBalance);
@@ -434,7 +438,7 @@ describe("Staking", () => {
       expect(lockInfo.subjectToken).to.eq(await subjectToken.getAddress());
       expect(lockInfo.unlockTimeInSec).to.eq(expectedUnlockTime);
 
-      expect(balanceAfter-balanceBefore).to.eq(fanTokenBalance);
+      expect(balanceAfter - balanceBefore).to.eq(fanTokenBalance);
     });
 
     it("should allow multiple deposits", async () => {
@@ -537,12 +541,24 @@ describe("Staking", () => {
       await expect(staking.connect(buyer).depositAndLock(subject, 1, randomLockTime))
         .to.be.revertedWithCustomError(staking, "Staking_InvalidLockPeriod");
     });
+
+    it("should work with paused & unpause", async () => {
+      const { staking, buyer, subject, subjectToken, lockTime, stakingAdmin, owner, pauseRole } =
+        await loadFixture(deploy);
+      await staking.connect(pauseRole).pause();
+      await expect(staking.connect(buyer).depositAndLock(subject, 1, lockTime))
+        .to.be.revertedWithCustomError(staking, "EnforcedPause");
+      await staking.connect(pauseRole).unpause();
+
+      await expect(staking.connect(buyer).depositAndLock(subject, 1, lockTime))
+        .not.to.be.revertedWithCustomError(staking, "EnforcedPause");
+    })
   });
 
   describe("depositAndLockFor", () => {
 
     it("should deposit and lock tokens for a beneficiary", async () => {
-      const { staking, buyer, subject, subjectToken, lockTime, owner,stakingAddress } =
+      const { staking, buyer, subject, subjectToken, lockTime, owner, stakingAddress } =
         await loadFixture(deploy);
       const fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
@@ -686,6 +702,17 @@ describe("Staking", () => {
       await expect(staking.connect(buyer).depositAndLockFor(subject, 1, randomLockTime, owner.address))
         .to.be.revertedWithCustomError(staking, "Staking_InvalidLockPeriod");
     });
+
+    it("should revert if paused & unpause", async () => {
+      const { staking, buyer, subject, subjectToken, lockTime, stakingAdmin, owner, pauseRole } =
+        await loadFixture(deploy);
+      let tx = await staking.connect(pauseRole).pause();
+      await expect(staking.connect(buyer).depositAndLockFor(subject, 1, lockTime,owner.address))
+        .to.be.revertedWithCustomError(staking, "EnforcedPause");
+      tx = await staking.connect(pauseRole).unpause();
+      await expect(staking.connect(buyer).depositAndLockFor(subject, 1, lockTime, owner.address))
+        .not.to.be.revertedWithCustomError(staking, "EnforcedPause");
+    })
 
   });
 
@@ -837,13 +864,25 @@ describe("Staking", () => {
         .to.be.revertedWithCustomError(staking, "Staking_InvalidLockPeriod");
     });
 
+    it("should revert if paused & unpause", async () => {
+      const { staking, buyer, subject, subjectToken, lockTime, stakingAdmin, owner, pauseRole } =
+        await loadFixture(deploy);
+      let tx = await staking.connect(pauseRole).pause();
+      await expect(staking.connect(buyer).depositAndLockMultiple([subject], [1], lockTime))
+        .to.be.revertedWithCustomError(staking, "EnforcedPause");
+      tx = await staking.connect(pauseRole).unpause();
+      await expect(staking.connect(buyer).depositAndLockMultiple([subject], [1], lockTime))
+        .not.to.be.revertedWithCustomError(staking, "EnforcedPause");
+    })
+
+
 
   });
 
 
   describe("depositAndLockMultipleFor", () => {
     it("should deposit and lock tokens", async () => {
-      const { staking, buyer, subject, subjectToken, subject2, subjectToken2, lockTime, owner,stakingAddress } =
+      const { staking, buyer, subject, subjectToken, subject2, subjectToken2, lockTime, owner, stakingAddress } =
         await loadFixture(deploy);
       const fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       const fanTokenBalance2 = await subjectToken2.balanceOf(buyer.address);
@@ -971,14 +1010,26 @@ describe("Staking", () => {
 
 
     it("should revert if lock period is not allowed", async () => {
-      const { staking, buyer, subject } =
+      const { staking, buyer, subject ,owner} =
         await loadFixture(deploy);
 
       const randomLockTime = 100;
-      await expect(staking.connect(buyer).depositAndLockMultiple([subject], [1], randomLockTime))
+      await expect(staking.connect(buyer).depositAndLockMultipleFor([subject], [1], randomLockTime,owner.address))
         .to.be.revertedWithCustomError(staking, "Staking_InvalidLockPeriod");
     });
 
+
+    it("should work if paused & unpaused", async () => {
+      const { staking, buyer, subject, subjectToken, lockTime, stakingAdmin, owner, pauseRole } =
+        await loadFixture(deploy);
+      let tx = await staking.connect(pauseRole).pause();
+      await expect(staking.connect(buyer).depositAndLockMultipleFor([subject], [1], lockTime, owner.address))
+        .to.be.revertedWithCustomError(staking, "EnforcedPause");
+      tx = await staking.connect(pauseRole).unpause();
+      await expect(staking.connect(buyer).depositAndLockMultipleFor([subject], [1], lockTime, owner.address))
+        .not.to.be.revertedWithCustomError(staking, "EnforcedPause");
+      
+    })
   });
 
   describe("buyAndLock", () => {
@@ -1027,7 +1078,7 @@ describe("Staking", () => {
       expect(lockInfo.subject).to.eq(subject.address);
       expect(lockInfo.subjectToken).to.eq(await subjectToken.getAddress());
 
-      const balanceAfter = await subjectToken.balanceOf(stakingAddress);  
+      const balanceAfter = await subjectToken.balanceOf(stakingAddress);
       expect(balanceAfter - balanceBefore).to.eq(amt);
     });
 
@@ -1125,6 +1176,21 @@ describe("Staking", () => {
       )
         .to.revertedWithCustomError(moxieToken, "ERC20InsufficientBalance");
     });
+
+    it("should work if paused & unpaused", async () => {
+      const { staking, buyer, subject, moxieToken, lockTime, stakingAdmin, owner, pauseRole } =
+        await loadFixture(deploy);
+      let tx = await staking.connect(pauseRole).pause();
+      const amt = await moxieToken.balanceOf(buyer.address);
+
+      const depositAmount = BigInt(amt) + BigInt("1");
+      await expect(staking.connect(buyer).buyAndLock(subject.address, depositAmount, 0, lockTime))
+        .to.be.revertedWithCustomError(staking, "EnforcedPause");
+
+      tx = await staking.connect(pauseRole).unpause();
+      await expect(staking.connect(buyer).buyAndLock(subject.address, depositAmount, 0, lockTime))
+        .not.to.be.revertedWithCustomError(staking, "EnforcedPause");
+    })
 
   });
 
@@ -1275,6 +1341,20 @@ describe("Staking", () => {
       )
         .to.revertedWithCustomError(moxieToken, "ERC20InsufficientBalance");
     });
+
+    it("should work if paused & unpaused", async () => {
+      const { staking, buyer, subject, moxieToken, lockTime, stakingAdmin, owner, pauseRole } =
+        await loadFixture(deploy);
+      let tx = await staking.connect(pauseRole).pause();
+      const amt = await moxieToken.balanceOf(buyer.address);
+
+      const depositAmount = BigInt(amt) + BigInt("1");
+      await expect(staking.connect(buyer).buyAndLockFor(subject.address, depositAmount, 0, lockTime, owner.address))
+        .to.be.revertedWithCustomError(staking, "EnforcedPause");
+      tx = await staking.connect(pauseRole).unpause();
+      await expect(staking.connect(buyer).buyAndLockFor(subject.address, depositAmount, 0, lockTime, owner.address))
+        .not.to.be.revertedWithCustomError(staking, "EnforcedPause");
+    })
 
   });
 
@@ -1482,6 +1562,18 @@ describe("Staking", () => {
       ).to.revertedWithCustomError(moxieToken, "ERC20InsufficientBalance");
 
     });
+
+    it("should work if paused & unpaused", async () => {
+      const { staking, buyer, subject,subject2, moxieToken, lockTime, stakingAdmin, owner, pauseRole } =
+        await loadFixture(deploy);
+      let tx = await staking.connect(pauseRole).pause();
+      const amt = await moxieToken.balanceOf(buyer.address);
+      await expect(staking.connect(buyer).buyAndLockMultiple([ethers.ZeroAddress, subject2], [BigInt(1), BigInt(1)], [0, 0], lockTime))
+        .to.be.revertedWithCustomError(staking, "EnforcedPause");
+      tx = await staking.connect(pauseRole).unpause();
+      await expect(staking.connect(buyer).buyAndLockMultiple([ethers.ZeroAddress, subject2], [BigInt(1), BigInt(1)], [0, 0], lockTime))
+        .not.to.be.revertedWithCustomError(staking, "EnforcedPause");
+    })
   });
 
   describe("buyAndLockMultipleFor", () => {
@@ -1687,12 +1779,25 @@ describe("Staking", () => {
       ).to.revertedWithCustomError(moxieToken, "ERC20InsufficientBalance");
 
     });
+
+    it("should work if paused & unpaused", async () => {
+      const { staking, buyer, subject, subject2, moxieToken, lockTime, stakingAdmin, owner, pauseRole } =
+        await loadFixture(deploy);
+      let tx = await staking.connect(pauseRole).pause();
+      const amt = await moxieToken.balanceOf(buyer.address);
+
+      await expect(staking.connect(buyer).buyAndLockMultipleFor([ethers.ZeroAddress, subject2], [BigInt(1), BigInt(1)], [0, 0], lockTime, buyer.address))
+        .to.be.revertedWithCustomError(staking, "EnforcedPause");
+      tx = await staking.connect(pauseRole).unpause();
+      await expect(staking.connect(buyer).buyAndLockMultipleFor([ethers.ZeroAddress, subject2], [BigInt(1), BigInt(1)], [0, 0], lockTime, buyer.address))
+        .not.to.be.revertedWithCustomError(staking, "EnforcedPause");
+    })
   });
 
   describe("withdraw", () => {
 
     it("should withdraw multiple locks", async () => {
-      const { staking, buyer, subject, subjectToken, lockTime,stakingAddress } =
+      const { staking, buyer, subject, subjectToken, lockTime, stakingAddress } =
         await loadFixture(deploy);
       let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
       await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
@@ -1841,6 +1946,17 @@ describe("Staking", () => {
         staking.connect(subject).withdraw(subject.address, [0]),
       ).to.be.revertedWithCustomError(staking, "Staking_NotOwner");
     });
+
+    it("should work if paused & unpaused", async () => {
+      const { staking, buyer, subject, subject2, moxieToken, lockTime, stakingAdmin, owner, pauseRole } =
+        await loadFixture(deploy);
+      let tx = await staking.connect(pauseRole).pause();
+      await expect(staking.connect(buyer).withdraw(subject.address, [0]))
+        .to.be.revertedWithCustomError(staking, "EnforcedPause");
+      tx = await staking.connect(pauseRole).unpause();
+      await expect(staking.connect(buyer).withdraw(subject.address, [0]))
+        .not.to.be.revertedWithCustomError(staking, "EnforcedPause");
+    })
   });
 
   describe("getTotalStakedAmount", () => {
@@ -2155,4 +2271,5 @@ describe("Staking", () => {
       expect(lockCount).to.eq(5);
     });
   });
+  
 });
