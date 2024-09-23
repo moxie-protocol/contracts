@@ -72,7 +72,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
 
     /**
      * @dev Internal function to validate initialization input.
-     * @param _tokenManager  Address of the token manager.
+     * @param _tokenManager Address of the token manager.
      * @param _moxieBondingCurve Address of the moxie bonding curve.
      * @param _moxieToken Address of the moxie token.
      * @param _defaultAdmin Address of the staking admin.
@@ -311,16 +311,15 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         external
         whenNotPaused
         onlyValidLockPeriod(_lockPeriodInSec)
-        returns (uint256[] memory unlockTimeInSec_)
+        returns (uint256 unlockTimeInSec_)
     {
         if (_subjects.length != _amounts.length) {
             revert Staking_InvalidInputLength();
         }
 
-        unlockTimeInSec_ = new uint256[](_subjects.length);
 
         for (uint256 i = 0; i < _subjects.length; i++) {
-            unlockTimeInSec_[i] = _depositAndLock(
+            unlockTimeInSec_  = _depositAndLock(
                 _subjects[i],
                 _amounts[i],
                 _lockPeriodInSec,
@@ -346,16 +345,14 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         external
         whenNotPaused
         onlyValidLockPeriod(_lockPeriodInSec)
-        returns (uint256[] memory unlockTimeInSec_)
+        returns (uint256 unlockTimeInSec_)
     {
         if (_subjects.length != _amounts.length) {
             revert Staking_InvalidInputLength();
         }
 
-        unlockTimeInSec_ = new uint256[](_subjects.length);
-
         for (uint256 i = 0; i < _subjects.length; i++) {
-            unlockTimeInSec_[i] = _depositAndLock(
+            unlockTimeInSec_  = _depositAndLock(
                 _subjects[i],
                 _amounts[i],
                 _lockPeriodInSec,
