@@ -426,7 +426,8 @@ describe("Staking", () => {
           fanTokenBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
       const balanceAfter = await subjectToken.balanceOf(stakingAddress);
       const lockInfo = await staking.locks(0);
@@ -460,7 +461,8 @@ describe("Staking", () => {
           halfBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
 
       block = await hre.ethers.provider.getBlock('latest');
@@ -475,7 +477,8 @@ describe("Staking", () => {
           halfBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
       const balanceAfter = await subjectToken.balanceOf(stakingAddress);
 
@@ -578,7 +581,8 @@ describe("Staking", () => {
           fanTokenBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
 
       const lockInfo = await staking.locks(0);
@@ -621,7 +625,8 @@ describe("Staking", () => {
           halfBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
 
       block = await hre.ethers.provider.getBlock('latest');
@@ -636,7 +641,8 @@ describe("Staking", () => {
           halfBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
       const balanceAfter = await subjectToken.balanceOf(stakingAddress);
 
@@ -707,7 +713,7 @@ describe("Staking", () => {
       const { staking, buyer, subject, subjectToken, lockTime, stakingAdmin, owner, pauseRole } =
         await loadFixture(deploy);
       let tx = await staking.connect(pauseRole).pause();
-      await expect(staking.connect(buyer).depositAndLockFor(subject, 1, lockTime,owner.address))
+      await expect(staking.connect(buyer).depositAndLockFor(subject, 1, lockTime, owner.address))
         .to.be.revertedWithCustomError(staking, "EnforcedPause");
       tx = await staking.connect(pauseRole).unpause();
       await expect(staking.connect(buyer).depositAndLockFor(subject, 1, lockTime, owner.address))
@@ -751,7 +757,8 @@ describe("Staking", () => {
           fanTokenBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         ).to.emit(staking, "Lock")
         .withArgs(
           buyer.address,
@@ -761,7 +768,8 @@ describe("Staking", () => {
           fanTokenBalance2,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
       let lockInfo = await staking.locks(0);
       expect(lockInfo.unlockTimeInSec).to.eq(expectedUnlockTime);
@@ -879,7 +887,6 @@ describe("Staking", () => {
 
   });
 
-
   describe("depositAndLockMultipleFor", () => {
     it("should deposit and lock tokens", async () => {
       const { staking, buyer, subject, subjectToken, subject2, subjectToken2, lockTime, owner, stakingAddress } =
@@ -906,7 +913,8 @@ describe("Staking", () => {
           fanTokenBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         ).to.emit(staking, "Lock")
         .withArgs(
           owner.address,
@@ -916,7 +924,8 @@ describe("Staking", () => {
           fanTokenBalance2,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
       let lockInfo = await staking.locks(0);
       expect(lockInfo.unlockTimeInSec).to.eq(expectedUnlockTime);
@@ -1010,11 +1019,11 @@ describe("Staking", () => {
 
 
     it("should revert if lock period is not allowed", async () => {
-      const { staking, buyer, subject ,owner} =
+      const { staking, buyer, subject, owner } =
         await loadFixture(deploy);
 
       const randomLockTime = 100;
-      await expect(staking.connect(buyer).depositAndLockMultipleFor([subject], [1], randomLockTime,owner.address))
+      await expect(staking.connect(buyer).depositAndLockMultipleFor([subject], [1], randomLockTime, owner.address))
         .to.be.revertedWithCustomError(staking, "Staking_InvalidLockPeriod");
     });
 
@@ -1028,7 +1037,7 @@ describe("Staking", () => {
       tx = await staking.connect(pauseRole).unpause();
       await expect(staking.connect(buyer).depositAndLockMultipleFor([subject], [1], lockTime, owner.address))
         .not.to.be.revertedWithCustomError(staking, "EnforcedPause");
-      
+
     })
   });
 
@@ -1068,7 +1077,8 @@ describe("Staking", () => {
           amt,
           estimatedUnlockTime,
           lockTime,
-          true
+          owner.address,
+          estimatedBuyAmount.moxieAmount_
         );
       const lockInfo = await staking.locks(0);
       expect(lockInfo.unlockTimeInSec).to.eq(estimatedUnlockTime);
@@ -1229,7 +1239,8 @@ describe("Staking", () => {
           amt,
           estimatedUnlockTime,
           lockTime,
-          true
+          owner.address,
+          estimatedBuyAmount.moxieAmount_
         );
       const lockInfo = await staking.locks(0);
       expect(lockInfo.unlockTimeInSec).to.eq(estimatedUnlockTime);
@@ -1432,7 +1443,8 @@ describe("Staking", () => {
           amt,
           estimatedUnlockTime,
           lockTime,
-          true
+          owner.address,
+          estimatedBuyAmountSubject1.moxieAmount_
         ).to.emit(staking, "Lock")
         .withArgs(
           owner.address,
@@ -1442,7 +1454,8 @@ describe("Staking", () => {
           amt,
           estimatedUnlockTime,
           lockTime,
-          true
+          owner.address,
+          estimatedBuyAmountSubject2.moxieAmount_
         );
       let lockInfo = await staking.locks(0);
       let lockInfo2 = await staking.locks(1);
@@ -1564,7 +1577,7 @@ describe("Staking", () => {
     });
 
     it("should work if paused & unpaused", async () => {
-      const { staking, buyer, subject,subject2, moxieToken, lockTime, stakingAdmin, owner, pauseRole } =
+      const { staking, buyer, subject, subject2, moxieToken, lockTime, stakingAdmin, owner, pauseRole } =
         await loadFixture(deploy);
       let tx = await staking.connect(pauseRole).pause();
       const amt = await moxieToken.balanceOf(buyer.address);
@@ -1650,7 +1663,8 @@ describe("Staking", () => {
           amt,
           estimatedUnlockTime,
           lockTime,
-          true
+          owner.address,
+          estimatedBuyAmountSubject1.moxieAmount_
         ).to.emit(staking, "Lock")
         .withArgs(
           buyer.address,
@@ -1660,7 +1674,8 @@ describe("Staking", () => {
           amt,
           estimatedUnlockTime,
           lockTime,
-          true
+          owner.address,
+          estimatedBuyAmountSubject2.moxieAmount_
         );
       let lockInfo = await staking.locks(0);
       let lockInfo2 = await staking.locks(1);
@@ -1833,6 +1848,28 @@ describe("Staking", () => {
       expect(stakingBalanceAfterWithdraw).to.eq(BigInt(stakingBalance) - BigInt(totalDepositAmount));
 
     });
+
+
+    it("should revert with duplicate indexes", async () => {
+      const { staking, buyer, subject, subjectToken, lockTime, owner } = await loadFixture(deploy);
+
+      let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
+      await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
+
+
+      const depositAmount = BigInt(1e18);
+      await staking
+        .connect(buyer)
+        .depositAndLock(subject, depositAmount.toString(), lockTime);
+
+      const lastLockInfo = await staking.locks(0);
+      // move time to unlock time
+      await time.increaseTo(lastLockInfo.unlockTimeInSec + 1n);
+      await expect(
+        staking.connect(buyer).withdraw(subject.address, [0, 0]),
+      ).to.be.revertedWithCustomError(staking, "Staking_SubjectsDoesNotMatch");
+    });
+
 
     it("should revert with EmptyIndexes", async () => {
       const { staking, owner, subject } = await loadFixture(deploy);
@@ -2122,7 +2159,8 @@ describe("Staking", () => {
           depositAmount * 5n,
           anyValue,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         )
 
       const newlockInfo = await staking.locks(5);
@@ -2133,6 +2171,25 @@ describe("Staking", () => {
       expect(newlockInfo.user).to.eq(buyer.address);
       expect(newlockInfo.unlockTimeInSec).to.eq(expectedUnlockTime);
       expect(newlockInfo.lockPeriodInSec).to.eq(lockTime);
+    });
+
+    it("should revert with duplicate indexes", async () => {
+      const { staking, buyer, subject, subjectToken, lockTime } =
+        await loadFixture(deploy);
+      let fanTokenBalance = await subjectToken.balanceOf(buyer.address);
+      await subjectToken.connect(buyer).approve(staking, fanTokenBalance);
+      const depositAmount = BigInt(1e18);
+
+      await staking
+        .connect(buyer)
+        .depositAndLock(subject, depositAmount.toString(), lockTime);
+
+      // forward time to unlock time
+      let lockInfo = await staking.locks(0);
+      await time.increaseTo(lockInfo.unlockTimeInSec + 1n);
+
+      await expect(staking.connect(buyer).extendLock(subject.address, [0, 0], lockTime))
+        .to.be.revertedWithCustomError(staking, "Staking_SubjectsDoesNotMatch")
     });
   });
 
@@ -2239,7 +2296,8 @@ describe("Staking", () => {
           depositAmount * 5n,
           anyValue,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
 
 
@@ -2271,5 +2329,5 @@ describe("Staking", () => {
       expect(lockCount).to.eq(5);
     });
   });
-  
+
 });
