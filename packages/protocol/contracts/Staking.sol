@@ -109,7 +109,7 @@ contract Staking is IStaking, SecurityModule {
      * @param _amount Amount of tokens getting deposited.
      * @param _lockPeriodInSec Lock period for the tokens.
      * @param _beneficiary Address of the beneficiary for the lock.
-     * @param _unlockTimeInSec Unlocktime of lock in secs.
+     * @param _unlockTimeInSec Unlock time of lock in secs.
      * @param _isBuy Whether the lock is created from a buy operation.
      */
     function _createLock(
@@ -207,7 +207,7 @@ contract Staking is IStaking, SecurityModule {
      * @param _subject Subject address for which tokens are being deposited.
      * @param _amount Amount of tokens being deposited.
      * @param _lockPeriodInSec Lock period for the tokens.
-     * @param _unlockTimeInSec Unlocktime of lock in secs.
+     * @param _unlockTimeInSec Unlock time of lock in secs.
      * @param _beneficiary Beneficiary of the lock. 
      */
     function _depositAndLock(
