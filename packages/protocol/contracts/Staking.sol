@@ -7,7 +7,6 @@ import {ITokenManager} from "./interfaces/ITokenManager.sol";
 import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
 import {IStaking} from "./interfaces/IStaking.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /**
  * @title Staking
