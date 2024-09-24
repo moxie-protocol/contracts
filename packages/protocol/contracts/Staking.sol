@@ -111,17 +111,19 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
      * @param _amount Amount of tokens getting deposited.
      * @param _lockPeriodInSec Lock period for the tokens.
      * @param _beneficiary Address of the beneficiary for the lock.
+     * @param _unlockTimeInSec Unlocktime of lock in secs.
      * @param _isBuy Whether the lock is created from a buy operation.
      */
     function _createLock(
         address _subject,
         uint256 _amount,
         uint256 _lockPeriodInSec,
+        uint256 _unlockTimeInSec,
         address _beneficiary,
         bool _isBuy
     )
         internal
-        returns (IERC20Extended _subjectToken, uint256 unlockTimeInSec_)
+        returns (IERC20Extended _subjectToken)
     {
         if (_isZeroAddress(_subject)) {
             revert Staking_InvalidSubject();
@@ -137,10 +139,9 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             revert Staking_InvalidSubjectToken();
         }
         uint256 _index = lockCount++;
-        unlockTimeInSec_ = block.timestamp + _lockPeriodInSec;
         LockInfo memory lockInfo = LockInfo({
             amount: _amount,
-            unlockTimeInSec: unlockTimeInSec_,
+            unlockTimeInSec: _unlockTimeInSec,
             subject: _subject,
             subjectToken: address(_subjectToken),
             user: _beneficiary,
@@ -155,7 +156,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             address(_subjectToken),
             _index,
             _amount,
-            unlockTimeInSec_,
+            _unlockTimeInSec,
             _lockPeriodInSec,
             _isBuy
         );
@@ -208,24 +209,37 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
      * @param _subject Subject address for which tokens are being deposited.
      * @param _amount Amount of tokens being deposited.
      * @param _lockPeriodInSec Lock period for the tokens.
+     * @param _unlockTimeInSec Unlocktime of lock in secs.
+     * @param _beneficiary Beneficiary of the lock. 
      */
     function _depositAndLock(
         address _subject,
         uint256 _amount,
         uint256 _lockPeriodInSec,
+        uint256 _unlockTimeInSec,
         address _beneficiary
-    ) internal returns (uint256 unlockTimeInSec_) {
+    ) internal  {
         IERC20Extended subjectToken;
-        (subjectToken, unlockTimeInSec_) = _createLock(
+        (subjectToken) = _createLock(
             _subject,
             _amount,
             _lockPeriodInSec,
+            _unlockTimeInSec,
             _beneficiary,
             false
         );
 
         // Transfer the tokens to this contract
         subjectToken.safeTransferFrom(msg.sender, address(this), _amount);
+    }
+
+    /**
+     * @notice Calculates unlock time.
+     * @param _lockPeriodInSec Lock period to set.
+     * @return unlock time in sec
+     */
+    function _getUnlockTime(uint256 _lockPeriodInSec) internal view returns(uint256) {
+        return block.timestamp + _lockPeriodInSec;
     }
 
     /**
@@ -261,10 +275,14 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         onlyValidLockPeriod(_lockPeriodInSec)
         returns (uint256 unlockTimeInSec_)
     {
-        unlockTimeInSec_ = _depositAndLock(
+
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+        _depositAndLock(
             _subject,
             _amount,
             _lockPeriodInSec,
+            unlockTimeInSec_,
             msg.sender
         );
     }
@@ -288,10 +306,14 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         onlyValidLockPeriod(_lockPeriodInSec)
         returns (uint256 unlockTimeInSec_)
     {
-        unlockTimeInSec_ = _depositAndLock(
+
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+        _depositAndLock(
             _subject,
             _amount,
             _lockPeriodInSec,
+            unlockTimeInSec_,
             _beneficiary
         );
     }
@@ -318,11 +340,14 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         }
 
 
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
         for (uint256 i = 0; i < _subjects.length; i++) {
-            unlockTimeInSec_  = _depositAndLock(
+            _depositAndLock(
                 _subjects[i],
                 _amounts[i],
                 _lockPeriodInSec,
+                unlockTimeInSec_,
                 msg.sender
             );
         }
@@ -351,11 +376,15 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             revert Staking_InvalidInputLength();
         }
 
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+
         for (uint256 i = 0; i < _subjects.length; i++) {
-            unlockTimeInSec_  = _depositAndLock(
+            _depositAndLock(
                 _subjects[i],
                 _amounts[i],
                 _lockPeriodInSec,
+                unlockTimeInSec_,
                 _beneficiary
             );
         }
@@ -389,10 +418,12 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             _minReturnAmountAfterFee
         );
 
-        (, unlockTimeInSec_) = _createLock(
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+        _createLock(
             _subject,
             amount_,
             _lockPeriodInSec,
+            unlockTimeInSec_,
             msg.sender,
             true
         );
@@ -427,10 +458,14 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             _depositAmount,
             _minReturnAmountAfterFee
         );
-        (, unlockTimeInSec_) = _createLock(
+
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+        _createLock(
             _subject,
             amount_,
             _lockPeriodInSec,
+            unlockTimeInSec_,
             _beneficiary,
             true
         );
@@ -478,16 +513,19 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         );
         moxieToken.approve(address(moxieBondingCurve), totalDepositAmount);
 
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
         for (uint256 i = 0; i < _subjects.length; i++) {
             uint256 amount = moxieBondingCurve.buyShares(
                 _subjects[i],
                 _depositAmounts[i],
                 _minReturnAmountsAfterFee[i]
             );
-            (, unlockTimeInSec_) = _createLock(
+            _createLock(
                 _subjects[i],
                 amount,
                 _lockPeriodInSec,
+                unlockTimeInSec_,
                 msg.sender,
                 true
             );
@@ -539,16 +577,20 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
 
         amounts_ = new uint256[](_subjects.length);
 
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+
         for (uint256 i = 0; i < _subjects.length; i++) {
             amounts_[i] = moxieBondingCurve.buyShares(
                 _subjects[i],
                 _depositAmounts[i],
                 _minReturnAmountsAfterFee[i]
             );
-            (, unlockTimeInSec_) = _createLock(
+            _createLock(
                 _subjects[i],
                 amounts_[i],
                 _lockPeriodInSec,
+                unlockTimeInSec_,
                 _beneficiary,
                 true
             );
@@ -614,15 +656,18 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             _indexes,
             totalAmount_
         );
-        (, uint256 unlockTimeInSec) = _createLock(
+
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+        _createLock(
             _subject,
             totalAmount_,
             _lockPeriodInSec,
+            unlockTimeInSec_,
             msg.sender,
             false
         );
 
-        unlockTimeInSec_ = unlockTimeInSec;
     }
 
     /**
@@ -657,15 +702,18 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             _indexes,
             totalAmount_
         );
-        (, uint256 unlockTimeInSec) = _createLock(
+
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+        _createLock(
             _subject,
             totalAmount_,
             _lockPeriodInSec,
+            unlockTimeInSec_,
             _beneficiary,
             false
         );
 
-        unlockTimeInSec_ = unlockTimeInSec;
     }
 
     /**
