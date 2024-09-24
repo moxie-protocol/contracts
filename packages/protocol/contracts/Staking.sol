@@ -110,7 +110,7 @@ contract Staking is IStaking, SecurityModule {
      * @param _lockPeriodInSec Lock period for the tokens.
      * @param _beneficiary Address of the beneficiary for the lock.
      * @param _unlockTimeInSec Unlock time of lock in secs.
-     * @param _isBuy Whether the lock is created from a buy operation.
+     * @param _moxieDepositAmount Amount of moxie tokens deposited for buying.
      */
     function _createLock(
         address _subject,
@@ -118,7 +118,7 @@ contract Staking is IStaking, SecurityModule {
         uint256 _lockPeriodInSec,
         uint256 _unlockTimeInSec,
         address _beneficiary,
-        bool _isBuy
+        uint256 _moxieDepositAmount
     )
         internal
         returns (IERC20Extended _subjectToken)
@@ -156,7 +156,8 @@ contract Staking is IStaking, SecurityModule {
             _amount,
             _unlockTimeInSec,
             _lockPeriodInSec,
-            _isBuy
+            _moxieDepositAmount == 0 ? address(0) : msg.sender,
+            _moxieDepositAmount
         );
     }
 
@@ -224,7 +225,7 @@ contract Staking is IStaking, SecurityModule {
             _lockPeriodInSec,
             _unlockTimeInSec,
             _beneficiary,
-            false
+            0
         );
 
         // Transfer the tokens to this contract
@@ -423,7 +424,7 @@ contract Staking is IStaking, SecurityModule {
             _lockPeriodInSec,
             unlockTimeInSec_,
             msg.sender,
-            true
+            _depositAmount
         );
     }
 
@@ -465,7 +466,7 @@ contract Staking is IStaking, SecurityModule {
             _lockPeriodInSec,
             unlockTimeInSec_,
             _beneficiary,
-            true
+            _depositAmount
         );
     }
 
@@ -525,7 +526,7 @@ contract Staking is IStaking, SecurityModule {
                 _lockPeriodInSec,
                 unlockTimeInSec_,
                 msg.sender,
-                true
+                _depositAmounts[i]
             );
             amounts_[i] = amount;
         }
@@ -590,7 +591,7 @@ contract Staking is IStaking, SecurityModule {
                 _lockPeriodInSec,
                 unlockTimeInSec_,
                 _beneficiary,
-                true
+                _depositAmounts[i]
             );
         }
     }
@@ -663,7 +664,7 @@ contract Staking is IStaking, SecurityModule {
             _lockPeriodInSec,
             unlockTimeInSec_,
             msg.sender,
-            false
+            0
         );
 
     }
@@ -709,7 +710,7 @@ contract Staking is IStaking, SecurityModule {
             _lockPeriodInSec,
             unlockTimeInSec_,
             _beneficiary,
-            false
+            0
         );
 
     }

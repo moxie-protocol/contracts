@@ -426,7 +426,8 @@ describe("Staking", () => {
           fanTokenBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
       const balanceAfter = await subjectToken.balanceOf(stakingAddress);
       const lockInfo = await staking.locks(0);
@@ -460,7 +461,8 @@ describe("Staking", () => {
           halfBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
 
       block = await hre.ethers.provider.getBlock('latest');
@@ -475,7 +477,8 @@ describe("Staking", () => {
           halfBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
       const balanceAfter = await subjectToken.balanceOf(stakingAddress);
 
@@ -578,7 +581,8 @@ describe("Staking", () => {
           fanTokenBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
 
       const lockInfo = await staking.locks(0);
@@ -621,7 +625,8 @@ describe("Staking", () => {
           halfBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
 
       block = await hre.ethers.provider.getBlock('latest');
@@ -636,7 +641,8 @@ describe("Staking", () => {
           halfBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
       const balanceAfter = await subjectToken.balanceOf(stakingAddress);
 
@@ -751,7 +757,8 @@ describe("Staking", () => {
           fanTokenBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         ).to.emit(staking, "Lock")
         .withArgs(
           buyer.address,
@@ -761,7 +768,8 @@ describe("Staking", () => {
           fanTokenBalance2,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
       let lockInfo = await staking.locks(0);
       expect(lockInfo.unlockTimeInSec).to.eq(expectedUnlockTime);
@@ -905,7 +913,8 @@ describe("Staking", () => {
           fanTokenBalance,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         ).to.emit(staking, "Lock")
         .withArgs(
           owner.address,
@@ -915,7 +924,8 @@ describe("Staking", () => {
           fanTokenBalance2,
           expectedUnlockTime,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
       let lockInfo = await staking.locks(0);
       expect(lockInfo.unlockTimeInSec).to.eq(expectedUnlockTime);
@@ -1067,7 +1077,8 @@ describe("Staking", () => {
           amt,
           estimatedUnlockTime,
           lockTime,
-          true
+          owner.address,
+          estimatedBuyAmount.moxieAmount_
         );
       const lockInfo = await staking.locks(0);
       expect(lockInfo.unlockTimeInSec).to.eq(estimatedUnlockTime);
@@ -1228,7 +1239,8 @@ describe("Staking", () => {
           amt,
           estimatedUnlockTime,
           lockTime,
-          true
+          owner.address,
+          estimatedBuyAmount.moxieAmount_
         );
       const lockInfo = await staking.locks(0);
       expect(lockInfo.unlockTimeInSec).to.eq(estimatedUnlockTime);
@@ -1431,7 +1443,8 @@ describe("Staking", () => {
           amt,
           estimatedUnlockTime,
           lockTime,
-          true
+          owner.address,
+          estimatedBuyAmountSubject1.moxieAmount_
         ).to.emit(staking, "Lock")
         .withArgs(
           owner.address,
@@ -1441,7 +1454,8 @@ describe("Staking", () => {
           amt,
           estimatedUnlockTime,
           lockTime,
-          true
+          owner.address,
+          estimatedBuyAmountSubject2.moxieAmount_
         );
       let lockInfo = await staking.locks(0);
       let lockInfo2 = await staking.locks(1);
@@ -1649,7 +1663,8 @@ describe("Staking", () => {
           amt,
           estimatedUnlockTime,
           lockTime,
-          true
+          owner.address,
+          estimatedBuyAmountSubject1.moxieAmount_
         ).to.emit(staking, "Lock")
         .withArgs(
           buyer.address,
@@ -1659,7 +1674,8 @@ describe("Staking", () => {
           amt,
           estimatedUnlockTime,
           lockTime,
-          true
+          owner.address,
+          estimatedBuyAmountSubject2.moxieAmount_
         );
       let lockInfo = await staking.locks(0);
       let lockInfo2 = await staking.locks(1);
@@ -2143,7 +2159,8 @@ describe("Staking", () => {
           depositAmount * 5n,
           anyValue,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         )
 
       const newlockInfo = await staking.locks(5);
@@ -2279,7 +2296,8 @@ describe("Staking", () => {
           depositAmount * 5n,
           anyValue,
           lockTime,
-          false
+          ethers.ZeroAddress,
+          0
         );
 
 
