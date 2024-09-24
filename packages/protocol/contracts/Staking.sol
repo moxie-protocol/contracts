@@ -7,7 +7,6 @@ import {ITokenManager} from "./interfaces/ITokenManager.sol";
 import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
 import {IStaking} from "./interfaces/IStaking.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /**
@@ -15,7 +14,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
  * @author Moxie Team
  * @notice Staking contract allows staking of subject tokens for a lock period.
  */
-contract Staking is IStaking, SecurityModule, ReentrancyGuard {
+contract Staking is IStaking, SecurityModule {
     using SafeERC20 for IERC20Extended;
 
     bytes32 public constant CHANGE_LOCK_DURATION =
