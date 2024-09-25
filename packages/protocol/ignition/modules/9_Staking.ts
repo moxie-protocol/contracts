@@ -20,7 +20,6 @@ export default buildModule("Staking", (m) => {
 
     const {  tokenManagerInstance, moxieBondingCurveInstance } = m.useModule(ProtocolContractsProxy);
 
-    
     const staking = m.contract("Staking", [], { from: deployer });
 
     m.call(staking, "initialize", [tokenManagerInstance, moxieBondingCurveInstance, moxieToken, owner], { from: deployer, id: "initializeStakingMasterCopy" });
@@ -51,5 +50,8 @@ export default buildModule("Staking", (m) => {
 
     m.call(stakingInstance, 'setLockPeriod', [config.stakingLockDurationInSec, true], { from: owner, id: 'setLockPeriodTo3Months', after: [assignChangeDurationRole] });
 
+    const adminRole = m.staticCall(stakingInstance, "DEFAULT_ADMIN_ROLE");
+
+    m.call(stakingInstance, 'grantRole', [adminRole, config.adminRoleBeneficiary], { from: owner, id: "stakingAdminBeneficiary" });
     return { staking, stakingInstance };
 });
