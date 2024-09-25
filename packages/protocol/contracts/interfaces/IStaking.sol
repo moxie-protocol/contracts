@@ -8,9 +8,7 @@ interface IStaking {
     error Staking_InvalidSubjectToken();
     error Staking_InvalidSubject();
     error Staking_LockNotExpired(uint256 index, uint256 currentTime, uint256 unlockTime);
-    error Staking_InvalidIndex(uint256 index);
     error Staking_NotOwner(uint256 index);
-    error Staking_AlreadyWithdrawn();
     error Staking_NotSameUser(uint256 index);
     error Staking_InvalidLockPeriod();
     error Staking_InvalidTokenManager();
@@ -38,7 +36,8 @@ interface IStaking {
         uint256 _amount,
         uint256 _unlockTimeInSec,
         uint256 _lockPeriodInSec,
-        bool _isBuy
+        address _buyer,
+        uint256 _moxieDepositAmount
     );
 
     event LockExtended(

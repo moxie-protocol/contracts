@@ -7,15 +7,13 @@ import {ITokenManager} from "./interfaces/ITokenManager.sol";
 import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
 import {IStaking} from "./interfaces/IStaking.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /**
  * @title Staking
  * @author Moxie Team
  * @notice Staking contract allows staking of subject tokens for a lock period.
  */
-contract Staking is IStaking, SecurityModule, ReentrancyGuard {
+contract Staking is IStaking, SecurityModule {
     using SafeERC20 for IERC20Extended;
 
     bytes32 public constant CHANGE_LOCK_DURATION =
@@ -72,7 +70,7 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
 
     /**
      * @dev Internal function to validate initialization input.
-     * @param _tokenManager  Address of the token manager.
+     * @param _tokenManager Address of the token manager.
      * @param _moxieBondingCurve Address of the moxie bonding curve.
      * @param _moxieToken Address of the moxie token.
      * @param _defaultAdmin Address of the staking admin.
@@ -111,17 +109,19 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
      * @param _amount Amount of tokens getting deposited.
      * @param _lockPeriodInSec Lock period for the tokens.
      * @param _beneficiary Address of the beneficiary for the lock.
-     * @param _isBuy Whether the lock is created from a buy operation.
+     * @param _unlockTimeInSec Unlock time of lock in secs.
+     * @param _moxieDepositAmount Amount of moxie tokens deposited for buying.
      */
     function _createLock(
         address _subject,
         uint256 _amount,
         uint256 _lockPeriodInSec,
+        uint256 _unlockTimeInSec,
         address _beneficiary,
-        bool _isBuy
+        uint256 _moxieDepositAmount
     )
         internal
-        returns (IERC20Extended _subjectToken, uint256 unlockTimeInSec_)
+        returns (IERC20Extended _subjectToken)
     {
         if (_isZeroAddress(_subject)) {
             revert Staking_InvalidSubject();
@@ -137,10 +137,9 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             revert Staking_InvalidSubjectToken();
         }
         uint256 _index = lockCount++;
-        unlockTimeInSec_ = block.timestamp + _lockPeriodInSec;
         LockInfo memory lockInfo = LockInfo({
             amount: _amount,
-            unlockTimeInSec: unlockTimeInSec_,
+            unlockTimeInSec: _unlockTimeInSec,
             subject: _subject,
             subjectToken: address(_subjectToken),
             user: _beneficiary,
@@ -155,9 +154,10 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             address(_subjectToken),
             _index,
             _amount,
-            unlockTimeInSec_,
+            _unlockTimeInSec,
             _lockPeriodInSec,
-            _isBuy
+            _moxieDepositAmount == 0 ? address(0) : msg.sender,
+            _moxieDepositAmount
         );
     }
 
@@ -208,24 +208,37 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
      * @param _subject Subject address for which tokens are being deposited.
      * @param _amount Amount of tokens being deposited.
      * @param _lockPeriodInSec Lock period for the tokens.
+     * @param _unlockTimeInSec Unlock time of lock in secs.
+     * @param _beneficiary Beneficiary of the lock. 
      */
     function _depositAndLock(
         address _subject,
         uint256 _amount,
         uint256 _lockPeriodInSec,
+        uint256 _unlockTimeInSec,
         address _beneficiary
-    ) internal returns (uint256 unlockTimeInSec_) {
+    ) internal  {
         IERC20Extended subjectToken;
-        (subjectToken, unlockTimeInSec_) = _createLock(
+        (subjectToken) = _createLock(
             _subject,
             _amount,
             _lockPeriodInSec,
+            _unlockTimeInSec,
             _beneficiary,
-            false
+            0
         );
 
         // Transfer the tokens to this contract
         subjectToken.safeTransferFrom(msg.sender, address(this), _amount);
+    }
+
+    /**
+     * @notice Calculates unlock time.
+     * @param _lockPeriodInSec Lock period to set.
+     * @return unlock time in sec
+     */
+    function _getUnlockTime(uint256 _lockPeriodInSec) internal view returns(uint256) {
+        return block.timestamp + _lockPeriodInSec;
     }
 
     /**
@@ -261,10 +274,14 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         onlyValidLockPeriod(_lockPeriodInSec)
         returns (uint256 unlockTimeInSec_)
     {
-        unlockTimeInSec_ = _depositAndLock(
+
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+        _depositAndLock(
             _subject,
             _amount,
             _lockPeriodInSec,
+            unlockTimeInSec_,
             msg.sender
         );
     }
@@ -288,10 +305,14 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         onlyValidLockPeriod(_lockPeriodInSec)
         returns (uint256 unlockTimeInSec_)
     {
-        unlockTimeInSec_ = _depositAndLock(
+
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+        _depositAndLock(
             _subject,
             _amount,
             _lockPeriodInSec,
+            unlockTimeInSec_,
             _beneficiary
         );
     }
@@ -311,19 +332,21 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         external
         whenNotPaused
         onlyValidLockPeriod(_lockPeriodInSec)
-        returns (uint256[] memory unlockTimeInSec_)
+        returns (uint256 unlockTimeInSec_)
     {
         if (_subjects.length != _amounts.length) {
             revert Staking_InvalidInputLength();
         }
 
-        unlockTimeInSec_ = new uint256[](_subjects.length);
+
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
 
         for (uint256 i = 0; i < _subjects.length; i++) {
-            unlockTimeInSec_[i] = _depositAndLock(
+            _depositAndLock(
                 _subjects[i],
                 _amounts[i],
                 _lockPeriodInSec,
+                unlockTimeInSec_,
                 msg.sender
             );
         }
@@ -346,19 +369,21 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         external
         whenNotPaused
         onlyValidLockPeriod(_lockPeriodInSec)
-        returns (uint256[] memory unlockTimeInSec_)
+        returns (uint256 unlockTimeInSec_)
     {
         if (_subjects.length != _amounts.length) {
             revert Staking_InvalidInputLength();
         }
 
-        unlockTimeInSec_ = new uint256[](_subjects.length);
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
 
         for (uint256 i = 0; i < _subjects.length; i++) {
-            unlockTimeInSec_[i] = _depositAndLock(
+            _depositAndLock(
                 _subjects[i],
                 _amounts[i],
                 _lockPeriodInSec,
+                unlockTimeInSec_,
                 _beneficiary
             );
         }
@@ -392,12 +417,14 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             _minReturnAmountAfterFee
         );
 
-        (, unlockTimeInSec_) = _createLock(
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+        _createLock(
             _subject,
             amount_,
             _lockPeriodInSec,
+            unlockTimeInSec_,
             msg.sender,
-            true
+            _depositAmount
         );
     }
 
@@ -430,12 +457,16 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             _depositAmount,
             _minReturnAmountAfterFee
         );
-        (, unlockTimeInSec_) = _createLock(
+
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+        _createLock(
             _subject,
             amount_,
             _lockPeriodInSec,
+            unlockTimeInSec_,
             _beneficiary,
-            true
+            _depositAmount
         );
     }
 
@@ -481,18 +512,21 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
         );
         moxieToken.approve(address(moxieBondingCurve), totalDepositAmount);
 
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
         for (uint256 i = 0; i < _subjects.length; i++) {
             uint256 amount = moxieBondingCurve.buyShares(
                 _subjects[i],
                 _depositAmounts[i],
                 _minReturnAmountsAfterFee[i]
             );
-            (, unlockTimeInSec_) = _createLock(
+            _createLock(
                 _subjects[i],
                 amount,
                 _lockPeriodInSec,
+                unlockTimeInSec_,
                 msg.sender,
-                true
+                _depositAmounts[i]
             );
             amounts_[i] = amount;
         }
@@ -542,18 +576,22 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
 
         amounts_ = new uint256[](_subjects.length);
 
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+
         for (uint256 i = 0; i < _subjects.length; i++) {
             amounts_[i] = moxieBondingCurve.buyShares(
                 _subjects[i],
                 _depositAmounts[i],
                 _minReturnAmountsAfterFee[i]
             );
-            (, unlockTimeInSec_) = _createLock(
+            _createLock(
                 _subjects[i],
                 amounts_[i],
                 _lockPeriodInSec,
+                unlockTimeInSec_,
                 _beneficiary,
-                true
+                _depositAmounts[i]
             );
         }
     }
@@ -617,15 +655,18 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             _indexes,
             totalAmount_
         );
-        (, uint256 unlockTimeInSec) = _createLock(
+
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+        _createLock(
             _subject,
             totalAmount_,
             _lockPeriodInSec,
+            unlockTimeInSec_,
             msg.sender,
-            false
+            0
         );
 
-        unlockTimeInSec_ = unlockTimeInSec;
     }
 
     /**
@@ -660,15 +701,18 @@ contract Staking is IStaking, SecurityModule, ReentrancyGuard {
             _indexes,
             totalAmount_
         );
-        (, uint256 unlockTimeInSec) = _createLock(
+
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+        _createLock(
             _subject,
             totalAmount_,
             _lockPeriodInSec,
+            unlockTimeInSec_,
             _beneficiary,
-            false
+            0
         );
 
-        unlockTimeInSec_ = unlockTimeInSec;
     }
 
     /**
