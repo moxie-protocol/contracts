@@ -90,7 +90,7 @@ contract TokenManager is ITokenManager, SecurityModule {
 
     /**
      * @notice Mint for subject's token.
-     * @param _subject Subject for which shares needs to be minted.
+     * @param _subject Subject for which shares need to be minted.
      * @param _beneficiary Beneficiary of minted token.
      * @param _amount Amount of tokens to mint.
      */

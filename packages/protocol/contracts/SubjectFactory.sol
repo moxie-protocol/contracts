@@ -310,7 +310,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         if (newSupplyToMint == 0) {
             revert SubjectFactory_BuyAmountTooLess();
         }
-        /// @dev this supply will always be locked in this  contract to make sure Bonding curve always have non zero price.
+        /// @dev this supply will always be locked in this contract to make sure Bonding curve always have non zero price.
         tokenManager.mint(_subject, address(this), newSupplyToMint);
 
         (uint256 protocolFee_, uint256 subjectFee_) = _calculateFee(
