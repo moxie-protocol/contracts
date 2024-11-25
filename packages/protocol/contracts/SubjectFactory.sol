@@ -373,7 +373,8 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
             _subject,
             _reserveRatio,
             bondingSupply_,
-            bondingAmount_
+            bondingAmount_,
+            _platformReferrer
         );
 
         _processFee(protocolFee_, _platformReferrer);

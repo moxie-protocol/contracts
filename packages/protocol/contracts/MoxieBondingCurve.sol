@@ -292,7 +292,10 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         );
     }
 
-    function _calculateFee(uint256 _amount, uint256 _fee) pure private returns( uint256)  {
+    function _calculateFee(
+        uint256 _amount,
+        uint256 _fee
+    ) private pure returns (uint256) {
         return (_amount * _fee) / PCT_BASE;
     }
 
@@ -301,11 +304,11 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         uint256 _subjectFee,
         uint256 _protocolFee,
         address _orderReferrer,
-        address _platformReferrer,
         bool _isBuy
     ) private {
-        if (_platformReferrer == address(0)) {
-            _platformReferrer = feeBeneficiary;
+        address platformReferrerAddress = platformReferrer[_subject];
+        if (platformReferrerAddress == address(0)) {
+            platformReferrerAddress = feeBeneficiary;
         }
 
         if (_orderReferrer == address(0)) {
@@ -324,14 +327,20 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         amounts[0] = _subjectFee;
         reasons[0] = bytes4(keccak256("TRANSACTION_FEE"));
 
-        uint256 orderReferrerFee = _calculateFee(_protocolFee ,_isBuy ? orderReferrerBuyFeePct : orderReferrerSellFeePct );
-        uint256 platformReferrerFee = _calculateFee(_protocolFee ,_isBuy ? platformReferrerBuyFeePct : platformReferrerSellFeePct );
+        uint256 orderReferrerFee = _calculateFee(
+            _protocolFee,
+            _isBuy ? orderReferrerBuyFeePct : orderReferrerSellFeePct
+        );
+        uint256 platformReferrerFee = _calculateFee(
+            _protocolFee,
+            _isBuy ? platformReferrerBuyFeePct : platformReferrerSellFeePct
+        );
 
         recipients[1] = _orderReferrer;
         amounts[1] = orderReferrerFee;
         reasons[1] = bytes4(keccak256("ORDER_REFERRER_FEE"));
 
-        recipients[2] = _platformReferrer;
+        recipients[2] = platformReferrerAddress;
         amounts[2] = platformReferrerFee;
         reasons[2] = bytes4(keccak256("PLATFORM_REFERRER_FEE"));
 
@@ -366,7 +375,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _onBehalfOf,
         uint256 _minReturnAmountAfterFee,
         address _subject,
-        uint32 _subjectReserveRatio
+        uint32 _subjectReserveRatio,
+        address _orderReferrer
     ) internal returns (uint256 shares_) {
         // moxie
         token.safeTransferFrom(msg.sender, address(this), _depositAmount);
@@ -376,8 +386,14 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
                 _depositAmount
             );
 
-            token.safeTransfer(_subject, subjectFee);
-            token.safeTransfer(feeBeneficiary, protocolFee);
+            _processFeeForBuySell(
+                _subject,
+                subjectFee,
+                protocolFee,
+                _orderReferrer,
+                true
+            );
+
             uint256 vaultDeposit = _depositAmount - subjectFee - protocolFee;
 
             token.approve(address(vault), vaultDeposit);
@@ -430,7 +446,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _onBehalfOf,
         uint256 _minReturnAmountAfterFee,
         address _subject,
-        uint32 _subjectReserveRatio
+        uint32 _subjectReserveRatio,
+        address _orderReferrer
     ) internal returns (uint256 returnedAmount_) {
         uint256 subjectReserve = vault.balanceOf(
             address(_subjectToken),
@@ -471,8 +488,13 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             returnAmountWithoutFee
         );
 
-        token.safeTransfer(_subject, subjectFee);
-        token.safeTransfer(feeBeneficiary, protocolFee);
+        _processFeeForBuySell(
+            _subject,
+            subjectFee,
+            protocolFee,
+            _orderReferrer,
+            true
+        );
         token.safeTransfer(_onBehalfOf, returnedAmount_);
     }
 
@@ -506,7 +528,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _subject,
         uint256 _sellAmount,
         address _onBehalfOf,
-        uint256 _minReturnAmountAfterFee
+        uint256 _minReturnAmountAfterFee,
+        address _orderReferrer
     ) internal whenNotPaused returns (uint256 returnAmount_) {
         if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
         if (_sellAmount == 0) revert MoxieBondingCurve_InvalidSellAmount();
@@ -529,7 +552,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _onBehalfOf,
             _minReturnAmountAfterFee,
             _subject,
-            subjectReserveRatio
+            subjectReserveRatio,
+            _orderReferrer
         );
     }
 
@@ -537,7 +561,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _subject,
         uint256 _depositAmount,
         address _onBehalfOf,
-        uint256 _minReturnAmountAfterFee
+        uint256 _minReturnAmountAfterFee,
+        address _orderReferrer
     ) internal returns (uint256 shares_) {
         if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
         if (_depositAmount == 0)
@@ -561,7 +586,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _onBehalfOf,
             _minReturnAmountAfterFee,
             _subject,
-            subjectReserveRatio
+            subjectReserveRatio,
+            _orderReferrer
         );
     }
 
@@ -658,7 +684,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         address _subject,
         uint32 _reserveRatio,
         uint256 _initialSupply,
-        uint256 _reserveAmount
+        uint256 _reserveAmount,
+        address _platformReferrer
     ) external whenNotPaused returns (bool) {
         if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
 
@@ -671,6 +698,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         if (reserveRatio[_subject] != 0)
             revert MoxieBondingCurve_SubjectAlreadyInitialized();
         reserveRatio[_subject] = _reserveRatio;
+        platformReferrer[_subject] = _platformReferrer;
 
         address subjectToken = tokenManager.tokens(_subject);
 
@@ -712,7 +740,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _subject,
             _depositAmount,
             _onBehalfOf,
-            _minReturnAmountAfterFee
+            _minReturnAmountAfterFee,
+            address(0)
         );
     }
 
@@ -731,7 +760,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _subject,
             _depositAmount,
             msg.sender,
-            _minReturnAmountAfterFee
+            _minReturnAmountAfterFee,
+            address(0)
         );
     }
 
@@ -752,7 +782,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _subject,
             _sellAmount,
             _onBehalfOf,
-            _minReturnAmountAfterFee
+            _minReturnAmountAfterFee,
+            address(0)
         );
     }
 
@@ -771,7 +802,96 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _subject,
             _sellAmount,
             msg.sender,
-            _minReturnAmountAfterFee
+            _minReturnAmountAfterFee,
+            address(0)
+        );
+    }
+
+    /**
+     * @dev Buy shares of subject.
+     * @param _subject Address of subject.
+     * @param _depositAmount Deposit amount to buy shares.
+     * @param _onBehalfOf  Beneficiary where shares will be minted.
+     * @param _minReturnAmountAfterFee Minimum shares that must be returned.
+     */
+    function buySharesForV2(
+        address _subject,
+        uint256 _depositAmount,
+        address _onBehalfOf,
+        uint256 _minReturnAmountAfterFee,
+        address _orderReferrer
+    ) external whenNotPaused returns (uint256 shares_) {
+        shares_ = _buySharesInternal(
+            _subject,
+            _depositAmount,
+            _onBehalfOf,
+            _minReturnAmountAfterFee,
+            _orderReferrer
+        );
+    }
+
+    /**
+     * @dev Buy shares of subject.
+     * @param _subject Address of subject.
+     * @param _depositAmount Deposit amount to buy shares.
+     * @param _minReturnAmountAfterFee Minimum shares that must be returned.
+     */
+    function buySharesV2(
+        address _subject,
+        uint256 _depositAmount,
+        uint256 _minReturnAmountAfterFee,
+        address _orderReferrer
+    ) external whenNotPaused returns (uint256 shares_) {
+        shares_ = _buySharesInternal(
+            _subject,
+            _depositAmount,
+            msg.sender,
+            _minReturnAmountAfterFee,
+            _orderReferrer
+        );
+    }
+
+    /**
+     * @dev Sell shares of subject.
+     * @param _subject Address of subject.
+     * @param _sellAmount Amount of subject shares to sell.
+     * @param _onBehalfOf Address of buy token beneficiary.
+     * @param _minReturnAmountAfterFee Minimum buy token that must be returned.
+     */
+    function sellSharesForV2(
+        address _subject,
+        uint256 _sellAmount,
+        address _onBehalfOf,
+        uint256 _minReturnAmountAfterFee,
+        address _orderReferrer
+    ) external whenNotPaused returns (uint256 returnAmount_) {
+        returnAmount_ = _sellSharesInternal(
+            _subject,
+            _sellAmount,
+            _onBehalfOf,
+            _minReturnAmountAfterFee,
+            _orderReferrer
+        );
+    }
+
+    /**
+     * @dev Sell shares of subject.
+     * @param _subject Address of subject.
+     * @param _sellAmount Amount of subject shares to sell.
+     * @param _minReturnAmountAfterFee Minimum buy token that must be returned.
+     */
+    function sellSharesV2(
+        address _subject,
+        uint256 _sellAmount,
+        uint256 _minReturnAmountAfterFee,
+        address _orderReferrer
+    ) external whenNotPaused returns (uint256 returnAmount_) {
+        returnAmount_ = _sellSharesInternal(
+            _subject,
+            _sellAmount,
+            msg.sender,
+            _minReturnAmountAfterFee,
+            _orderReferrer
         );
     }
 

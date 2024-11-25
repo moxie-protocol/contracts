@@ -13,7 +13,8 @@ interface IMoxieBondingCurve {
         address _subject,
         uint32 _reserveRatio,
         uint256 _initialSupply,
-        uint256 _reserveAmount
+        uint256 _reserveAmount,
+        address _platformReferrer
     ) external returns (bool);
 
     function buySharesFor(
