@@ -9,6 +9,7 @@ import {ITokenManager} from "./interfaces/ITokenManager.sol";
 import {IMoxieBondingCurve} from "./interfaces/IMoxieBondingCurve.sol";
 import {IEasyAuction} from "./interfaces/IEasyAuction.sol";
 import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
+import {IProtocolRewards} from "./rewards/IProtocolRewards.sol";
 
 contract SubjectFactory is SecurityModule, ISubjectFactory {
     using SafeERC20 for IERC20Extended;
@@ -53,6 +54,9 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     IERC20Extended public token;
 
     mapping(address subject => Auction auction) public auctions;
+
+    uint256 public platformReferrerFeePct;
+    IProtocolRewards protocolRewards;
 
     /**
      * @dev Initialize the contract.
@@ -165,7 +169,8 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     function _createAuction(
         address _subject,
         address _subjectToken,
-        SubjectAuctionInput memory _auctionInput
+        SubjectAuctionInput memory _auctionInput,
+        address _platformReferrer
     ) internal returns (uint256 auctionId_, uint256 auctionEndDate_) {
         auctionEndDate_ = block.timestamp + auctionDuration;
         auctions[_subject].auctionEndDate = auctionEndDate_;
@@ -185,6 +190,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         );
 
         auctions[_subject].auctionId = auctionId_;
+        auctions[_subject].platformReferrer = _platformReferrer;
     }
 
     /**
@@ -256,6 +262,10 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         }
     }
 
+    function _calculateFee(uint256 _amount, uint256 _fee) pure private returns( uint256)  {
+        return (_amount * _fee) / PCT_BASE;
+    }
+
     /**
      * @dev Internal function to calculate fees.
      * @param _amount Amount against fee should be calculated..
@@ -267,6 +277,39 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     ) internal view returns (uint256 protocolFee_, uint256 subjectFee_) {
         protocolFee_ = (_amount * protocolFeePct) / PCT_BASE;
         subjectFee_ = (_amount * subjectFeePct) / PCT_BASE;
+    }
+
+    function _processFee(uint256 _fee, address _platformReferrer) private {
+        if (_platformReferrer == address(0)) {
+            _platformReferrer = feeBeneficiary;
+        }
+
+        token.approve(address(protocolRewards), _fee);
+
+        address[] memory recipients = new address[](2);
+        uint256[] memory amounts = new uint256[](2);
+        bytes4[] memory reasons = new bytes4[](2);
+
+        uint256 platformReferrerFeeAmount = _calculateFee(_fee, platformReferrerFeePct);
+
+        uint256 actualProtocolFee = _fee - platformReferrerFeeAmount;
+        recipients[0] = feeBeneficiary;
+        amounts[0] = actualProtocolFee;
+        reasons[0] = bytes4(keccak256("TRANSACTION_FEE"));
+
+        recipients[1] = _platformReferrer;
+        amounts[1] = platformReferrerFeeAmount;
+        reasons[1] = bytes4(keccak256("PLATFORM_REFERRER_FEE"));
+
+        token.safeTransfer(feeBeneficiary, _fee);
+
+
+        protocolRewards.depositBatch(
+            recipients,
+            amounts,
+            reasons,
+            "TRANSACTION_FEE"
+        );
     }
 
     /**
@@ -300,7 +343,8 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         uint256 _supply,
         uint32 _reserveRatio,
         bytes32 _clearningOrder,
-        uint256 _buyAmount
+        uint256 _buyAmount,
+        address _platformReferrer
     ) internal {
         uint256 newSupplyToMint = _calculateTokensMintAfterAuction(
             _clearningOrder,
@@ -332,7 +376,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
             bondingAmount_
         );
 
-        token.safeTransfer(feeBeneficiary, protocolFee_);
+        _processFee(protocolFee_, _platformReferrer);
 
         uint256 subjectFeeInSubjectToken = 0;
         ///@dev Instead of returning subject fee to subject, give buy subject shares for subject.
@@ -365,7 +409,8 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      */
     function initiateSubjectOnboarding(
         address _subject,
-        SubjectAuctionInput memory _auctionInput
+        SubjectAuctionInput memory _auctionInput,
+        address _platformReferrer
     ) external whenNotPaused onlyRole(ONBOARDING_ROLE) returns (uint256) {
         if (_subject == address(0)) revert SubjectFactory_InvalidSubject();
 
@@ -388,7 +433,8 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         (uint256 auctionId, uint256 auctionEndDate) = _createAuction(
             _subject,
             subjectToken,
-            _auctionInput
+            _auctionInput,
+            _platformReferrer
         );
 
         emit SubjectOnboardingInitiated(
@@ -447,7 +493,8 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
             soldSupply,
             _reserveRatio,
             clearingOrder,
-            _buyAmount
+            _buyAmount,
+            auction.platformReferrer
         );
     }
 

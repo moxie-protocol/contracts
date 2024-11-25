@@ -11,6 +11,7 @@ import {ITokenManager} from "./interfaces/ITokenManager.sol";
 import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
 import {IVault} from "./interfaces/IVault.sol";
 import {IMoxieBondingCurve} from "./interfaces/IMoxieBondingCurve.sol";
+import {IProtocolRewards} from "./rewards/IProtocolRewards.sol";
 
 /**
  * @title Moxie Bonding curve
@@ -112,6 +113,16 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
 
     /// @dev subject address vs reserve ratio
     mapping(address subject => uint32 _reserveRatio) public reserveRatio;
+
+    IProtocolRewards protocolRewards;
+
+    mapping(address subject => address _platformReferrer)
+        public platformReferrer;
+
+    uint256 public platformReferrerBuyFeePct;
+    uint256 public platformReferrerSellFeePct;
+    uint256 public orderReferrerBuyFeePct;
+    uint256 public orderReferrerSellFeePct;
 
     /**
      * Initialize the contract.
@@ -278,6 +289,65 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             protocolSellFeePct,
             subjectBuyFeePct,
             subjectSellFeePct
+        );
+    }
+
+    function _calculateFee(uint256 _amount, uint256 _fee) pure private returns( uint256)  {
+        return (_amount * _fee) / PCT_BASE;
+    }
+
+    function _processFeeForBuySell(
+        address _subject,
+        uint256 _subjectFee,
+        uint256 _protocolFee,
+        address _orderReferrer,
+        address _platformReferrer,
+        bool _isBuy
+    ) private {
+        if (_platformReferrer == address(0)) {
+            _platformReferrer = feeBeneficiary;
+        }
+
+        if (_orderReferrer == address(0)) {
+            _orderReferrer = feeBeneficiary;
+        }
+
+        address[] memory recipients = new address[](4);
+        uint256[] memory amounts = new uint256[](4);
+        bytes4[] memory reasons = new bytes4[](4);
+
+        uint256 totalAmount = _subjectFee + _protocolFee;
+
+        token.approve(address(protocolRewards), totalAmount);
+
+        recipients[0] = _subject;
+        amounts[0] = _subjectFee;
+        reasons[0] = bytes4(keccak256("TRANSACTION_FEE"));
+
+        uint256 orderReferrerFee = _calculateFee(_protocolFee ,_isBuy ? orderReferrerBuyFeePct : orderReferrerSellFeePct );
+        uint256 platformReferrerFee = _calculateFee(_protocolFee ,_isBuy ? platformReferrerBuyFeePct : platformReferrerSellFeePct );
+
+        recipients[1] = _orderReferrer;
+        amounts[1] = orderReferrerFee;
+        reasons[1] = bytes4(keccak256("ORDER_REFERRER_FEE"));
+
+        recipients[2] = _platformReferrer;
+        amounts[2] = platformReferrerFee;
+        reasons[2] = bytes4(keccak256("PLATFORM_REFERRER_FEE"));
+
+        uint256 actualProtocolFee = _protocolFee -
+            orderReferrerFee -
+            platformReferrerFee;
+
+        recipients[3] = feeBeneficiary;
+        amounts[3] = actualProtocolFee;
+        reasons[3] = bytes4(keccak256("PROTOCOL_FEE"));
+
+        protocolRewards.depositBatch(
+            recipients,
+            amounts,
+            reasons,
+            "TRANSACTION_FEE"
         );
     }
 
