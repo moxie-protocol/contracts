@@ -262,7 +262,10 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         }
     }
 
-    function _calculateFee(uint256 _amount, uint256 _fee) pure private returns( uint256)  {
+    function _calculateFee(
+        uint256 _amount,
+        uint256 _fee
+    ) private pure returns (uint256) {
         return (_amount * _fee) / PCT_BASE;
     }
 
@@ -290,7 +293,10 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         uint256[] memory amounts = new uint256[](2);
         bytes4[] memory reasons = new bytes4[](2);
 
-        uint256 platformReferrerFeeAmount = _calculateFee(_fee, platformReferrerFeePct);
+        uint256 platformReferrerFeeAmount = _calculateFee(
+            _fee,
+            platformReferrerFeePct
+        );
 
         uint256 actualProtocolFee = _fee - platformReferrerFeeAmount;
         recipients[0] = feeBeneficiary;
@@ -302,7 +308,6 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         reasons[1] = bytes4(keccak256("PLATFORM_REFERRER_FEE"));
 
         token.safeTransfer(feeBeneficiary, _fee);
-
 
         protocolRewards.depositBatch(
             recipients,
@@ -324,6 +329,57 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         /// @dev buyAmount is subject token amount & sell amount is moxie token.
         (, uint96 buyAmount, uint96 sellAmount) = _decodeOrder(_clearingOrder);
         return (buyAmount * _amount) / sellAmount;
+    }
+
+    function _initializeBondingCurveAndEmitEvent(
+        address _subject,
+        uint256 _auctionId,
+        uint256 _amountRaised,
+        uint256 _buyAmount,
+        uint256 _bondingSupply,
+        uint256 protocolFee_,
+        uint256 subjectFee_,
+        uint32 _reserveRatio,
+        address _platformReferrer
+    ) internal {
+        uint256 bondingAmount_ = _amountRaised +
+            _buyAmount -
+            protocolFee_ -
+            subjectFee_;
+
+        // approve bonding curve to spend moxie
+        token.approve(address(moxieBondingCurve), bondingAmount_);
+
+        moxieBondingCurve.initializeSubjectBondingCurve(
+            _subject,
+            _reserveRatio,
+            _bondingSupply,
+            bondingAmount_,
+            _platformReferrer
+        );
+
+        uint256 subjectFeeInSubjectToken = 0;
+        ///@dev Instead of returning subject fee to subject, give buy subject shares for subject.
+        if (subjectFee_ > 0) {
+            token.approve(address(moxieBondingCurve), subjectFee_);
+            subjectFeeInSubjectToken = moxieBondingCurve.buySharesFor(
+                _subject,
+                subjectFee_,
+                _subject,
+                0 //slippage settings not needed as this is first buy transaction.
+            );
+        }
+
+        emit SubjectOnboardingFinished(
+            _subject,
+            tokenManager.tokens(_subject),
+            _auctionId,
+            _bondingSupply,
+            bondingAmount_,
+            protocolFee_,
+            subjectFee_,
+            subjectFeeInSubjectToken
+        );
     }
 
     /**
@@ -360,47 +416,45 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         (uint256 protocolFee_, uint256 subjectFee_) = _calculateFee(
             _amountRaised + _buyAmount // total amount is sum of auction amount + reserve amount from onboarding flow.
         );
-        uint256 bondingAmount_ = _amountRaised +
-            _buyAmount -
-            protocolFee_ -
-            subjectFee_;
 
-        // approve bonding curve to spend moxie
-        token.approve(address(moxieBondingCurve), bondingAmount_);
-
-        uint256 bondingSupply_ = _supply + newSupplyToMint;
-        moxieBondingCurve.initializeSubjectBondingCurve(
+        _initializeBondingCurveAndEmitEvent(
             _subject,
+            _auctionId,
+            _amountRaised,
+            _buyAmount,
+            _supply + newSupplyToMint,
+            protocolFee_,
+            subjectFee_,
             _reserveRatio,
-            bondingSupply_,
-            bondingAmount_,
             _platformReferrer
         );
 
         _processFee(protocolFee_, _platformReferrer);
+    }
 
-        uint256 subjectFeeInSubjectToken = 0;
-        ///@dev Instead of returning subject fee to subject, give buy subject shares for subject.
-        if (subjectFee_ > 0) {
-            token.approve(address(moxieBondingCurve), subjectFee_);
-            subjectFeeInSubjectToken = moxieBondingCurve.buySharesFor(
-                _subject,
-                subjectFee_,
-                _subject,
-                0 //slippage settings not needed as this is first buy transaction.
-            );
-        }
-
-        emit SubjectOnboardingFinished(
+    function _createAuctionAndEmitEvent(
+        address _subject,
+        address subjectToken,
+        SubjectAuctionInput memory _auctionInput,
+        address _platformReferrer
+    ) internal returns (uint256) {
+        (uint256 auctionId, uint256 auctionEndDate) = _createAuction(
             _subject,
-            tokenManager.tokens(_subject),
-            _auctionId,
-            bondingSupply_,
-            bondingAmount_,
-            protocolFee_,
-            subjectFee_,
-            subjectFeeInSubjectToken
+            subjectToken,
+            _auctionInput,
+            _platformReferrer
         );
+
+        emit SubjectOnboardingInitiated(
+            _subject,
+            subjectToken,
+            _auctionInput.initialSupply,
+            address(token),
+            auctionEndDate,
+            auctionId
+        );
+
+        return auctionId;
     }
 
     /**
@@ -431,22 +485,13 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
             _auctionInput.initialSupply
         );
 
-        (uint256 auctionId, uint256 auctionEndDate) = _createAuction(
-            _subject,
-            subjectToken,
-            _auctionInput,
-            _platformReferrer
-        );
-
-        emit SubjectOnboardingInitiated(
-            _subject,
-            subjectToken,
-            _auctionInput.initialSupply,
-            address(token),
-            auctionEndDate,
-            auctionId
-        );
-        return auctionId;
+        return
+            _createAuctionAndEmitEvent(
+                _subject,
+                subjectToken,
+                _auctionInput,
+                _platformReferrer
+            );
     }
 
     /**
