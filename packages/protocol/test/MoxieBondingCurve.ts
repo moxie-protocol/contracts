@@ -36,6 +36,9 @@ describe("MoxieBondingCurve", () => {
         const MoxieBondingCurve =
             await hre.ethers.getContractFactory("MoxieBondingCurve");
 
+        
+        const ProtocolRewards = await hre.ethers.getContractFactory("ProtocolRewards");
+
         // moxie Token
         const moxieToken = await MoxieToken.connect(owner).deploy();
 
@@ -69,6 +72,10 @@ describe("MoxieBondingCurve", () => {
         // moxie Bonding curve
         const moxieBondingCurve = await MoxieBondingCurve.deploy();
 
+
+        const protocolRewards = await ProtocolRewards.deploy();
+        
+
         const moxieTokenAddress = await moxieToken.getAddress();
         const formulaAddress = await formula.getAddress();
         const tokenManagerAddress = await tokenManager.getAddress();
@@ -77,6 +84,9 @@ describe("MoxieBondingCurve", () => {
         const protocolSellFeePct = (2 * 1e16).toString(); // 2%
         const subjectBuyFeePct = (3 * 1e16).toString(); // 3%
         const subjectSellFeePct = (4 * 1e16).toString(); // 4%
+
+
+        await protocolRewards.initialize(moxieTokenAddress, owner);
 
         const feeInput = {
             protocolBuyFeePct,
@@ -95,6 +105,9 @@ describe("MoxieBondingCurve", () => {
             feeBeneficiary.address,
             subjectFactory.address,
         );
+
+        await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_PROTOCOL_REWARD_ROLE(), owner);
+        await moxieBondingCurve.connect(owner).updateProtocolRewardAddress(await protocolRewards.getAddress());
 
         await moxiePass.connect(minter).mint(owner.address, "uri");
         await moxiePass.connect(minter).mint(subject.address, "uri");
@@ -175,6 +188,7 @@ describe("MoxieBondingCurve", () => {
             buyer2,
             seller2,
             PCT_BASE,
+            protocolRewards
         };
     };
 
@@ -677,6 +691,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             )
                 .to.emit(moxieBondingCurve, "BondingCurveInitialized")
@@ -723,6 +738,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             )
                 .to.emit(moxieBondingCurve, "BondingCurveInitialized")
@@ -749,6 +765,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             ).to.revertedWithCustomError(
                 moxieBondingCurve,
@@ -775,6 +792,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             ).to.revertedWithCustomError(moxieToken, "ERC20InsufficientAllowance");
         });
@@ -806,6 +824,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             ).to.revertedWithCustomError(moxieToken, "ERC20InsufficientBalance");
         });
@@ -836,6 +855,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             ).to.revertedWithCustomError(
                 moxieBondingCurve,
@@ -870,6 +890,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             ).to.revertedWithCustomError(
                 moxieBondingCurve,
@@ -903,6 +924,7 @@ describe("MoxieBondingCurve", () => {
                         20000000,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             ).to.revertedWithCustomError(
                 moxieBondingCurve,
@@ -937,6 +959,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             ).to.revertedWithCustomError(
                 moxieBondingCurve,
@@ -970,6 +993,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             ).to.revertedWithCustomError(
                 moxieBondingCurve,
@@ -1002,6 +1026,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             ).to.revertedWithCustomError(moxieBondingCurve, "EnforcedPause");
         });
@@ -1036,6 +1061,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             )
                 .to.emit(moxieBondingCurve, "BondingCurveInitialized")
@@ -1076,6 +1102,7 @@ describe("MoxieBondingCurve", () => {
                 PCT_BASE,
                 feeBeneficiary,
                 buyer2,
+                protocolRewards
             } = deployment;
 
             await setupBuy(deployment);
@@ -1127,10 +1154,10 @@ describe("MoxieBondingCurve", () => {
                 );
 
             expect(await subjectToken.balanceOf(buyer.address)).equal(expectedShares);
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).equal(
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).equal(
                 protocolFee,
             );
-            expect(await moxieToken.balanceOf(subject.address)).equal(subjectFee);
+            expect(await protocolRewards.balanceOf(subject.address)).equal(subjectFee);
             expect(
                 await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress),
             ).equal(BigInt(reserveBeforeBuy) + effectiveBuyAmount);
@@ -1184,10 +1211,10 @@ describe("MoxieBondingCurve", () => {
             expect(await subjectToken.balanceOf(buyer2.address)).equal(
                 expectedShares2,
             );
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).equal(
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).equal(
                 protocolFee + protocolFee2,
             );
-            expect(await moxieToken.balanceOf(subject.address)).equal(
+            expect(await protocolRewards.balanceOf(subject.address)).equal(
                 subjectFee + subjectFee2,
             );
             expect(
@@ -1217,6 +1244,7 @@ describe("MoxieBondingCurve", () => {
                 feeInput,
                 PCT_BASE,
                 feeBeneficiary,
+                protocolRewards
             } = deployment;
 
             await setupBuy(deployment);
@@ -1267,10 +1295,10 @@ describe("MoxieBondingCurve", () => {
                     ethers.ZeroAddress,
                 );
 
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).equal(
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).equal(
                 protocolFee,
             );
-            expect(await moxieToken.balanceOf(subject.address)).equal(subjectFee);
+            expect(await protocolRewards.balanceOf(subject.address)).equal(subjectFee);
             expect(
                 await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress),
             ).equal(BigInt(reserveBeforeBuy) + effectiveBuyAmount);
@@ -1623,6 +1651,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             )
                 .to.emit(moxieBondingCurve, "BondingCurveInitialized")
@@ -1663,6 +1692,7 @@ describe("MoxieBondingCurve", () => {
                 PCT_BASE,
                 feeBeneficiary,
                 buyer2,
+                protocolRewards
             } = deployment;
 
             await setupBuy(deployment);
@@ -1714,10 +1744,10 @@ describe("MoxieBondingCurve", () => {
                 );
 
             expect(await subjectToken.balanceOf(buyer.address)).equal(expectedShares);
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).equal(
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).equal(
                 protocolFee,
             );
-            expect(await moxieToken.balanceOf(subject.address)).equal(subjectFee);
+            expect(await protocolRewards.balanceOf(subject.address)).equal(subjectFee);
             expect(
                 await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress),
             ).equal(BigInt(reserveBeforeBuy) + effectiveBuyAmount);
@@ -1771,10 +1801,10 @@ describe("MoxieBondingCurve", () => {
             expect(await subjectToken.balanceOf(buyer2.address)).equal(
                 expectedShares2,
             );
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).equal(
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).equal(
                 protocolFee + protocolFee2,
             );
-            expect(await moxieToken.balanceOf(subject.address)).equal(
+            expect(await protocolRewards.balanceOf(subject.address)).equal(
                 subjectFee + subjectFee2,
             );
             expect(
@@ -2130,6 +2160,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             )
                 .to.emit(moxieBondingCurve, "BondingCurveInitialized")
@@ -2191,6 +2222,7 @@ describe("MoxieBondingCurve", () => {
                 feeBeneficiary,
                 seller,
                 seller2,
+                protocolRewards
             } = deployment;
 
             await setupSell(deployment);
@@ -2225,10 +2257,10 @@ describe("MoxieBondingCurve", () => {
             const sellerPreviousMoxieBalance = await moxieToken.balanceOf(
                 seller.address,
             );
-            const feeBeneficiaryPreviousMoxieBalance = await moxieToken.balanceOf(
+            const feeBeneficiaryPreviousMoxieBalance = await protocolRewards.balanceOf(
                 feeBeneficiary.address,
             );
-            const subjectBeneficiaryPreviousMoxieBalance = await moxieToken.balanceOf(
+            const subjectBeneficiaryPreviousMoxieBalance = await protocolRewards.balanceOf(
                 subject.address,
             );
             await expect(
@@ -2256,10 +2288,10 @@ describe("MoxieBondingCurve", () => {
             expect(await moxieToken.balanceOf(seller.address)).to.equal(
                 BigInt(sellerPreviousMoxieBalance) + expectedReturn,
             );
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).to.equal(
                 BigInt(feeBeneficiaryPreviousMoxieBalance) + protocolFee,
             );
-            expect(await moxieToken.balanceOf(subject.address)).to.equal(
+            expect(await protocolRewards.balanceOf(subject.address)).to.equal(
                 BigInt(subjectBeneficiaryPreviousMoxieBalance) + subjectFee,
             );
 
@@ -2289,11 +2321,11 @@ describe("MoxieBondingCurve", () => {
             const previousMoxieBalanceSeller2 = await moxieToken.balanceOf(
                 seller2.address,
             );
-            const feeBeneficiaryPreviousMoxieBalance2 = await moxieToken.balanceOf(
+            const feeBeneficiaryPreviousMoxieBalance2 = await protocolRewards.balanceOf(
                 feeBeneficiary.address,
             );
             const subjectBeneficiaryPreviousMoxieBalance2 =
-                await moxieToken.balanceOf(subject.address);
+                await protocolRewards.balanceOf(subject.address);
 
             await expect(
                 moxieBondingCurve
@@ -2320,10 +2352,10 @@ describe("MoxieBondingCurve", () => {
             expect(await moxieToken.balanceOf(seller2.address)).to.equal(
                 BigInt(previousMoxieBalanceSeller2) + expectedReturn2,
             );
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).to.equal(
                 BigInt(feeBeneficiaryPreviousMoxieBalance2) + protocolFee2,
             );
-            expect(await moxieToken.balanceOf(subject.address)).to.equal(
+            expect(await protocolRewards.balanceOf(subject.address)).to.equal(
                 BigInt(subjectBeneficiaryPreviousMoxieBalance2) + subjectFee2,
             );
         });
@@ -2687,6 +2719,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             )
                 .to.emit(moxieBondingCurve, "BondingCurveInitialized")
@@ -2747,6 +2780,7 @@ describe("MoxieBondingCurve", () => {
                 PCT_BASE,
                 feeBeneficiary,
                 seller,
+                protocolRewards,
                 seller2,
             } = deployment;
 
@@ -2782,10 +2816,10 @@ describe("MoxieBondingCurve", () => {
             const sellerPreviousMoxieBalance = await moxieToken.balanceOf(
                 seller.address,
             );
-            const feeBeneficiaryPreviousMoxieBalance = await moxieToken.balanceOf(
+            const feeBeneficiaryPreviousMoxieBalance = await protocolRewards.balanceOf(
                 feeBeneficiary.address,
             );
-            const subjectBeneficiaryPreviousMoxieBalance = await moxieToken.balanceOf(
+            const subjectBeneficiaryPreviousMoxieBalance = await protocolRewards.balanceOf(
                 subject.address,
             );
             await expect(
@@ -2812,10 +2846,10 @@ describe("MoxieBondingCurve", () => {
             expect(await moxieToken.balanceOf(seller.address)).to.equal(
                 BigInt(sellerPreviousMoxieBalance) + expectedReturn,
             );
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).to.equal(
                 BigInt(feeBeneficiaryPreviousMoxieBalance) + protocolFee,
             );
-            expect(await moxieToken.balanceOf(subject.address)).to.equal(
+            expect(await protocolRewards.balanceOf(subject.address)).to.equal(
                 BigInt(subjectBeneficiaryPreviousMoxieBalance) + subjectFee,
             );
 
@@ -2845,11 +2879,11 @@ describe("MoxieBondingCurve", () => {
             const previousMoxieBalanceSeller2 = await moxieToken.balanceOf(
                 seller2.address,
             );
-            const feeBeneficiaryPreviousMoxieBalance2 = await moxieToken.balanceOf(
+            const feeBeneficiaryPreviousMoxieBalance2 = await protocolRewards.balanceOf(
                 feeBeneficiary.address,
             );
             const subjectBeneficiaryPreviousMoxieBalance2 =
-                await moxieToken.balanceOf(subject.address);
+                await protocolRewards.balanceOf(subject.address);
 
             await expect(
                 moxieBondingCurve
@@ -2875,10 +2909,10 @@ describe("MoxieBondingCurve", () => {
             expect(await moxieToken.balanceOf(seller2.address)).to.equal(
                 BigInt(previousMoxieBalanceSeller2) + expectedReturn2,
             );
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).to.equal(
                 BigInt(feeBeneficiaryPreviousMoxieBalance2) + protocolFee2,
             );
-            expect(await moxieToken.balanceOf(subject.address)).to.equal(
+            expect(await protocolRewards.balanceOf(subject.address)).to.equal(
                 BigInt(subjectBeneficiaryPreviousMoxieBalance2) + subjectFee2,
             );
         });
@@ -3524,6 +3558,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             )
                 .to.emit(moxieBondingCurve, "BondingCurveInitialized")
@@ -3662,6 +3697,7 @@ describe("MoxieBondingCurve", () => {
                         reserveRatio,
                         initialSupply,
                         initialReserve,
+                        ethers.ZeroAddress
                     ),
             )
                 .to.emit(moxieBondingCurve, "BondingCurveInitialized")

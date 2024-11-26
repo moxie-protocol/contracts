@@ -26,6 +26,8 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         keccak256("UPDATE_FORMULA_ROLE");
     bytes32 public constant UPDATE_BENEFICIARY_ROLE =
         keccak256("UPDATE_BENEFICIARY_ROLE");
+    bytes32 public constant UPDATE_PROTOCOL_REWARD_ROLE =
+        keccak256("UPDATE_PROTOCOL_REWARD_ROLE");
 
     error MoxieBondingCurve_InvalidToken();
     error MoxieBondingCurve_InvalidVault();
@@ -46,6 +48,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     error MoxieBondingCurve_SlippageExceedsLimit();
     error MoxieBondingCurve_InvalidSellAmount();
     error MoxieBondingCurve_InvalidAmount();
+    error MoxieBondingCurve_InvalidProtocolRewardAddress();
 
     event UpdateFees(
         uint256 _protocolBuyFeePct,
@@ -114,7 +117,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     /// @dev subject address vs reserve ratio
     mapping(address subject => uint32 _reserveRatio) public reserveRatio;
 
-    IProtocolRewards protocolRewards;
+    IProtocolRewards public protocolRewards;
 
     mapping(address subject => address _platformReferrer)
         public platformReferrer;
@@ -631,6 +634,10 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         subjectSupply_ = subjectToken.totalSupply();
     }
 
+    function updateProtocolRewardAddress(address _protocolRewardsAddress)  external onlyRole(UPDATE_PROTOCOL_REWARD_ROLE) {
+        if (_isZeroAddress(_protocolRewardsAddress)) revert MoxieBondingCurve_InvalidProtocolRewardAddress();
+        protocolRewards = IProtocolRewards(_protocolRewardsAddress);
+    }
     /**
      * @notice Update fee only be called by role UPDATE_FEES_ROLE.
      * @param _feeInput Fee input struct.

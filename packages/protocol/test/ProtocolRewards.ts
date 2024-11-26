@@ -2,7 +2,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import hre, { ethers } from "hardhat";
 
-describe.only('Protocol Rewards', () => {
+describe('Protocol Rewards', () => {
 
     const deploy = async () => {
         const [deployer, owner] = await ethers.getSigners();
