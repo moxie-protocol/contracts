@@ -24,7 +24,7 @@ contract ProtocolRewards is
     bytes32 public constant BLOCK_UNBLOCK_ROLE =
         keccak256("BLOCK_UNBLOCK_ROLE");
 
-    IERC20Extended token;
+    IERC20Extended public token;
 
     mapping(address => uint256) public balanceOf;
     mapping(address => uint256) public nonces;
@@ -78,9 +78,6 @@ contract ProtocolRewards is
             revert ADDRESS_ZERO();
         }
 
-        if (_amount == 0) {
-            revert INVALID_DEPOSIT();
-        }
         token.transferFrom(msg.sender, address(this), _amount);
 
         balanceOf[_to] += _amount;
@@ -112,9 +109,6 @@ contract ProtocolRewards is
         uint256 expectedTotalValue;
 
         for (uint256 i; i < numRecipients; i++) {
-            if (amounts[i] == 0) {
-                revert INVALID_DEPOSIT();
-            }
             expectedTotalValue += amounts[i];
         }
 
