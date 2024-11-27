@@ -19,6 +19,7 @@ describe('Subject Factory', () => {
         const BancorFormula = await hre.ethers.getContractFactory("BancorFormula");
         const Vault = await hre.ethers.getContractFactory("Vault");
         const SubjectERC20 = await hre.ethers.getContractFactory("SubjectERC20");
+        const ProtocolRewards = await hre.ethers.getContractFactory("ProtocolRewards"); 
 
         const MoxiePass = await hre.ethers.getContractFactory("MoxiePass");
         const MoxiePassVerifier = await hre.ethers.getContractFactory(
@@ -46,6 +47,8 @@ describe('Subject Factory', () => {
 
         // Moxie Pass
         const moxiePass = await MoxiePass.deploy(owner.address, minter.address);
+
+        const protocolRewards = await ProtocolRewards.deploy();
 
         // moxie pass verifier
         const moxiePassVerifier = await MoxiePassVerifier.deploy(owner.address);
@@ -89,6 +92,11 @@ describe('Subject Factory', () => {
         const moxiePassVerifierAddress = await moxiePassVerifier.getAddress();
         const reserveRatio = 660000;
 
+
+        await protocolRewards.initialize(
+            moxieTokenAddress,
+            owner
+        );
         const feeInput = {
             protocolBuyFeePct,
             protocolSellFeePct,
@@ -123,6 +131,21 @@ describe('Subject Factory', () => {
             auctionDuration,
             auctionCancellationDuration
         );
+
+
+        const protocolRewardsAddress = await protocolRewards.getAddress();
+
+        await moxieBondingCurve
+        .connect(owner)
+        .grantRole(await moxieBondingCurve.UPDATE_PROTOCOL_REWARD_ROLE(), owner);
+
+
+        await subjectFactory
+        .connect(owner)
+        .grantRole(await subjectFactory.UPDATE_PROTOCOL_REWARD_ROLE(), owner);
+
+        await moxieBondingCurve.connect(owner).updateProtocolRewardAddress(protocolRewardsAddress);
+        await subjectFactory.connect(owner).updateProtocolRewardAddress(protocolRewardsAddress);
 
         await vaultInstance
             .connect(owner)
@@ -179,7 +202,8 @@ describe('Subject Factory', () => {
             reserveRatio,
             PCT_BASE,
             vaultInstance,
-            formula
+            formula,
+            protocolRewards
         };
 
     }
@@ -588,6 +612,7 @@ describe('Subject Factory', () => {
             await expect(await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
 
             )).to.emit(subjectFactory, "SubjectOnboardingInitiated")
                 .withArgs(
@@ -640,6 +665,7 @@ describe('Subject Factory', () => {
             await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
                 ethers.ZeroAddress,
                 auctionInput,
+                ethers.ZeroAddress
 
             )).to.revertedWithCustomError(subjectFactory, "SubjectFactory_InvalidSubject");
         });
@@ -683,6 +709,7 @@ describe('Subject Factory', () => {
             await expect(await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
 
             )).to.emit(subjectFactory, "SubjectOnboardingInitiated")
                 .withArgs(
@@ -698,6 +725,7 @@ describe('Subject Factory', () => {
             await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
 
             )).revertedWithCustomError(subjectFactory, "SubjectFactory_AuctionAlreadyCreated");
 
@@ -731,6 +759,7 @@ describe('Subject Factory', () => {
             await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
 
             )).to.revertedWithCustomError(subjectFactory, "AccessControlUnauthorizedAccount",
             )
@@ -769,6 +798,7 @@ describe('Subject Factory', () => {
             await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
 
             )).to.revertedWithCustomError(subjectFactory, "EnforcedPause")
 
@@ -1026,7 +1056,7 @@ describe('Subject Factory', () => {
 
     });
 
-    describe('finalize subject onboarding', () => {
+    describe.only('finalize subject onboarding', () => {
 
         it('should finalize subject onboarding when there are bids in auction', async () => {
             const {
@@ -1048,7 +1078,8 @@ describe('Subject Factory', () => {
                 vaultInstance,
                 feeBeneficiary,
                 formula,
-                feeInput
+                feeInput,
+                protocolRewards
 
 
             } = await loadFixture(deploy);
@@ -1071,7 +1102,9 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
+
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
             let subjectToken = SubjectERC20.attach(subjectTokenAddress) as SubjectERC20;
@@ -1135,7 +1168,7 @@ describe('Subject Factory', () => {
             const auction = await subjectFactory.auctions(subject.address);
             expect(auction.auctionEndDate).to.equal(0);
             const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) / PCT_BASE;
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
 
         });
 
@@ -1160,9 +1193,8 @@ describe('Subject Factory', () => {
                 vaultInstance,
                 feeInput,
                 formula,
-                feeBeneficiary
-
-
+                feeBeneficiary,
+                protocolRewards
             } = await loadFixture(deploy);
 
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
@@ -1183,6 +1215,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
@@ -1261,7 +1294,7 @@ describe('Subject Factory', () => {
             const auction = await subjectFactory.auctions(subject.address);
             expect(auction.auctionEndDate).to.equal(0);
             const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) / PCT_BASE;
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
 
         });
 
@@ -1282,9 +1315,8 @@ describe('Subject Factory', () => {
                 vaultInstance,
                 feeInput,
                 feeBeneficiary,
-                formula
-
-
+                formula,
+                protocolRewards
             } = await loadFixture(deploy);
 
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
@@ -1305,6 +1337,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
@@ -1356,7 +1389,7 @@ describe('Subject Factory', () => {
             const auction = await subjectFactory.auctions(subject.address);
             expect(auction.auctionEndDate).to.equal(0);
             const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) / PCT_BASE;
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
 
         });
 
@@ -1380,9 +1413,8 @@ describe('Subject Factory', () => {
                 vaultInstance,
                 formula,
                 feeBeneficiary,
-                feeInput
-
-
+                feeInput,
+                protocolRewards
             } = await loadFixture(deploy);
 
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
@@ -1403,6 +1435,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
@@ -1474,7 +1507,7 @@ describe('Subject Factory', () => {
             const auction = await subjectFactory.auctions(subject.address);
             expect(auction.auctionEndDate).to.equal(0);
             const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) / PCT_BASE;
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
 
         });
 
@@ -1513,6 +1546,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
@@ -1581,6 +1615,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
@@ -1647,6 +1682,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
@@ -1719,6 +1755,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
@@ -1784,6 +1821,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             // fund bidder
@@ -1848,6 +1886,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             // fund bidder
@@ -1899,8 +1938,8 @@ describe('Subject Factory', () => {
                 vaultInstance,
                 formula,
                 feeInput,
-                feeBeneficiary
-
+                feeBeneficiary,
+                protocolRewards
 
             } = await loadFixture(deploy);
 
@@ -1922,6 +1961,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
@@ -1987,10 +2027,11 @@ describe('Subject Factory', () => {
             const auction = await subjectFactory.auctions(subject.address);
             expect(auction.auctionEndDate).to.equal(0);
             const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) / PCT_BASE;
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
             await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             )).to.revertedWithCustomError(tokenManager, "TokenManager_SubjectExists");
 
         });
@@ -2029,6 +2070,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
@@ -2094,6 +2136,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
@@ -2166,6 +2209,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);

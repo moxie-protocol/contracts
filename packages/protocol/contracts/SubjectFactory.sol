@@ -21,6 +21,9 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     bytes32 public constant UPDATE_AUCTION_ROLE =
         keccak256("UPDATE_AUCTION_ROLE");
 
+    bytes32 public constant UPDATE_PROTOCOL_REWARD_ROLE =
+        keccak256("UPDATE_PROTOCOL_REWARD_ROLE");
+
     /// @dev Represent Percentage for fee 0% = 0; 1% = 10 ** 16; 100% = 10 ** 18
     uint256 public constant PCT_BASE = 10 ** 18;
 
@@ -39,6 +42,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     error SubjectFactory_InvalidOwner();
     error SubjectFactory_InvalidReserveRatio();
     error SubjectFactory_BuyAmountTooLess();
+    error SubjectFactory_InvalidProtocolRewardAddress();
 
     ITokenManager public tokenManager;
     IMoxieBondingCurve public moxieBondingCurve;
@@ -307,8 +311,6 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         amounts[1] = platformReferrerFeeAmount;
         reasons[1] = bytes4(keccak256("PLATFORM_REFERRER_FEE"));
 
-        token.safeTransfer(feeBeneficiary, _fee);
-
         protocolRewards.depositBatch(
             recipients,
             amounts,
@@ -542,6 +544,14 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
             _buyAmount,
             auction.platformReferrer
         );
+    }
+
+    function updateProtocolRewardAddress(
+        address _protocolRewardsAddress
+    ) external onlyRole(UPDATE_PROTOCOL_REWARD_ROLE) {
+        if (_protocolRewardsAddress == address(0))
+            revert SubjectFactory_InvalidProtocolRewardAddress();
+        protocolRewards = IProtocolRewards(_protocolRewardsAddress);
     }
 
     /**
