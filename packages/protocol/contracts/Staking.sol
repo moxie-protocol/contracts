@@ -246,6 +246,7 @@ contract Staking is IStaking, SecurityModule {
      * @param _depositAmount The amount of tokens to deposit for buying and locking.
      * @param _minReturnAmountAfterFee The minimum return amount after fee for buying.
      * @param _lockPeriodInSec The lock period in seconds for the tokens.
+     * @param _orderReferrer Address of order referrer.
      * @return amount_ The amount of tokens bought and locked.
      * @return unlockTimeInSec_ The unlock time in seconds for the tokens.
      */
@@ -253,14 +254,16 @@ contract Staking is IStaking, SecurityModule {
         address _subject,
         uint256 _depositAmount,
         uint256 _minReturnAmountAfterFee,
-        uint256 _lockPeriodInSec
+        uint256 _lockPeriodInSec,
+        address _orderReferrer
     ) internal returns (uint256 amount_, uint256 unlockTimeInSec_) {
         moxieToken.safeTransferFrom(msg.sender, address(this), _depositAmount);
         moxieToken.approve(address(moxieBondingCurve), _depositAmount);
-        amount_ = moxieBondingCurve.buyShares(
+        amount_ = moxieBondingCurve.buySharesV2(
             _subject,
             _depositAmount,
-            _minReturnAmountAfterFee
+            _minReturnAmountAfterFee,
+            _orderReferrer
         );
 
         unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
@@ -281,6 +284,7 @@ contract Staking is IStaking, SecurityModule {
      * @param _minReturnAmountAfterFee The minimum return amount after fee for buying.
      * @param _lockPeriodInSec The lock period in seconds for the tokens.
      * @param _beneficiary The address of the beneficiary for whom the tokens are being bought and locked.
+     * @param _orderReferrer Address of order referrer.
      * @return amount_ The amount of tokens bought and locked.
      * @return unlockTimeInSec_ The unlock time in seconds for the tokens.
      */
@@ -289,14 +293,16 @@ contract Staking is IStaking, SecurityModule {
         uint256 _depositAmount,
         uint256 _minReturnAmountAfterFee,
         uint256 _lockPeriodInSec,
-        address _beneficiary
+        address _beneficiary,
+        address _orderReferrer
     ) internal returns (uint256 amount_, uint256 unlockTimeInSec_) {
         moxieToken.safeTransferFrom(msg.sender, address(this), _depositAmount);
         moxieToken.approve(address(moxieBondingCurve), _depositAmount);
-        amount_ = moxieBondingCurve.buyShares(
+        amount_ = moxieBondingCurve.buySharesV2(
             _subject,
             _depositAmount,
-            _minReturnAmountAfterFee
+            _minReturnAmountAfterFee,
+            _orderReferrer
         );
 
         unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
@@ -317,6 +323,7 @@ contract Staking is IStaking, SecurityModule {
      * @param _depositAmounts The amounts of tokens to deposit for each subject.
      * @param _minReturnAmountsAfterFee The minimum return amounts after fee for each subject.
      * @param _lockPeriodInSec The lock period in seconds for the subjects.
+     * @param _orderReferrer Address of order referrer.
      * @return amounts_ The amounts of tokens bought and locked for each subject.
      * @return unlockTimeInSec_ The unlock time in seconds for the subjects.
      */
@@ -325,7 +332,8 @@ contract Staking is IStaking, SecurityModule {
         address[] memory _subjects,
         uint256[] memory _depositAmounts,
         uint256[] memory _minReturnAmountsAfterFee,
-        uint256 _lockPeriodInSec
+        uint256 _lockPeriodInSec,
+        address _orderReferrer
     ) internal returns (uint256[] memory amounts_, uint256 unlockTimeInSec_) {
         if (
             _subjects.length != _depositAmounts.length ||
@@ -352,10 +360,11 @@ contract Staking is IStaking, SecurityModule {
         unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
 
         for (uint256 i = 0; i < _subjects.length; i++) {
-            uint256 amount = moxieBondingCurve.buyShares(
+            uint256 amount = moxieBondingCurve.buySharesV2(
                 _subjects[i],
                 _depositAmounts[i],
-                _minReturnAmountsAfterFee[i]
+                _minReturnAmountsAfterFee[i],
+                _orderReferrer
             );
             _createLock(
                 _subjects[i],
@@ -377,6 +386,7 @@ contract Staking is IStaking, SecurityModule {
      * @param _minReturnAmountsAfterFee An array of minimum return amounts after fee corresponding to each subject.
      * @param _lockPeriodInSec The lock period in seconds.
      * @param _beneficiary The address of the beneficiary.
+     * @param _orderReferrer Address of order referrer. 
      * 
      * @return amounts_ An array of bought amounts corresponding to each subject.
      * @return unlockTimeInSec_ The unlock time in seconds.
@@ -387,7 +397,8 @@ contract Staking is IStaking, SecurityModule {
         uint256[] memory _depositAmounts,
         uint256[] memory _minReturnAmountsAfterFee,
         uint256 _lockPeriodInSec,
-        address _beneficiary
+        address _beneficiary,
+        address _orderReferrer
     ) internal returns (uint256[] memory amounts_, uint256 unlockTimeInSec_) {
         if (
             _subjects.length != _depositAmounts.length ||
@@ -414,10 +425,11 @@ contract Staking is IStaking, SecurityModule {
         unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
 
         for (uint256 i = 0; i < _subjects.length; i++) {
-            amounts_[i] = moxieBondingCurve.buyShares(
+            amounts_[i] = moxieBondingCurve.buySharesV2(
                 _subjects[i],
                 _depositAmounts[i],
-                _minReturnAmountsAfterFee[i]
+                _minReturnAmountsAfterFee[i],
+                _orderReferrer
             );
             _createLock(
                 _subjects[i],
@@ -598,7 +610,8 @@ contract Staking is IStaking, SecurityModule {
             _subject,
             _depositAmount,
             _minReturnAmountAfterFee,
-            _lockPeriodInSec
+            _lockPeriodInSec,
+            address(0)
         );
     }
 
@@ -629,7 +642,8 @@ contract Staking is IStaking, SecurityModule {
             _depositAmount,
             _minReturnAmountAfterFee,
             _lockPeriodInSec,
-            _beneficiary
+            _beneficiary,
+            address(0)
         );
     }
 
@@ -657,7 +671,8 @@ contract Staking is IStaking, SecurityModule {
             _subjects,
             _depositAmounts,
             _minReturnAmountsAfterFee,
-            _lockPeriodInSec
+            _lockPeriodInSec,
+            address(0)
         );
     }
 
@@ -688,7 +703,138 @@ contract Staking is IStaking, SecurityModule {
             _depositAmounts,
             _minReturnAmountsAfterFee,
             _lockPeriodInSec,
-            _beneficiary
+            _beneficiary,
+            address(0)
+        );
+    }
+
+        /**
+     * External function to buy & lock tokens.
+     * @param _subject Subject address for which tokens are being bought & deposited.
+     * @param _depositAmount amount of moxie tokens getting deposited.
+     * @param _minReturnAmountAfterFee Slippage setting which determines minimum amount of tokens after fee.
+     * @param _lockPeriodInSec Lock period for the tokens.
+     * @param  _orderReferrer Address of order referrer 
+     * @return amount_ Amount of tokens bought & locked.
+     * @return unlockTimeInSec_ Unlock times for the locks.
+     */
+    function buyAndLockV2(
+        address _subject,
+        uint256 _depositAmount,
+        uint256 _minReturnAmountAfterFee,
+        uint256 _lockPeriodInSec,
+        address _orderReferrer
+    )
+        external
+        whenNotPaused
+        onlyValidLockPeriod(_lockPeriodInSec)
+        returns (uint256 amount_, uint256 unlockTimeInSec_)
+    {
+        (amount_, unlockTimeInSec_) = _buyAndLock(
+            _subject,
+            _depositAmount,
+            _minReturnAmountAfterFee,
+            _lockPeriodInSec,
+            _orderReferrer
+        );
+    }
+
+    /**
+     * External function to buy & lock tokens.
+     * @param _subject Subject address for which tokens are being bought & deposited.
+     * @param _depositAmount amount of moxie tokens getting deposited.
+     * @param _minReturnAmountAfterFee Slippage setting which determines minimum amount of tokens after fee.
+     * @param _lockPeriodInSec Lock period for the tokens.
+     * @param _beneficiary Address of the beneficiary for the lock.
+     * @param  _orderReferrer Address of order referrer 
+     * @return amount_ Amount of tokens bought & locked.
+     * @return unlockTimeInSec_ Unlock times for the locks.
+     */
+    function buyAndLockForV2(
+        address _subject,
+        uint256 _depositAmount,
+        uint256 _minReturnAmountAfterFee,
+        uint256 _lockPeriodInSec,
+        address _beneficiary,
+        address _orderReferrer
+    )
+        external
+        whenNotPaused
+        onlyValidLockPeriod(_lockPeriodInSec)
+        returns (uint256 amount_, uint256 unlockTimeInSec_)
+    {
+        (amount_, unlockTimeInSec_) = _buyAndLockFor(
+            _subject,
+            _depositAmount,
+            _minReturnAmountAfterFee,
+            _lockPeriodInSec,
+            _beneficiary,
+            _orderReferrer
+        );
+    }
+
+    /**
+     * External function to buy & lock multiple tokens.
+     * @param _subjects Subject addresses for which tokens are being bought & deposited.
+     * @param _depositAmounts Amounts of moxie tokens getting deposited.
+     * @param _minReturnAmountsAfterFee Slippage settings which determine minimum amounts of tokens after fee.
+     * @param _lockPeriodInSec Lock periods for the tokens.
+     * @param  _orderReferrer Address of order referrer 
+     * @return amounts_ Amounts of tokens bought & locked.
+     * @return unlockTimeInSec_ Unlock times for the locks.
+     */
+    function buyAndLockMultipleV2(
+        address[] memory _subjects,
+        uint256[] memory _depositAmounts,
+        uint256[] memory _minReturnAmountsAfterFee,
+        uint256 _lockPeriodInSec,
+        address _orderReferrer
+    )
+        external
+        whenNotPaused
+        onlyValidLockPeriod(_lockPeriodInSec)
+        returns (uint256[] memory amounts_, uint256 unlockTimeInSec_)
+    {
+        (amounts_, unlockTimeInSec_) = _buyAndLockMultiple(
+            _subjects,
+            _depositAmounts,
+            _minReturnAmountsAfterFee,
+            _lockPeriodInSec,
+            _orderReferrer
+        );
+    }
+
+    /**
+     * External function to buy & lock multiple tokens.
+     * @param _subjects Subject addresses for which tokens are being bought & deposited.
+     * @param _depositAmounts Amounts of moxie tokens getting deposited.
+     * @param _minReturnAmountsAfterFee Slippage settings which determine minimum amounts of tokens after fee.
+     * @param _lockPeriodInSec Lock periods for the tokens.
+     * @param _beneficiary Address of the beneficiary for the lock.
+     * @param  _orderReferrer Address of order referrer 
+     * @return amounts_ Amounts of tokens bought & locked.
+     * @return unlockTimeInSec_ Unlock times for the locks.
+     */
+    function buyAndLockMultipleForV2(
+        address[] memory _subjects,
+        uint256[] memory _depositAmounts,
+        uint256[] memory _minReturnAmountsAfterFee,
+        uint256 _lockPeriodInSec,
+        address _beneficiary,
+        address _orderReferrer
+    )
+        external
+        whenNotPaused
+        onlyValidLockPeriod(_lockPeriodInSec)
+        returns (uint256[] memory amounts_, uint256 unlockTimeInSec_)
+    {
+        (amounts_, unlockTimeInSec_) = _buyAndLockMultipleFor(
+            _subjects,
+            _depositAmounts,
+            _minReturnAmountsAfterFee,
+            _lockPeriodInSec,
+            _beneficiary,
+            _orderReferrer
         );
     }
 
