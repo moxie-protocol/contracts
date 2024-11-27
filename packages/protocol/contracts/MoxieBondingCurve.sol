@@ -88,6 +88,13 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         uint256 _buyAmount,
         address indexed _beneficiary
     );
+
+      event UpdateReferralFees(
+        uint256 _platformReferrerBuyFeePct,
+        uint256 _platformReferrerSellFeePct,
+        uint256 _orderReferrerBuyFeePct,
+        uint256 _orderReferrerSellFeePct
+        );
     /// @dev Address of moxie token.
     IERC20Extended public token;
     /// @dev address of Bancors formula.
@@ -496,7 +503,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             subjectFee,
             protocolFee,
             _orderReferrer,
-            true
+            false
         );
         token.safeTransfer(_onBehalfOf, returnedAmount_);
     }
@@ -634,10 +641,14 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
         subjectSupply_ = subjectToken.totalSupply();
     }
 
-    function updateProtocolRewardAddress(address _protocolRewardsAddress)  external onlyRole(UPDATE_PROTOCOL_REWARD_ROLE) {
-        if (_isZeroAddress(_protocolRewardsAddress)) revert MoxieBondingCurve_InvalidProtocolRewardAddress();
+    function updateProtocolRewardAddress(
+        address _protocolRewardsAddress
+    ) external onlyRole(UPDATE_PROTOCOL_REWARD_ROLE) {
+        if (_isZeroAddress(_protocolRewardsAddress))
+            revert MoxieBondingCurve_InvalidProtocolRewardAddress();
         protocolRewards = IProtocolRewards(_protocolRewardsAddress);
     }
+
     /**
      * @notice Update fee only be called by role UPDATE_FEES_ROLE.
      * @param _feeInput Fee input struct.
@@ -652,6 +663,33 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
             _feeInput.protocolSellFeePct,
             _feeInput.subjectBuyFeePct,
             _feeInput.subjectSellFeePct
+        );
+    }
+
+    function updateReferralFee(
+        uint256 _platformReferrerBuyFeePct,
+        uint256 _platformReferrerSellFeePct,
+        uint256 _orderReferrerBuyFeePct,
+        uint256 _orderReferrerSellFeePct
+    ) external onlyRole(UPDATE_FEES_ROLE) {
+        if (
+            !_feeIsValid(
+                _platformReferrerBuyFeePct + _orderReferrerBuyFeePct
+            ) ||
+            !_feeIsValid(_platformReferrerSellFeePct + _orderReferrerSellFeePct)
+        ) revert MoxieBondingCurve_InvalidFeePercentage();
+
+        platformReferrerBuyFeePct = _platformReferrerBuyFeePct;
+        platformReferrerSellFeePct = _platformReferrerSellFeePct;
+        orderReferrerBuyFeePct = _orderReferrerBuyFeePct;
+        orderReferrerSellFeePct = _orderReferrerSellFeePct;
+
+
+        emit UpdateReferralFees(
+            platformReferrerBuyFeePct,
+            platformReferrerSellFeePct,
+            orderReferrerBuyFeePct,
+            orderReferrerSellFeePct
         );
     }
 
