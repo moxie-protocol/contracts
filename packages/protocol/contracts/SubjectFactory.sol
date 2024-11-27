@@ -60,7 +60,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     mapping(address subject => Auction auction) public auctions;
 
     uint256 public platformReferrerFeePct;
-    IProtocolRewards protocolRewards;
+    IProtocolRewards public protocolRewards;
 
     /**
      * @dev Initialize the contract.
@@ -578,6 +578,19 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
             revert SubjectFactory_InvalidFeePercentage();
 
         _updateFees(_feeInput.protocolFeePct, _feeInput.subjectFeePct);
+    }
+
+    /**
+     * @notice Update platform referrer fee percentage.
+     * @param _platformReferrerFeePct New platform referrer fee percentage.
+     */
+    function updatePlatformReferrerFee(
+        uint256 _platformReferrerFeePct
+    ) external onlyRole(UPDATE_FEES_ROLE) {
+        if (!_feeIsValid(_platformReferrerFeePct))
+            revert SubjectFactory_InvalidFeePercentage();
+
+        platformReferrerFeePct = _platformReferrerFeePct;
     }
 
     /**

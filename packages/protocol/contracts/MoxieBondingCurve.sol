@@ -129,6 +129,7 @@ contract MoxieBondingCurve is IMoxieBondingCurve, SecurityModule {
     mapping(address subject => address _platformReferrer)
         public platformReferrer;
 
+    /// @dev these fee is calculated from protocol fees. 
     uint256 public platformReferrerBuyFeePct;
     uint256 public platformReferrerSellFeePct;
     uint256 public orderReferrerBuyFeePct;
