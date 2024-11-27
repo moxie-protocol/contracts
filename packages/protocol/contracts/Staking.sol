@@ -119,10 +119,7 @@ contract Staking is IStaking, SecurityModule {
         uint256 _unlockTimeInSec,
         address _beneficiary,
         uint256 _moxieDepositAmount
-    )
-        internal
-        returns (IERC20Extended _subjectToken)
-    {
+    ) internal returns (IERC20Extended _subjectToken) {
         if (_isZeroAddress(_subject)) {
             revert Staking_InvalidSubject();
         }
@@ -209,7 +206,7 @@ contract Staking is IStaking, SecurityModule {
      * @param _amount Amount of tokens being deposited.
      * @param _lockPeriodInSec Lock period for the tokens.
      * @param _unlockTimeInSec Unlock time of lock in secs.
-     * @param _beneficiary Beneficiary of the lock. 
+     * @param _beneficiary Beneficiary of the lock.
      */
     function _depositAndLock(
         address _subject,
@@ -217,7 +214,7 @@ contract Staking is IStaking, SecurityModule {
         uint256 _lockPeriodInSec,
         uint256 _unlockTimeInSec,
         address _beneficiary
-    ) internal  {
+    ) internal {
         IERC20Extended subjectToken;
         (subjectToken) = _createLock(
             _subject,
@@ -237,178 +234,27 @@ contract Staking is IStaking, SecurityModule {
      * @param _lockPeriodInSec Lock period to set.
      * @return unlock time in sec
      */
-    function _getUnlockTime(uint256 _lockPeriodInSec) internal view returns(uint256) {
+    function _getUnlockTime(
+        uint256 _lockPeriodInSec
+    ) internal view returns (uint256) {
         return block.timestamp + _lockPeriodInSec;
     }
 
     /**
-     * @notice Sets the lock period for staking. only owner can call this function.
-     * @param _lockPeriodInSec Lock period to set.
-     * @param _allowed Boolean to allow or disallow the lock period.
+     * @notice Buys and locks tokens for the caller.
+     * @param _subject The address of the subject to buy and lock for.
+     * @param _depositAmount The amount of tokens to deposit for buying and locking.
+     * @param _minReturnAmountAfterFee The minimum return amount after fee for buying.
+     * @param _lockPeriodInSec The lock period in seconds for the tokens.
+     * @return amount_ The amount of tokens bought and locked.
+     * @return unlockTimeInSec_ The unlock time in seconds for the tokens.
      */
-    function setLockPeriod(
-        uint256 _lockPeriodInSec,
-        bool _allowed
-    ) external onlyRole(CHANGE_LOCK_DURATION) {
-        if (lockPeriodsInSec[_lockPeriodInSec] == _allowed) {
-            revert Staking_LockPeriodAlreadySet();
-        }
-        lockPeriodsInSec[_lockPeriodInSec] = _allowed;
-        emit LockPeriodUpdated(_lockPeriodInSec, _allowed);
-    }
-
-    /**
-     * External function to deposit and lock tokens.
-     * @param _subject Subject address for which tokens are getting deposited.
-     * @param _amount amount of tokens getting deposited.
-     * @param _lockPeriodInSec lock period for the tokens.
-     * @return unlockTimeInSec_ Unlock times for the locks.
-     */
-    function depositAndLock(
-        address _subject,
-        uint256 _amount,
-        uint256 _lockPeriodInSec
-    )
-        external
-        whenNotPaused
-        onlyValidLockPeriod(_lockPeriodInSec)
-        returns (uint256 unlockTimeInSec_)
-    {
-
-        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
-
-        _depositAndLock(
-            _subject,
-            _amount,
-            _lockPeriodInSec,
-            unlockTimeInSec_,
-            msg.sender
-        );
-    }
-
-    /**
-     * External function to deposit and lock tokens for a beneficiary.
-     * @param _subject Subject address for which tokens are getting deposited.
-     * @param _amount amount of tokens getting deposited.
-     * @param _lockPeriodInSec lock period for the tokens.
-     * @param _beneficiary Address of the beneficiary for the lock.
-     * @return unlockTimeInSec_ Unlock times for the locks.
-     */
-    function depositAndLockFor(
-        address _subject,
-        uint256 _amount,
-        uint256 _lockPeriodInSec,
-        address _beneficiary
-    )
-        external
-        whenNotPaused
-        onlyValidLockPeriod(_lockPeriodInSec)
-        returns (uint256 unlockTimeInSec_)
-    {
-
-        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
-
-        _depositAndLock(
-            _subject,
-            _amount,
-            _lockPeriodInSec,
-            unlockTimeInSec_,
-            _beneficiary
-        );
-    }
-
-    /**
-     * External function to deposit and lock multiple tokens.
-     * @param _subjects Subject addresses for which tokens are getting deposited.
-     * @param _amounts Amounts of tokens getting deposited.
-     * @param _lockPeriodInSec Lock periods for the tokens.
-     * @return unlockTimeInSec_ Unlock times for the locks.
-     */
-    function depositAndLockMultiple(
-        address[] memory _subjects,
-        uint256[] memory _amounts,
-        uint256 _lockPeriodInSec
-    )
-        external
-        whenNotPaused
-        onlyValidLockPeriod(_lockPeriodInSec)
-        returns (uint256 unlockTimeInSec_)
-    {
-        if (_subjects.length != _amounts.length) {
-            revert Staking_InvalidInputLength();
-        }
-
-
-        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
-
-        for (uint256 i = 0; i < _subjects.length; i++) {
-            _depositAndLock(
-                _subjects[i],
-                _amounts[i],
-                _lockPeriodInSec,
-                unlockTimeInSec_,
-                msg.sender
-            );
-        }
-    }
-
-    /**
-     * External function to deposit and lock multiple tokens.
-     * @param _subjects Subject addresses for which tokens are getting deposited.
-     * @param _amounts Amounts of tokens getting deposited.
-     * @param _lockPeriodInSec Lock periods for the tokens.
-     * @param _beneficiary Address of the beneficiary for the lock.
-     * @return unlockTimeInSec_ Unlock times for the locks.
-     */
-    function depositAndLockMultipleFor(
-        address[] memory _subjects,
-        uint256[] memory _amounts,
-        uint256 _lockPeriodInSec,
-        address _beneficiary
-    )
-        external
-        whenNotPaused
-        onlyValidLockPeriod(_lockPeriodInSec)
-        returns (uint256 unlockTimeInSec_)
-    {
-        if (_subjects.length != _amounts.length) {
-            revert Staking_InvalidInputLength();
-        }
-
-        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
-
-
-        for (uint256 i = 0; i < _subjects.length; i++) {
-            _depositAndLock(
-                _subjects[i],
-                _amounts[i],
-                _lockPeriodInSec,
-                unlockTimeInSec_,
-                _beneficiary
-            );
-        }
-    }
-
-    /**
-     * External function to buy & lock tokens.
-     * @param _subject Subject address for which tokens are being bought & deposited.
-     * @param _depositAmount amount of moxie tokens getting deposited.
-     * @param _minReturnAmountAfterFee Slippage setting which determines minimum amount of tokens after fee.
-     * @param _lockPeriodInSec Lock period for the tokens.
-     * @return amount_ Amount of tokens bought & locked.
-     * @return unlockTimeInSec_ Unlock times for the locks.
-     */
-    function buyAndLock(
+    function _buyAndLock(
         address _subject,
         uint256 _depositAmount,
         uint256 _minReturnAmountAfterFee,
         uint256 _lockPeriodInSec
-    )
-        external
-        whenNotPaused
-        onlyValidLockPeriod(_lockPeriodInSec)
-        returns (uint256 amount_, uint256 unlockTimeInSec_)
-    {
+    ) internal returns (uint256 amount_, uint256 unlockTimeInSec_) {
         moxieToken.safeTransferFrom(msg.sender, address(this), _depositAmount);
         moxieToken.approve(address(moxieBondingCurve), _depositAmount);
         amount_ = moxieBondingCurve.buyShares(
@@ -429,27 +275,22 @@ contract Staking is IStaking, SecurityModule {
     }
 
     /**
-     * External function to buy & lock tokens.
-     * @param _subject Subject address for which tokens are being bought & deposited.
-     * @param _depositAmount amount of moxie tokens getting deposited.
-     * @param _minReturnAmountAfterFee Slippage setting which determines minimum amount of tokens after fee.
-     * @param _lockPeriodInSec Lock period for the tokens.
-     * @param _beneficiary Address of the beneficiary for the lock.
-     * @return amount_ Amount of tokens bought & locked.
-     * @return unlockTimeInSec_ Unlock times for the locks.
+     * @notice Buys and locks tokens for a specific beneficiary.
+     * @param _subject The address of the subject to buy and lock for.
+     * @param _depositAmount The amount of tokens to deposit for buying and locking.
+     * @param _minReturnAmountAfterFee The minimum return amount after fee for buying.
+     * @param _lockPeriodInSec The lock period in seconds for the tokens.
+     * @param _beneficiary The address of the beneficiary for whom the tokens are being bought and locked.
+     * @return amount_ The amount of tokens bought and locked.
+     * @return unlockTimeInSec_ The unlock time in seconds for the tokens.
      */
-    function buyAndLockFor(
+    function _buyAndLockFor(
         address _subject,
         uint256 _depositAmount,
         uint256 _minReturnAmountAfterFee,
         uint256 _lockPeriodInSec,
         address _beneficiary
-    )
-        external
-        whenNotPaused
-        onlyValidLockPeriod(_lockPeriodInSec)
-        returns (uint256 amount_, uint256 unlockTimeInSec_)
-    {
+    ) internal returns (uint256 amount_, uint256 unlockTimeInSec_) {
         moxieToken.safeTransferFrom(msg.sender, address(this), _depositAmount);
         moxieToken.approve(address(moxieBondingCurve), _depositAmount);
         amount_ = moxieBondingCurve.buyShares(
@@ -471,25 +312,21 @@ contract Staking is IStaking, SecurityModule {
     }
 
     /**
-     * External function to buy & lock multiple tokens.
-     * @param _subjects Subject addresses for which tokens are being bought & deposited.
-     * @param _depositAmounts Amounts of moxie tokens getting deposited.
-     * @param _minReturnAmountsAfterFee Slippage settings which determine minimum amounts of tokens after fee.
-     * @param _lockPeriodInSec Lock periods for the tokens.
-     * @return amounts_ Amounts of tokens bought & locked.
-     * @return unlockTimeInSec_ Unlock times for the locks.
+     * @notice Buys and locks multiple subjects for a beneficiary.
+     * @param _subjects The addresses of the subjects to buy and lock for.
+     * @param _depositAmounts The amounts of tokens to deposit for each subject.
+     * @param _minReturnAmountsAfterFee The minimum return amounts after fee for each subject.
+     * @param _lockPeriodInSec The lock period in seconds for the subjects.
+     * @return amounts_ The amounts of tokens bought and locked for each subject.
+     * @return unlockTimeInSec_ The unlock time in seconds for the subjects.
      */
-    function buyAndLockMultiple(
+
+    function _buyAndLockMultiple(
         address[] memory _subjects,
         uint256[] memory _depositAmounts,
         uint256[] memory _minReturnAmountsAfterFee,
         uint256 _lockPeriodInSec
-    )
-        external
-        whenNotPaused
-        onlyValidLockPeriod(_lockPeriodInSec)
-        returns (uint256[] memory amounts_, uint256 unlockTimeInSec_)
-    {
+    ) internal returns (uint256[] memory amounts_, uint256 unlockTimeInSec_) {
         if (
             _subjects.length != _depositAmounts.length ||
             _subjects.length != _minReturnAmountsAfterFee.length
@@ -531,29 +368,27 @@ contract Staking is IStaking, SecurityModule {
             amounts_[i] = amount;
         }
     }
-
+    
     /**
-     * External function to buy & lock multiple tokens.
-     * @param _subjects Subject addresses for which tokens are being bought & deposited.
-     * @param _depositAmounts Amounts of moxie tokens getting deposited.
-     * @param _minReturnAmountsAfterFee Slippage settings which determine minimum amounts of tokens after fee.
-     * @param _lockPeriodInSec Lock periods for the tokens.
-     * @param _beneficiary Address of the beneficiary for the lock.
-     * @return amounts_ Amounts of tokens bought & locked.
-     * @return unlockTimeInSec_ Unlock times for the locks.
+     * @notice Buys and locks multiple subjects for a beneficiary.
+     * 
+     * @param _subjects An array of subject addresses to buy and lock.
+     * @param _depositAmounts An array of deposit amounts corresponding to each subject.
+     * @param _minReturnAmountsAfterFee An array of minimum return amounts after fee corresponding to each subject.
+     * @param _lockPeriodInSec The lock period in seconds.
+     * @param _beneficiary The address of the beneficiary.
+     * 
+     * @return amounts_ An array of bought amounts corresponding to each subject.
+     * @return unlockTimeInSec_ The unlock time in seconds.
      */
-    function buyAndLockMultipleFor(
+
+    function _buyAndLockMultipleFor(
         address[] memory _subjects,
         uint256[] memory _depositAmounts,
         uint256[] memory _minReturnAmountsAfterFee,
         uint256 _lockPeriodInSec,
         address _beneficiary
-    )
-        external
-        whenNotPaused
-        onlyValidLockPeriod(_lockPeriodInSec)
-        returns (uint256[] memory amounts_, uint256 unlockTimeInSec_)
-    {
+    ) internal returns (uint256[] memory amounts_, uint256 unlockTimeInSec_) {
         if (
             _subjects.length != _depositAmounts.length ||
             _subjects.length != _minReturnAmountsAfterFee.length
@@ -578,7 +413,6 @@ contract Staking is IStaking, SecurityModule {
 
         unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
 
-
         for (uint256 i = 0; i < _subjects.length; i++) {
             amounts_[i] = moxieBondingCurve.buyShares(
                 _subjects[i],
@@ -594,6 +428,268 @@ contract Staking is IStaking, SecurityModule {
                 _depositAmounts[i]
             );
         }
+    }
+
+    /**
+     * @notice Sets the lock period for staking. only owner can call this function.
+     * @param _lockPeriodInSec Lock period to set.
+     * @param _allowed Boolean to allow or disallow the lock period.
+     */
+    function setLockPeriod(
+        uint256 _lockPeriodInSec,
+        bool _allowed
+    ) external onlyRole(CHANGE_LOCK_DURATION) {
+        if (lockPeriodsInSec[_lockPeriodInSec] == _allowed) {
+            revert Staking_LockPeriodAlreadySet();
+        }
+        lockPeriodsInSec[_lockPeriodInSec] = _allowed;
+        emit LockPeriodUpdated(_lockPeriodInSec, _allowed);
+    }
+
+    /**
+     * External function to deposit and lock tokens.
+     * @param _subject Subject address for which tokens are getting deposited.
+     * @param _amount amount of tokens getting deposited.
+     * @param _lockPeriodInSec lock period for the tokens.
+     * @return unlockTimeInSec_ Unlock times for the locks.
+     */
+    function depositAndLock(
+        address _subject,
+        uint256 _amount,
+        uint256 _lockPeriodInSec
+    )
+        external
+        whenNotPaused
+        onlyValidLockPeriod(_lockPeriodInSec)
+        returns (uint256 unlockTimeInSec_)
+    {
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+        _depositAndLock(
+            _subject,
+            _amount,
+            _lockPeriodInSec,
+            unlockTimeInSec_,
+            msg.sender
+        );
+    }
+
+    /**
+     * External function to deposit and lock tokens for a beneficiary.
+     * @param _subject Subject address for which tokens are getting deposited.
+     * @param _amount amount of tokens getting deposited.
+     * @param _lockPeriodInSec lock period for the tokens.
+     * @param _beneficiary Address of the beneficiary for the lock.
+     * @return unlockTimeInSec_ Unlock times for the locks.
+     */
+    function depositAndLockFor(
+        address _subject,
+        uint256 _amount,
+        uint256 _lockPeriodInSec,
+        address _beneficiary
+    )
+        external
+        whenNotPaused
+        onlyValidLockPeriod(_lockPeriodInSec)
+        returns (uint256 unlockTimeInSec_)
+    {
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+        _depositAndLock(
+            _subject,
+            _amount,
+            _lockPeriodInSec,
+            unlockTimeInSec_,
+            _beneficiary
+        );
+    }
+
+    /**
+     * External function to deposit and lock multiple tokens.
+     * @param _subjects Subject addresses for which tokens are getting deposited.
+     * @param _amounts Amounts of tokens getting deposited.
+     * @param _lockPeriodInSec Lock periods for the tokens.
+     * @return unlockTimeInSec_ Unlock times for the locks.
+     */
+    function depositAndLockMultiple(
+        address[] memory _subjects,
+        uint256[] memory _amounts,
+        uint256 _lockPeriodInSec
+    )
+        external
+        whenNotPaused
+        onlyValidLockPeriod(_lockPeriodInSec)
+        returns (uint256 unlockTimeInSec_)
+    {
+        if (_subjects.length != _amounts.length) {
+            revert Staking_InvalidInputLength();
+        }
+
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+        for (uint256 i = 0; i < _subjects.length; i++) {
+            _depositAndLock(
+                _subjects[i],
+                _amounts[i],
+                _lockPeriodInSec,
+                unlockTimeInSec_,
+                msg.sender
+            );
+        }
+    }
+
+    /**
+     * External function to deposit and lock multiple tokens.
+     * @param _subjects Subject addresses for which tokens are getting deposited.
+     * @param _amounts Amounts of tokens getting deposited.
+     * @param _lockPeriodInSec Lock periods for the tokens.
+     * @param _beneficiary Address of the beneficiary for the lock.
+     * @return unlockTimeInSec_ Unlock times for the locks.
+     */
+    function depositAndLockMultipleFor(
+        address[] memory _subjects,
+        uint256[] memory _amounts,
+        uint256 _lockPeriodInSec,
+        address _beneficiary
+    )
+        external
+        whenNotPaused
+        onlyValidLockPeriod(_lockPeriodInSec)
+        returns (uint256 unlockTimeInSec_)
+    {
+        if (_subjects.length != _amounts.length) {
+            revert Staking_InvalidInputLength();
+        }
+
+        unlockTimeInSec_ = _getUnlockTime(_lockPeriodInSec);
+
+        for (uint256 i = 0; i < _subjects.length; i++) {
+            _depositAndLock(
+                _subjects[i],
+                _amounts[i],
+                _lockPeriodInSec,
+                unlockTimeInSec_,
+                _beneficiary
+            );
+        }
+    }
+
+    /**
+     * External function to buy & lock tokens.
+     * @param _subject Subject address for which tokens are being bought & deposited.
+     * @param _depositAmount amount of moxie tokens getting deposited.
+     * @param _minReturnAmountAfterFee Slippage setting which determines minimum amount of tokens after fee.
+     * @param _lockPeriodInSec Lock period for the tokens.
+     * @return amount_ Amount of tokens bought & locked.
+     * @return unlockTimeInSec_ Unlock times for the locks.
+     */
+    function buyAndLock(
+        address _subject,
+        uint256 _depositAmount,
+        uint256 _minReturnAmountAfterFee,
+        uint256 _lockPeriodInSec
+    )
+        external
+        whenNotPaused
+        onlyValidLockPeriod(_lockPeriodInSec)
+        returns (uint256 amount_, uint256 unlockTimeInSec_)
+    {
+        (amount_, unlockTimeInSec_) = _buyAndLock(
+            _subject,
+            _depositAmount,
+            _minReturnAmountAfterFee,
+            _lockPeriodInSec
+        );
+    }
+
+    /**
+     * External function to buy & lock tokens.
+     * @param _subject Subject address for which tokens are being bought & deposited.
+     * @param _depositAmount amount of moxie tokens getting deposited.
+     * @param _minReturnAmountAfterFee Slippage setting which determines minimum amount of tokens after fee.
+     * @param _lockPeriodInSec Lock period for the tokens.
+     * @param _beneficiary Address of the beneficiary for the lock.
+     * @return amount_ Amount of tokens bought & locked.
+     * @return unlockTimeInSec_ Unlock times for the locks.
+     */
+    function buyAndLockFor(
+        address _subject,
+        uint256 _depositAmount,
+        uint256 _minReturnAmountAfterFee,
+        uint256 _lockPeriodInSec,
+        address _beneficiary
+    )
+        external
+        whenNotPaused
+        onlyValidLockPeriod(_lockPeriodInSec)
+        returns (uint256 amount_, uint256 unlockTimeInSec_)
+    {
+        (amount_, unlockTimeInSec_) = _buyAndLockFor(
+            _subject,
+            _depositAmount,
+            _minReturnAmountAfterFee,
+            _lockPeriodInSec,
+            _beneficiary
+        );
+    }
+
+    /**
+     * External function to buy & lock multiple tokens.
+     * @param _subjects Subject addresses for which tokens are being bought & deposited.
+     * @param _depositAmounts Amounts of moxie tokens getting deposited.
+     * @param _minReturnAmountsAfterFee Slippage settings which determine minimum amounts of tokens after fee.
+     * @param _lockPeriodInSec Lock periods for the tokens.
+     * @return amounts_ Amounts of tokens bought & locked.
+     * @return unlockTimeInSec_ Unlock times for the locks.
+     */
+    function buyAndLockMultiple(
+        address[] memory _subjects,
+        uint256[] memory _depositAmounts,
+        uint256[] memory _minReturnAmountsAfterFee,
+        uint256 _lockPeriodInSec
+    )
+        external
+        whenNotPaused
+        onlyValidLockPeriod(_lockPeriodInSec)
+        returns (uint256[] memory amounts_, uint256 unlockTimeInSec_)
+    {
+        (amounts_, unlockTimeInSec_) = _buyAndLockMultiple(
+            _subjects,
+            _depositAmounts,
+            _minReturnAmountsAfterFee,
+            _lockPeriodInSec
+        );
+    }
+
+    /**
+     * External function to buy & lock multiple tokens.
+     * @param _subjects Subject addresses for which tokens are being bought & deposited.
+     * @param _depositAmounts Amounts of moxie tokens getting deposited.
+     * @param _minReturnAmountsAfterFee Slippage settings which determine minimum amounts of tokens after fee.
+     * @param _lockPeriodInSec Lock periods for the tokens.
+     * @param _beneficiary Address of the beneficiary for the lock.
+     * @return amounts_ Amounts of tokens bought & locked.
+     * @return unlockTimeInSec_ Unlock times for the locks.
+     */
+    function buyAndLockMultipleFor(
+        address[] memory _subjects,
+        uint256[] memory _depositAmounts,
+        uint256[] memory _minReturnAmountsAfterFee,
+        uint256 _lockPeriodInSec,
+        address _beneficiary
+    )
+        external
+        whenNotPaused
+        onlyValidLockPeriod(_lockPeriodInSec)
+        returns (uint256[] memory amounts_, uint256 unlockTimeInSec_)
+    {
+        (amounts_, unlockTimeInSec_) = _buyAndLockMultipleFor(
+            _subjects,
+            _depositAmounts,
+            _minReturnAmountsAfterFee,
+            _lockPeriodInSec,
+            _beneficiary
+        );
     }
 
     /**
@@ -666,7 +762,6 @@ contract Staking is IStaking, SecurityModule {
             msg.sender,
             0
         );
-
     }
 
     /**
@@ -712,7 +807,6 @@ contract Staking is IStaking, SecurityModule {
             _beneficiary,
             0
         );
-
     }
 
     /**
