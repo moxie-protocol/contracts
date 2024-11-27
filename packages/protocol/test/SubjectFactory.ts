@@ -1056,7 +1056,7 @@ describe('Subject Factory', () => {
 
     });
 
-    describe.only('finalize subject onboarding', () => {
+    describe('finalize subject onboarding', () => {
 
         it('should finalize subject onboarding when there are bids in auction', async () => {
             const {

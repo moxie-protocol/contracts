@@ -21,6 +21,8 @@ const getFactories = async () => {
   const MoxieBondingCurve =
     await hre.ethers.getContractFactory("MoxieBondingCurve");
   const Staking = await hre.ethers.getContractFactory("Staking");
+  const ProtocolRewards = await hre.ethers.getContractFactory("ProtocolRewards");
+
   return {
     MoxieToken,
     BancorFormula,
@@ -31,6 +33,7 @@ const getFactories = async () => {
     TokenManager,
     MoxieBondingCurve,
     Staking,
+    ProtocolRewards
   };
 };
 
@@ -63,6 +66,7 @@ describe("Staking", () => {
       TokenManager,
       MoxieBondingCurve,
       Staking,
+      ProtocolRewards
     } = await getFactories();
     // moxie Token
     const moxieToken = await MoxieToken.connect(owner).deploy();
@@ -87,7 +91,6 @@ describe("Staking", () => {
       .connect(owner)
       .setErc721ContractAddress(await moxiePass.getAddress());
 
-    //subjectErc20
 
     const tokenManager = await TokenManager.deploy({ from: deployer.address });
     await tokenManager
@@ -124,6 +127,10 @@ describe("Staking", () => {
     const subjectBuyFeePct = (3 * 1e16).toString(); // 3%
     const subjectSellFeePct = (4 * 1e16).toString(); // 4%
 
+    const protocolRewards = await ProtocolRewards.deploy();
+    await protocolRewards.initialize(moxieTokenAddress, owner);
+
+
     const feeInput = {
       protocolBuyFeePct,
       protocolSellFeePct,
@@ -143,7 +150,10 @@ describe("Staking", () => {
     );
     const moxieBondingCurveAddress = await moxieBondingCurve.getAddress();
 
-    await moxiePass.connect(minter).mint(owner.address, "uri");
+    await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_PROTOCOL_REWARD_ROLE(), owner);
+    await moxieBondingCurve.connect(owner).updateProtocolRewardAddress(await protocolRewards.getAddress());
+
+      await moxiePass.connect(minter).mint(owner.address, "uri");
     await moxiePass.connect(minter).mint(subject.address, "uri");
     await moxiePass.connect(minter).mint(deployer.address, "uri");
     await moxiePass.connect(minter).mint(subjectFactory.address, "uri");
@@ -210,6 +220,7 @@ describe("Staking", () => {
         reserveRatio,
         initialSupply,
         initialReserve,
+        ethers.ZeroAddress
       );
     // first buyer
     await moxieToken
@@ -236,6 +247,7 @@ describe("Staking", () => {
         reserveRatio,
         initialSupply,
         initialReserve,
+        ethers.ZeroAddress
       );
 
     await moxieToken
