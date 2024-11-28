@@ -26,7 +26,7 @@ export default buildModule("UpgradeBondingCurve", (m) => {
 
     const deployer = m.getAccount(0);
     const owner = m.getAccount(1);
-    const proxyAdminOwnerAccount = m.getAccount(9);
+    const proxyAdminOwnerAccount = m.getAccount(8);
 
     const { moxieToken } = m.useModule(MoxieToken);
     const protocolRewards = m.contract("ProtocolRewards", [], { from: deployer });
@@ -56,11 +56,16 @@ export default buildModule("UpgradeBondingCurve", (m) => {
         id: "moxieBondingCurveV2Upgrade"
       });
 
-
+      // set UPDATE_PROTOCOL_REWARD_ROLE role
+    const updateProtocolRewardRole = m.staticCall(moxieBondingCurveV2, "UPDATE_PROTOCOL_REWARD_ROLE");
+    const updateFeesRole = m.staticCall(moxieBondingCurveV2, "UPDATE_FEES_ROLE");
+      // TODO: verify who should be the beneficiary
+    const grantUpdateProtocolRewardRole = m.call(moxieBondingCurveV2, 'grantRole', [updateProtocolRewardRole, config.adminRoleBeneficiary], { from: owner, id: "moxieBondingCurveUpdateProtocolRewardRole" });
+    const grantUpdateFeesRole = m.call(moxieBondingCurveV2, 'grantRole', [updateFeesRole, config.adminRoleBeneficiary], { from: owner, id: "moxieBondingCurveUpdateFeesRole" });
       // set the protocol rewARD contract 
-
+    const updateProtocolRewardAddress = m.call(moxieBondingCurveV2, "updateProtocolRewardAddress", [protocolRewards], { from: config.adminRoleBeneficiary, id: "updateProtocolRewardAddress", after: [grantUpdateProtocolRewardRole]});
       // set the platform & order referral fee  // platfrom 20% order: 25%
-
+    m.call(moxieBondingCurveV2, "updateReferralFee", [config.platformReferrerBuyFeePct, config.platformReferrerSellFeePct, config.orderReferrerBuyFeePct, config.orderReferrerSellFeePct], { from: config.adminRoleBeneficiary, id: "updateReferralFee", after: [grantUpdateFeesRole] });
 
     return {moxieBondingCurveV2};
 });
