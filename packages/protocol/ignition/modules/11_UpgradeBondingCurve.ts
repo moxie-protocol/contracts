@@ -32,7 +32,7 @@ export default buildModule("UpgradeBondingCurve", (m) => {
     const protocolRewards = m.contract("ProtocolRewards", [], { from: deployer });
 
     const moxieBondingCurveV2 = m.contract("MoxieBondingCurve", [], { from: deployer, id: "moxieBondingCurveV2" })
-
+    // TODO: this will deploy new subject factory,formula, vault, tokenManager ?
     const subjectFactory = m.contract("SubjectFactory", [], { from: deployer });
     const formula = m.contract("BancorFormula", [], { from: deployer });
     const vault = m.contract("Vault", [], { from: deployer });
