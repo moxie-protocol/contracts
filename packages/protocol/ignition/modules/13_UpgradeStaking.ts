@@ -6,7 +6,7 @@ import ProtocolContractsProxy from "./5_ProtocolContractsProxy";
 
 import StakingContracts from "./9_Staking";
 import config from "../config/config.json";
-import BondingCurve from "./11_UpgradeBondingCurve";
+import BondingCurve from "./11_UpgradeProtocol";
 import MoxiePass from "./1_MoxiePass";
 
 export default buildModule("UpgradeStaking", (m) => {
@@ -16,10 +16,8 @@ export default buildModule("UpgradeStaking", (m) => {
 
     const deployer = m.getAccount(0);
     const owner = m.getAccount(1);
-    const minter = m.getAccount(2);
 
     const { moxieToken } = m.useModule(MoxieToken);
-    const { moxiePass } = m.useModule(MoxiePass);
 
     const { tokenManagerInstance } = m.useModule(ProtocolContractsProxy);
     const { moxieBondingCurveV2 } = m.useModule(BondingCurve);
@@ -35,5 +33,5 @@ export default buildModule("UpgradeStaking", (m) => {
         id: "stakingV2Upgrade"
     });
 
-    return { stakingV2 , stakingProxyAdmin, stakingInstance };
+    return { stakingV2, stakingProxyAdmin, stakingInstance };
 });
