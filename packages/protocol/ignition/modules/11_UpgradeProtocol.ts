@@ -33,9 +33,7 @@ const AUCTION_ORDER_CANCELLATION_DURATION = config.auctionOrderCancellationDurat
 
 export default buildModule("UpgradeProtocol", (m) => {
 
-  const proxyAdminOwner = config.proxyAdminOwner;
   const { easyAuction } = m.useModule(EasyAuction);
-  const { } = m.useModule(Permissions)
   const deployer = m.getAccount(0);
   const owner = m.getAccount(1);
   const proxyAdminOwnerAccount = m.getAccount(8);
@@ -72,7 +70,7 @@ export default buildModule("UpgradeProtocol", (m) => {
 
   const { moxieBondingCurveProxyAdmin, moxieBondingCurveInstance, subjectFactoryInstance, subjectFactoryProxyAdmin } = m.useModule(ProtocolContractsProxy);
 
-  const moxieBondingCurveV2Upgrade = m.call(moxieBondingCurveProxyAdmin, "upgradeAndCall", [moxieBondingCurveInstance, moxieBondingCurveV2, '0x'], {
+   m.call(moxieBondingCurveProxyAdmin, "upgradeAndCall", [moxieBondingCurveInstance, moxieBondingCurveV2, '0x'], {
     from: proxyAdminOwnerAccount,
     id: "moxieBondingCurveV2Upgrade"
   });
