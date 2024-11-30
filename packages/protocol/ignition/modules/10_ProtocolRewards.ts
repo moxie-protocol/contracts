@@ -30,5 +30,5 @@ export default buildModule("ProtocolRewards", (m) => {
 
     const protocolRewardInstance = m.contractAt('ProtocolRewards', protocolRewardProxy, { id: 'protocolRewardsInstance' });
 
-    return { protocolRewards, protocolRewardInstance };
+    return { protocolRewards, protocolRewardInstance, protocolRewardProxy };
 });
