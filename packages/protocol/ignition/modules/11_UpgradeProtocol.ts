@@ -41,8 +41,8 @@ export default buildModule("UpgradeProtocol", (m) => {
   const { formula, tokenManager, vault } = m.useModule(ProtocolContracts);
   const { protocolRewards } = m.useModule(ProtocolRewards);
   // const protocolRewards = m.contract("ProtocolRewards", [], { from: deployer });
-  const moxieBondingCurveV2 = m.contract("MoxieBondingCurve", [], { from: deployer, id: "moxieBondingCurveV2" })
-  const subjectFactoryV2 = m.contract("SubjectFactory", [], { from: deployer, id: "subjectFactoryV2" });
+  const moxieBondingCurveV2 = m.contract("MoxieBondingCurveV2", [], { from: deployer, id: "moxieBondingCurveV2" })
+  const subjectFactoryV2 = m.contract("SubjectFactoryV2", [], { from: deployer, id: "subjectFactoryV2" });
 
   m.call(moxieBondingCurveV2, "initialize", [
     moxieToken,

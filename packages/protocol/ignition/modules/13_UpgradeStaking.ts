@@ -19,7 +19,7 @@ export default buildModule("UpgradeStaking", (m) => {
     const { tokenManagerInstance } = m.useModule(ProtocolContractsProxy);
     const { moxieBondingCurveV2 } = m.useModule(BondingCurve);
 
-    const stakingV2 = m.contract("Staking", [], { from: deployer, id: "stakingV2MasterCopy" });
+    const stakingV2 = m.contract("StakingV2", [], { from: deployer, id: "stakingV2MasterCopy" });
     m.call(stakingV2, "initialize",
         [tokenManagerInstance, moxieBondingCurveV2, moxieToken, owner],
         { from: deployer, id: "initializeStakingV2MasterCopy" }

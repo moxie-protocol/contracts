@@ -26,5 +26,9 @@
   "Staking#stakingInstance": "0xA94E43356dca89EeBAd56Cd5a472cAf7e53Cd83D",
   "ProtocolRewards#ProtocolRewards": "0x40815565ceBcA3dd2539a61c96E355Eee0671fb6",
   "ProtocolRewards#protocolRewardsProxy": "0x717e5A4dC8A1149C25AC6c8AB56A8B8F46804597",
-  "ProtocolRewards#protocolRewardsInstance": "0x717e5A4dC8A1149C25AC6c8AB56A8B8F46804597"
+  "ProtocolRewards#protocolRewardsInstance": "0x717e5A4dC8A1149C25AC6c8AB56A8B8F46804597",
+  "UpgradeProtocol#moxieBondingCurveV2": "0xE5FD5Ba4b7963fc6D375dD69Cb48aede40093a62",
+  "UpgradeProtocol#subjectFactoryV2": "0xfeBEf75C4864d9e0a3CD59e1B34cC561774eD636",
+  "UpgradeStaking#stakingV2MasterCopy": "0x695256DCa7C6F33366e69948af1B789302227ACe",
+  "Staking#stakingProxyAdmin": "0xA142a4ba6cB104459B828a170FEFbc2445F55d93"
 }
