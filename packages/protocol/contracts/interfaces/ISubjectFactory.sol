@@ -38,7 +38,6 @@ contract ISubjectFactory {
         uint256 auctionId;
         uint256 auctionEndDate;
         uint256 initialSupply;
-        address platformReferrer;
     }
 
     struct SubjectAuctionInput {
