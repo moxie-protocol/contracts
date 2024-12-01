@@ -4719,7 +4719,7 @@ describe("MoxieBondingCurve", () => {
             } = deployment;
 
             const invalidReferralFeeInput = {
-                platformReferrerBuyFeePct: 10, 
+                platformReferrerBuyFeePct: 10,
                 platformReferrerSellFeePct: PCT_BASE,
                 orderReferrerBuyFeePct: 11,
                 orderReferrerSellFeePct: 10,
@@ -4741,5 +4741,113 @@ describe("MoxieBondingCurve", () => {
         });
     });
 
+    describe('updateReserveRation', () => {
+
+        it('should update reserve ratio successfully', async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                owner,
+                subject,
+                subjectFactory,
+                reserveRatio,
+                initialReserve,
+                initialSupply,
+                moxieToken,
+                moxieBondingCurveAddress
+            } = deployment;
+
+
+            await moxieToken
+                .connect(subjectFactory)
+                .approve(moxieBondingCurveAddress, initialReserve);
+
+
+            await moxieBondingCurve.connect(subjectFactory).initializeSubjectBondingCurve(
+                subject.address,
+                reserveRatio,
+                initialSupply,
+                initialReserve,
+                ethers.ZeroAddress
+            );
+
+            const newReserveRatio = 2000;
+            await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
+
+            await expect(moxieBondingCurve.connect(owner).updateReserveRatio(subject, newReserveRatio))
+                .to.emit(moxieBondingCurve, 'SubjectReserveRatioUpdated')
+                .withArgs(subject, reserveRatio, newReserveRatio);
+
+            const updatedReserveRatio = await moxieBondingCurve.reserveRatio(subject);
+            expect(updatedReserveRatio).to.be.equal(newReserveRatio);
+        });
+
+        it('should not update reserve ratio to zero', async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                owner,
+                subject,
+                subjectFactory,
+                reserveRatio,
+                initialReserve,
+                initialSupply,
+                moxieToken,
+                moxieBondingCurveAddress
+            } = deployment;
+
+
+            await moxieToken
+                .connect(subjectFactory)
+                .approve(moxieBondingCurveAddress, initialReserve);
+
+            await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
+
+            await moxieBondingCurve.connect(subjectFactory).initializeSubjectBondingCurve(
+                subject.address,
+                reserveRatio,
+                initialSupply,
+                initialReserve,
+                ethers.ZeroAddress
+            );
+
+            await expect(moxieBondingCurve.connect(owner).updateReserveRatio(subject, 0)).
+                to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_InvalidReserveRation");
+        });
+
+
+        it('should not update reserve ratio to out of range value', async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                owner,
+                subject,
+                subjectFactory,
+                reserveRatio,
+                initialReserve,
+                initialSupply,
+                moxieToken,
+                moxieBondingCurveAddress
+            } = deployment;
+
+
+            await moxieToken
+                .connect(subjectFactory)
+                .approve(moxieBondingCurveAddress, initialReserve);
+
+            await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
+
+            await moxieBondingCurve.connect(subjectFactory).initializeSubjectBondingCurve(
+                subject.address,
+                reserveRatio,
+                initialSupply,
+                initialReserve,
+                ethers.ZeroAddress
+            );
+
+            await expect(moxieBondingCurve.connect(owner).updateReserveRatio(subject, 0)).
+                to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_InvalidReserveRation");
+        });
+    })
 
 });

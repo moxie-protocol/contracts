@@ -25,6 +25,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
     bytes32 public constant UPDATE_FORMULA_ROLE = keccak256("UPDATE_FORMULA_ROLE");
     bytes32 public constant UPDATE_BENEFICIARY_ROLE = keccak256("UPDATE_BENEFICIARY_ROLE");
     bytes32 public constant UPDATE_PROTOCOL_REWARD_ROLE = keccak256("UPDATE_PROTOCOL_REWARD_ROLE");
+    bytes32 public constant UPDATE_RESERVE_RATIO = keccak256("UPDATE_RESERVE_RATIO");
 
     error MoxieBondingCurve_InvalidToken();
     error MoxieBondingCurve_InvalidVault();
@@ -88,6 +89,12 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         uint256 _platformReferrerSellFeePct,
         uint256 _orderReferrerBuyFeePct,
         uint256 _orderReferrerSellFeePct
+    );
+
+    event SubjectReserveRatioUpdated(
+        address _subject,
+        uint32 _oldReserveRatio,
+        uint32 _newReserveRatio
     );
     /// @dev Address of moxie token.
 
@@ -581,6 +588,14 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         );
     }
 
+    /**
+     * @notice Update referral fees.
+     * @param _platformReferrerBuyFeePct Platform referrer buy fee percentage.
+     * @param _platformReferrerSellFeePct Platform referrer sell fee percentage.
+     * @param _orderReferrerBuyFeePct Order referrer buy fee percentage.
+     * @param _orderReferrerSellFeePct Order referrer sell fee percentage.
+     */
+
     function updateReferralFee(
         uint256 _platformReferrerBuyFeePct,
         uint256 _platformReferrerSellFeePct,
@@ -599,6 +614,35 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
 
         emit UpdateReferralFees(
             platformReferrerBuyFeePct, platformReferrerSellFeePct, orderReferrerBuyFeePct, orderReferrerSellFeePct
+        );
+    }
+
+    /**
+     * @dev Allow updation of reserve ratio by determined by DAO for specific subject.
+     * @param _subject Address of subject.
+     * @param _newReserveRatio new Reserve ratio. 
+     */
+    function updateReserveRatio(
+        address _subject,
+        uint32 _newReserveRatio
+    ) external onlyRole(UPDATE_RESERVE_RATIO) {
+
+        uint32 currentReserveRatio = reserveRatio[_subject];
+
+        if (currentReserveRatio == 0) {
+            revert MoxieBondingCurve_SubjectNotInitialized();
+        }
+
+        if ( _newReserveRatio == 0 || !_reserveRatioIsValid(_newReserveRatio)) {
+            revert MoxieBondingCurve_InvalidReserveRation();
+        }
+
+        reserveRatio[_subject] = _newReserveRatio;
+
+        emit SubjectReserveRatioUpdated(
+            _subject,
+            currentReserveRatio,
+            _newReserveRatio
         );
     }
 
