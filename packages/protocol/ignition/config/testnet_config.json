@@ -13,5 +13,10 @@
   "tokenLockManager": "0x31391Fd2fa4c4aB7C4770c78ea7641f5dADf4bb3",
   "moxiePassURL": "https://assets.airstack.xyz/moxiepass/metadata/0.json",
   "feeBeneficiary": "0x648e7e89A70ef654B5754E9EB91BF931a477e3CD",
-  "stakingLockDurationInSec": 120
+  "stakingLockDurationInSec": 120,
+  "platformReferrerBuyFeePct": "20000000000000000",
+  "platformReferrerSellFeePct": "20000000000000000",
+  "orderReferrerBuyFeePct": "25000000000000000",
+  "orderReferrerSellFeePct": "25000000000000000",
+  "platformReferrerFeePct": "20000000000000000"
 }
