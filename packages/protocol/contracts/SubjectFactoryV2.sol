@@ -247,8 +247,8 @@ contract SubjectFactoryV2 is SecurityModule, ISubjectFactoryV2 {
         }
     }
 
-    function _calculateFee(uint256 _amount, uint256 _fee) private pure returns (uint256) {
-        return (_amount * _fee) / PCT_BASE;
+    function _calculateFee(uint256 _feeAmount, uint256 _feePct) private pure returns (uint256) {
+        return (_feeAmount * _feePct) / PCT_BASE;
     }
 
     /**

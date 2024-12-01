@@ -11,14 +11,15 @@ describe('Subject Factory', () => {
 
     const deploy = async () => {
 
-        const [deployer, owner, minter, feeBeneficiary, subject, bidder1, bidder2] = await ethers.getSigners();
+        const [deployer, owner, minter, feeBeneficiary, subject, bidder1, bidder2, platformReferrer] = await ethers.getSigners();
 
 
-        const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactory");
+        const SubjectFactory = await hre.ethers.getContractFactory("SubjectFactoryV2");
         const MoxieToken = await hre.ethers.getContractFactory("MoxieToken");
         const BancorFormula = await hre.ethers.getContractFactory("BancorFormula");
         const Vault = await hre.ethers.getContractFactory("Vault");
         const SubjectERC20 = await hre.ethers.getContractFactory("SubjectERC20");
+        const ProtocolRewards = await hre.ethers.getContractFactory("ProtocolRewards"); 
 
         const MoxiePass = await hre.ethers.getContractFactory("MoxiePass");
         const MoxiePassVerifier = await hre.ethers.getContractFactory(
@@ -27,7 +28,7 @@ describe('Subject Factory', () => {
         const TokenManager = await hre.ethers.getContractFactory("TokenManager");
 
         const MoxieBondingCurve =
-            await hre.ethers.getContractFactory("MoxieBondingCurve");
+            await hre.ethers.getContractFactory("MoxieBondingCurveV2");
 
         const EasyAuction = await hre.ethers.getContractFactoryFromArtifact(EasyAuctionArtifact);;
 
@@ -46,6 +47,8 @@ describe('Subject Factory', () => {
 
         // Moxie Pass
         const moxiePass = await MoxiePass.deploy(owner.address, minter.address);
+
+        const protocolRewards = await ProtocolRewards.deploy();
 
         // moxie pass verifier
         const moxiePassVerifier = await MoxiePassVerifier.deploy(owner.address);
@@ -89,6 +92,11 @@ describe('Subject Factory', () => {
         const moxiePassVerifierAddress = await moxiePassVerifier.getAddress();
         const reserveRatio = 660000;
 
+
+        await protocolRewards.initialize(
+            moxieTokenAddress,
+            owner
+        );
         const feeInput = {
             protocolBuyFeePct,
             protocolSellFeePct,
@@ -124,6 +132,21 @@ describe('Subject Factory', () => {
             auctionCancellationDuration
         );
 
+
+        const protocolRewardsAddress = await protocolRewards.getAddress();
+
+        await moxieBondingCurve
+        .connect(owner)
+        .grantRole(await moxieBondingCurve.UPDATE_PROTOCOL_REWARD_ROLE(), owner);
+
+
+        await subjectFactory
+        .connect(owner)
+        .grantRole(await subjectFactory.UPDATE_PROTOCOL_REWARD_ROLE(), owner);
+
+        await moxieBondingCurve.connect(owner).updateProtocolRewardAddress(protocolRewardsAddress);
+        await subjectFactory.connect(owner).updateProtocolRewardAddress(protocolRewardsAddress);
+
         await vaultInstance
             .connect(owner)
             .grantRole(await vaultInstance.DEPOSIT_ROLE(), subjectFactoryAddress);
@@ -154,6 +177,11 @@ describe('Subject Factory', () => {
         await moxiePass.connect(minter).mint(bidder2.address, "uri");
 
         const PCT_BASE = BigInt(10 ** 18);
+
+        const platformReferrerFee = BigInt(10 ** 17) // 10%
+
+        await subjectFactory.connect(owner).grantRole(await subjectFactory.UPDATE_FEES_ROLE(), owner);
+        await subjectFactory.connect(owner).updatePlatformReferrerFee(platformReferrerFee);
         return {
             subjectFactory,
             owner,
@@ -179,7 +207,11 @@ describe('Subject Factory', () => {
             reserveRatio,
             PCT_BASE,
             vaultInstance,
-            formula
+            formula,
+            protocolRewards,
+            platformReferrer,
+            platformReferrerFee,
+            moxieBondingCurve
         };
 
     }
@@ -588,6 +620,7 @@ describe('Subject Factory', () => {
             await expect(await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
 
             )).to.emit(subjectFactory, "SubjectOnboardingInitiated")
                 .withArgs(
@@ -640,6 +673,7 @@ describe('Subject Factory', () => {
             await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
                 ethers.ZeroAddress,
                 auctionInput,
+                ethers.ZeroAddress
 
             )).to.revertedWithCustomError(subjectFactory, "SubjectFactory_InvalidSubject");
         });
@@ -683,6 +717,7 @@ describe('Subject Factory', () => {
             await expect(await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
 
             )).to.emit(subjectFactory, "SubjectOnboardingInitiated")
                 .withArgs(
@@ -698,6 +733,7 @@ describe('Subject Factory', () => {
             await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
 
             )).revertedWithCustomError(subjectFactory, "SubjectFactory_AuctionAlreadyCreated");
 
@@ -731,6 +767,7 @@ describe('Subject Factory', () => {
             await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
 
             )).to.revertedWithCustomError(subjectFactory, "AccessControlUnauthorizedAccount",
             )
@@ -769,6 +806,7 @@ describe('Subject Factory', () => {
             await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
 
             )).to.revertedWithCustomError(subjectFactory, "EnforcedPause")
 
@@ -1048,7 +1086,8 @@ describe('Subject Factory', () => {
                 vaultInstance,
                 feeBeneficiary,
                 formula,
-                feeInput
+                feeInput,
+                protocolRewards
 
 
             } = await loadFixture(deploy);
@@ -1071,7 +1110,9 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
+
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
             let subjectToken = SubjectERC20.attach(subjectTokenAddress) as SubjectERC20;
@@ -1135,7 +1176,7 @@ describe('Subject Factory', () => {
             const auction = await subjectFactory.auctions(subject.address);
             expect(auction.auctionEndDate).to.equal(0);
             const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) / PCT_BASE;
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
 
         });
 
@@ -1160,9 +1201,8 @@ describe('Subject Factory', () => {
                 vaultInstance,
                 feeInput,
                 formula,
-                feeBeneficiary
-
-
+                feeBeneficiary,
+                protocolRewards
             } = await loadFixture(deploy);
 
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
@@ -1183,6 +1223,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
@@ -1261,7 +1302,7 @@ describe('Subject Factory', () => {
             const auction = await subjectFactory.auctions(subject.address);
             expect(auction.auctionEndDate).to.equal(0);
             const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) / PCT_BASE;
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
 
         });
 
@@ -1282,9 +1323,8 @@ describe('Subject Factory', () => {
                 vaultInstance,
                 feeInput,
                 feeBeneficiary,
-                formula
-
-
+                formula,
+                protocolRewards
             } = await loadFixture(deploy);
 
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
@@ -1305,6 +1345,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
@@ -1356,7 +1397,7 @@ describe('Subject Factory', () => {
             const auction = await subjectFactory.auctions(subject.address);
             expect(auction.auctionEndDate).to.equal(0);
             const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) / PCT_BASE;
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
 
         });
 
@@ -1380,9 +1421,8 @@ describe('Subject Factory', () => {
                 vaultInstance,
                 formula,
                 feeBeneficiary,
-                feeInput
-
-
+                feeInput,
+                protocolRewards
             } = await loadFixture(deploy);
 
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
@@ -1403,6 +1443,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
@@ -1474,7 +1515,7 @@ describe('Subject Factory', () => {
             const auction = await subjectFactory.auctions(subject.address);
             expect(auction.auctionEndDate).to.equal(0);
             const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) / PCT_BASE;
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
 
         });
 
@@ -1490,9 +1531,7 @@ describe('Subject Factory', () => {
                 easyAuction,
                 bidder1,
                 easyAuctionAddress,
-                reserveRatio,
-                SubjectERC20
-
+                reserveRatio
             } = await loadFixture(deploy);
 
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
@@ -1513,9 +1552,9 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
-            let subjectTokenAddress = await tokenManager.tokens(subject.address);
 
             // fund bidder
             const biddingAmount = '1000000'; //moxie
@@ -1559,9 +1598,7 @@ describe('Subject Factory', () => {
                 easyAuction,
                 bidder1,
                 easyAuctionAddress,
-                reserveRatio,
-                SubjectERC20
-
+                reserveRatio
             } = await loadFixture(deploy);
 
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
@@ -1581,9 +1618,9 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
-            let subjectTokenAddress = await tokenManager.tokens(subject.address);
 
             // fund bidder
             const biddingAmount = '1000000'; //moxie
@@ -1625,9 +1662,7 @@ describe('Subject Factory', () => {
                 easyAuction,
                 bidder1,
                 easyAuctionAddress,
-                reserveRatio,
-                SubjectERC20
-
+                reserveRatio
             } = await loadFixture(deploy);
 
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
@@ -1647,9 +1682,9 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
-            let subjectTokenAddress = await tokenManager.tokens(subject.address);
 
             // fund bidder
             const biddingAmount = '1000000'; //moxie
@@ -1696,9 +1731,7 @@ describe('Subject Factory', () => {
                 easyAuction,
                 bidder1,
                 easyAuctionAddress,
-                reserveRatio,
-                SubjectERC20
-
+                reserveRatio
             } = await loadFixture(deploy);
 
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
@@ -1719,9 +1752,9 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
-            let subjectTokenAddress = await tokenManager.tokens(subject.address);
 
             // fund bidder
             const biddingAmount = '1000000'; //moxie
@@ -1784,6 +1817,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             // fund bidder
@@ -1848,6 +1882,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             // fund bidder
@@ -1899,8 +1934,8 @@ describe('Subject Factory', () => {
                 vaultInstance,
                 formula,
                 feeInput,
-                feeBeneficiary
-
+                feeBeneficiary,
+                protocolRewards
 
             } = await loadFixture(deploy);
 
@@ -1922,6 +1957,7 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
             let subjectTokenAddress = await tokenManager.tokens(subject.address);
@@ -1987,10 +2023,11 @@ describe('Subject Factory', () => {
             const auction = await subjectFactory.auctions(subject.address);
             expect(auction.auctionEndDate).to.equal(0);
             const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) / PCT_BASE;
-            expect(await moxieToken.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).to.equal(BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy))
             await expect(subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             )).to.revertedWithCustomError(tokenManager, "TokenManager_SubjectExists");
 
         });
@@ -2006,9 +2043,7 @@ describe('Subject Factory', () => {
                 easyAuction,
                 bidder1,
                 easyAuctionAddress,
-                reserveRatio,
-                SubjectERC20
-
+                reserveRatio
             } = await loadFixture(deploy);
 
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
@@ -2029,9 +2064,9 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
-            let subjectTokenAddress = await tokenManager.tokens(subject.address);
 
             // fund bidder
             const biddingAmount = '1000000'; //moxie
@@ -2071,9 +2106,7 @@ describe('Subject Factory', () => {
                 easyAuction,
                 bidder1,
                 easyAuctionAddress,
-                reserveRatio,
-                SubjectERC20
-
+                reserveRatio
             } = await loadFixture(deploy);
 
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
@@ -2094,9 +2127,9 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
-            let subjectTokenAddress = await tokenManager.tokens(subject.address);
 
             // fund bidder
             const biddingAmount = '1000000'; //moxie
@@ -2143,9 +2176,7 @@ describe('Subject Factory', () => {
                 easyAuction,
                 bidder1,
                 easyAuctionAddress,
-                reserveRatio,
-                SubjectERC20
-
+                reserveRatio
             } = await loadFixture(deploy);
 
             await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
@@ -2166,9 +2197,9 @@ describe('Subject Factory', () => {
             await subjectFactory.connect(owner).initiateSubjectOnboarding(
                 subject.address,
                 auctionInput,
+                ethers.ZeroAddress
             );
 
-            let subjectTokenAddress = await tokenManager.tokens(subject.address);
 
             // fund bidder
             const biddingAmount = '1000000'; //moxie
@@ -2205,5 +2236,209 @@ describe('Subject Factory', () => {
 
         });
 
+    });
+
+    describe('onboard subject with platform referrer', () => {
+
+        it('should finalize subject onboarding when there are multiple bids in auction', async () => {
+            const {
+                subjectFactory,
+                owner,
+                moxieTokenAddress,
+                auctionDuration,
+                moxiePassVerifierAddress,
+                moxieToken,
+                subject,
+                tokenManager,
+                easyAuction,
+                bidder1,
+                bidder2,
+                easyAuctionAddress,
+                reserveRatio,
+                feeInputSubjectFactory,
+                PCT_BASE,
+                SubjectERC20,
+                vaultInstance,
+                feeInput,
+                formula,
+                feeBeneficiary,
+                protocolRewards,
+                platformReferrer,
+                platformReferrerFee,
+                moxieBondingCurve
+            } = await loadFixture(deploy);
+
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.ONBOARDING_ROLE(), owner.address);
+            const auctionInput = {
+                name: 'fid-3761',
+                symbol: 'fid-3761',
+                initialSupply: '1000',
+                minBuyAmount: '1000',// in moxie token
+                minBiddingAmount: '1', // in subject token
+                minFundingThreshold: '0', // amount of auction funding in moxie token below which auction will be cancelled.
+                isAtomicClosureAllowed: false, // false can be hardcoded
+                accessManagerContract: moxiePassVerifierAddress, //
+                accessManagerContractData: '0x' //0x00 can be hardcoded
+
+            }
+
+            const auctionId = BigInt(1);
+            await subjectFactory.connect(owner).initiateSubjectOnboarding(
+                subject.address,
+                auctionInput,
+                platformReferrer
+            );
+
+            const auctions = await subjectFactory.auctions(subject.address);
+
+            expect(auctions.initialSupply).to.equal(auctionInput.initialSupply);
+            expect(auctions.platformReferrer).to.equal(platformReferrer);
+            expect(auctions.auctionId).to.equal(auctionId.toString());
+
+            
+            let subjectTokenAddress = await tokenManager.tokens(subject.address);
+            let subjectToken = SubjectERC20.attach(subjectTokenAddress) as SubjectERC20;
+
+            // fund bidder 1
+            const biddingAmount1 = '1000000'; //moxie
+            await moxieToken.connect(owner).transfer(bidder1.address, biddingAmount1);
+
+            await moxieToken.connect(bidder1).approve(easyAuctionAddress, biddingAmount1);
+            const queueStartElement =
+                "0x0000000000000000000000000000000000000000000000000000000000000001";
+            await easyAuction.connect(bidder1).placeSellOrders(
+                auctionId,
+                ["700"],//subject token
+                [biddingAmount1], // moxie token
+                [queueStartElement],
+                '0x',
+            );
+
+            // fund bidder 2
+            const biddingAmount2 = '2000000'; //moxie
+            await moxieToken.connect(owner).transfer(bidder2.address, biddingAmount2);
+
+            await moxieToken.connect(bidder2).approve(easyAuctionAddress, biddingAmount2);
+
+            await easyAuction.connect(bidder2).placeSellOrders(
+                auctionId,
+                ["600"],//subject token
+                [biddingAmount2], // moxie token
+                [queueStartElement],
+                '0x',
+            );
+
+            await time.increase(auctionDuration);
+
+
+            const buyAmount = "1000000";
+            const additionalSupplyDueToBuyAmount = BigInt(buyAmount) * BigInt("1000") / BigInt("2000000");
+
+            const expectedProtocolFee = (BigInt(biddingAmount2) + BigInt(buyAmount)) * BigInt(feeInputSubjectFactory.protocolFeePct) / PCT_BASE;
+            const expectedSubjectFee = (BigInt(biddingAmount2) + BigInt(buyAmount)) * BigInt(feeInputSubjectFactory.subjectFeePct) / PCT_BASE;;
+            const expectedBondingSupply = BigInt(auctionInput.initialSupply) + additionalSupplyDueToBuyAmount
+            const expectedBondingAmount = BigInt(biddingAmount2) + BigInt(buyAmount) - expectedProtocolFee - expectedSubjectFee;
+
+
+            await moxieToken.approve(await subjectFactory.getAddress(), buyAmount);
+            
+            const actualBuyAmountFromSubjectFee = expectedSubjectFee * (PCT_BASE - BigInt(feeInput.protocolBuyFeePct) - BigInt(feeInput.subjectBuyFeePct)) / PCT_BASE;
+            const expectedShareMintFromBondingCurve = await formula.calculatePurchaseReturn(
+                expectedBondingSupply,
+                expectedBondingAmount,
+                reserveRatio,
+                actualBuyAmountFromSubjectFee
+            );
+
+            await expect(await subjectFactory.connect(owner).finalizeSubjectOnboarding(
+                subject.address,
+                buyAmount,
+                reserveRatio,
+            )).to.emit(
+                subjectFactory, "SubjectOnboardingFinished"
+            ).withArgs(
+                subject.address,
+                subjectTokenAddress,
+                auctionId,
+                expectedBondingSupply,
+                expectedBondingAmount,
+                expectedProtocolFee,
+                expectedSubjectFee,
+                expectedShareMintFromBondingCurve
+            );
+        
+            expect(await subjectToken.totalSupply()).to.equal(expectedBondingSupply + BigInt(expectedShareMintFromBondingCurve));
+            expect(await vaultInstance.balanceOf(subjectTokenAddress, moxieTokenAddress)).to.equal(expectedBondingAmount + actualBuyAmountFromSubjectFee);
+            const auction = await subjectFactory.auctions(subject.address);
+            expect(auction.auctionEndDate).to.equal(0);
+            const expectedProtocolFeeFromFirstBuy = expectedSubjectFee * (BigInt(feeInput.protocolBuyFeePct)) / PCT_BASE;
+            
+            const totalProtocolFee = BigInt(expectedProtocolFee) + BigInt(expectedProtocolFeeFromFirstBuy);
+            const platformReferrerFeeAmount = expectedProtocolFee * platformReferrerFee /PCT_BASE
+            expect(await protocolRewards.balanceOf(feeBeneficiary.address)).to.equal(totalProtocolFee - platformReferrerFeeAmount);
+            expect(await protocolRewards.balanceOf(platformReferrer.address)).to.equal(platformReferrerFeeAmount);
+
+            expect(await moxieBondingCurve.platformReferrer(subject.address)).to.equal(platformReferrer);
+            
+        });
+    });
+
+    describe('update platform referrer fee', () => {
+
+        it('should update the platform referrer fee', async () => {
+
+            const {
+                subjectFactory,
+                owner
+
+            } = await loadFixture(deploy);
+            const newPlatformReferrerFee = '500000000000000000'; // 50%
+
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.UPDATE_FEES_ROLE(), owner.address);
+
+            await subjectFactory.connect(owner).updatePlatformReferrerFee(newPlatformReferrerFee);
+            expect(await subjectFactory.platformReferrerFeePct()).to.equal(newPlatformReferrerFee);
+        });
+        it('should not update the platform referrer fee with 110% value', async () => {
+            const {
+                subjectFactory,
+                owner
+            } = await loadFixture(deploy);
+            const newPlatformReferrerFee = '1100000000000000000'; // 110%
+
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.UPDATE_FEES_ROLE(), owner.address);
+
+            await expect(subjectFactory.connect(owner).updatePlatformReferrerFee(newPlatformReferrerFee))
+                .to.revertedWithCustomError(subjectFactory, "SubjectFactory_InvalidFeePercentage");
+        });
+        
+    });
+
+    describe('update protocol reward address', () => {
+        it('should update the protocol reward address', async () => {
+            const {
+                subjectFactory,
+                owner,
+                deployer
+            } = await loadFixture(deploy);
+            const newProtocolRewardsAddress = deployer
+
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.UPDATE_PROTOCOL_REWARD_ROLE(), owner.address);
+
+            await subjectFactory.connect(owner).updateProtocolRewardAddress(newProtocolRewardsAddress);
+            expect(await subjectFactory.protocolRewards()).to.equal(newProtocolRewardsAddress);
+        });
+
+        it('should not update the protocol reward address with zero address', async () => {
+            const {
+                subjectFactory,
+                owner
+            } = await loadFixture(deploy);
+
+            await subjectFactory.connect(owner).grantRole(await subjectFactory.UPDATE_PROTOCOL_REWARD_ROLE(), owner.address);
+
+            await expect(subjectFactory.connect(owner).updateProtocolRewardAddress(ethers.ZeroAddress))
+                .to.revertedWithCustomError(subjectFactory, "SubjectFactory_InvalidProtocolRewardAddress");
+        });
     });
 });

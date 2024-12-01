@@ -19,8 +19,10 @@ const getFactories = async () => {
   );
   const TokenManager = await hre.ethers.getContractFactory("TokenManager");
   const MoxieBondingCurve =
-    await hre.ethers.getContractFactory("MoxieBondingCurve");
-  const Staking = await hre.ethers.getContractFactory("Staking");
+    await hre.ethers.getContractFactory("MoxieBondingCurveV2");
+  const Staking = await hre.ethers.getContractFactory("StakingV2");
+  const ProtocolRewards = await hre.ethers.getContractFactory("ProtocolRewards");
+
   return {
     MoxieToken,
     BancorFormula,
@@ -31,6 +33,7 @@ const getFactories = async () => {
     TokenManager,
     MoxieBondingCurve,
     Staking,
+    ProtocolRewards
   };
 };
 
@@ -51,6 +54,7 @@ describe("Staking", () => {
       stakingAdmin,
       changeLockRole,
       pauseRole,
+      orderReferrer,
       ...otherAccounts
     ] = await ethers.getSigners();
     const {
@@ -63,6 +67,7 @@ describe("Staking", () => {
       TokenManager,
       MoxieBondingCurve,
       Staking,
+      ProtocolRewards
     } = await getFactories();
     // moxie Token
     const moxieToken = await MoxieToken.connect(owner).deploy();
@@ -87,7 +92,6 @@ describe("Staking", () => {
       .connect(owner)
       .setErc721ContractAddress(await moxiePass.getAddress());
 
-    //subjectErc20
 
     const tokenManager = await TokenManager.deploy({ from: deployer.address });
     await tokenManager
@@ -124,6 +128,10 @@ describe("Staking", () => {
     const subjectBuyFeePct = (3 * 1e16).toString(); // 3%
     const subjectSellFeePct = (4 * 1e16).toString(); // 4%
 
+    const protocolRewards = await ProtocolRewards.deploy();
+    await protocolRewards.initialize(moxieTokenAddress, owner);
+
+
     const feeInput = {
       protocolBuyFeePct,
       protocolSellFeePct,
@@ -142,6 +150,26 @@ describe("Staking", () => {
       subjectFactory.address,
     );
     const moxieBondingCurveAddress = await moxieBondingCurve.getAddress();
+
+    await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_PROTOCOL_REWARD_ROLE(), owner);
+    await moxieBondingCurve.connect(owner).updateProtocolRewardAddress(await protocolRewards.getAddress());
+
+    const referralFeeInput = {
+      platformReferrerBuyFeePct: (10e16).toString(), //10%
+      platformReferrerSellFeePct: (20e16).toString(), //20%,
+      orderReferrerBuyFeePct: (30e16).toString(), //30%,
+      orderReferrerSellFeePct: (40e16).toString() //40%
+    };
+
+    await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_FEES_ROLE(), owner);
+
+    await moxieBondingCurve.connect(owner).updateReferralFee(
+      referralFeeInput.platformReferrerBuyFeePct,
+      referralFeeInput.platformReferrerSellFeePct,
+      referralFeeInput.orderReferrerBuyFeePct,
+      referralFeeInput.orderReferrerSellFeePct
+    );
+
 
     await moxiePass.connect(minter).mint(owner.address, "uri");
     await moxiePass.connect(minter).mint(subject.address, "uri");
@@ -210,6 +238,7 @@ describe("Staking", () => {
         reserveRatio,
         initialSupply,
         initialReserve,
+        ethers.ZeroAddress
       );
     // first buyer
     await moxieToken
@@ -236,6 +265,7 @@ describe("Staking", () => {
         reserveRatio,
         initialSupply,
         initialReserve,
+        ethers.ZeroAddress
       );
 
     await moxieToken
@@ -250,6 +280,7 @@ describe("Staking", () => {
       .connect(owner)
       .transfer(buyer2.address, (1 * 1e20).toString());
 
+    const PCT_BASE = BigInt(10 ** 18);
     return {
       owner,
       minter,
@@ -292,7 +323,11 @@ describe("Staking", () => {
       stakingAdmin,
       changeLockRole,
       stakingAddress,
-      pauseRole
+      pauseRole,
+      orderReferrer,
+      protocolRewards,
+      referralFeeInput,
+      PCT_BASE
     };
   };
 
@@ -1092,6 +1127,64 @@ describe("Staking", () => {
       expect(balanceAfter - balanceBefore).to.eq(amt);
     });
 
+    it("should buy and lock tokens with order referrer", async () => {
+      const {
+        staking,
+        subject,
+        subjectToken,
+        lockTime,
+        owner,
+        moxieToken,
+        stakingAddress,
+        moxieBondingCurve,
+        orderReferrer,
+        protocolRewards,
+        referralFeeInput,
+        PCT_BASE,
+        feeInput
+      } = await loadFixture(deploy);
+      const amt = (10e18).toString();
+
+      const estimatedBuyAmount = await moxieBondingCurve.calculateTokensForBuy(subject.address, amt);
+      await moxieToken.connect(owner).approve(stakingAddress, estimatedBuyAmount.moxieAmount_);
+
+      const block = await hre.ethers.provider.getBlock('latest');
+
+      const estimatedUnlockTime = block!.timestamp + lockTime + 1;
+
+      const balanceBefore = await subjectToken.balanceOf(stakingAddress);
+      await expect(
+        staking.connect(owner).buyAndLockV2(subject.address, estimatedBuyAmount.moxieAmount_, 0, lockTime, orderReferrer),
+      )
+        .to.emit(staking, "Lock")
+        .withArgs(
+          owner.address,
+          subject.address,
+          await subjectToken.getAddress(),
+          0,
+          amt,
+          estimatedUnlockTime,
+          lockTime,
+          owner.address,
+          estimatedBuyAmount.moxieAmount_
+        );
+      const lockInfo = await staking.locks(0);
+      expect(lockInfo.unlockTimeInSec).to.eq(estimatedUnlockTime);
+      expect(lockInfo.lockPeriodInSec).to.eq(lockTime);
+      expect(lockInfo.user).to.eq(owner.address);
+      expect(lockInfo.amount).to.eq(amt);
+      expect(lockInfo.subject).to.eq(subject.address);
+      expect(lockInfo.subjectToken).to.eq(await subjectToken.getAddress());
+
+      const balanceAfter = await subjectToken.balanceOf(stakingAddress);
+      expect(balanceAfter - balanceBefore).to.eq(amt);
+
+      const orderReferrerAmount = BigInt(estimatedBuyAmount.moxieAmount_) * BigInt(feeInput.protocolBuyFeePct) * BigInt(referralFeeInput.orderReferrerBuyFeePct) / (PCT_BASE * PCT_BASE)
+      expect(await protocolRewards.balanceOf(orderReferrer)).to.equal(
+        orderReferrerAmount
+      )
+    });
+
     it("should revert with InvalidLockPeriod ", async () => {
       const { staking, buyer, subject, subjectToken } =
         await loadFixture(deploy);
@@ -1252,6 +1345,64 @@ describe("Staking", () => {
 
       const balanceAfter = await subjectToken.balanceOf(stakingAddress);
       expect(balanceAfter - balanceBefore).to.eq(amt);
+    });
+
+    it("should buy and lock tokens For beneficiary with order referrer ", async () => {
+      const {
+        staking,
+        subject,
+        subjectToken,
+        lockTime,
+        owner,
+        moxieToken,
+        moxieBondingCurve,
+        buyer,
+        stakingAddress,
+        orderReferrer,
+        feeInput,
+        referralFeeInput,
+        protocolRewards,
+        PCT_BASE
+      } = await loadFixture(deploy);
+      const amt = (10e18).toString();
+
+      const estimatedBuyAmount = await moxieBondingCurve.calculateTokensForBuy(subject.address, amt);
+      await moxieToken.connect(owner).approve(stakingAddress, estimatedBuyAmount.moxieAmount_);
+
+      const block = await hre.ethers.provider.getBlock('latest');
+
+      const balanceBefore = await subjectToken.balanceOf(stakingAddress);
+      const estimatedUnlockTime = block!.timestamp + lockTime + 1;
+      await expect(
+        staking.connect(owner).buyAndLockForV2(subject.address, estimatedBuyAmount.moxieAmount_, 0, lockTime, buyer.address, orderReferrer),
+      )
+        .to.emit(staking, "Lock")
+        .withArgs(
+          buyer.address,
+          subject.address,
+          await subjectToken.getAddress(),
+          0,
+          amt,
+          estimatedUnlockTime,
+          lockTime,
+          owner.address,
+          estimatedBuyAmount.moxieAmount_
+        );
+      const lockInfo = await staking.locks(0);
+      expect(lockInfo.unlockTimeInSec).to.eq(estimatedUnlockTime);
+      expect(lockInfo.lockPeriodInSec).to.eq(lockTime);
+      expect(lockInfo.user).to.eq(buyer.address);
+      expect(lockInfo.amount).to.eq(amt);
+      expect(lockInfo.subject).to.eq(subject.address);
+      expect(lockInfo.subjectToken).to.eq(await subjectToken.getAddress());
+
+      const balanceAfter = await subjectToken.balanceOf(stakingAddress);
+      expect(balanceAfter - balanceBefore).to.eq(amt);
+
+      const orderReferrerAmount = BigInt(estimatedBuyAmount.moxieAmount_) * BigInt(feeInput.protocolBuyFeePct) * BigInt(referralFeeInput.orderReferrerBuyFeePct) / (PCT_BASE * PCT_BASE)
+      expect(await protocolRewards.balanceOf(orderReferrer)).to.equal(
+        orderReferrerAmount
+      )
     });
 
     it("should revert with InvalidLockPeriod ", async () => {
@@ -1481,6 +1632,99 @@ describe("Staking", () => {
       expect(balanceAfter2 - balanceBefore2).to.eq(amt);
 
     });
+    it("should buy and lock tokens with order referrer ", async () => {
+      const {
+        staking,
+        subject,
+        subjectToken,
+        subject2,
+        subjectToken2,
+        lockTime,
+        owner,
+        moxieToken,
+        moxieBondingCurve,
+        stakingAddress,
+        orderReferrer,
+        protocolRewards,
+        feeInput,
+        referralFeeInput,
+        PCT_BASE
+      } = await loadFixture(deploy);
+
+      const amt = (10e18).toString();
+
+      const estimatedBuyAmountSubject1 = await moxieBondingCurve.calculateTokensForBuy(subject.address, amt);
+      const estimatedBuyAmountSubject2 = await moxieBondingCurve.calculateTokensForBuy(subject2.address, amt);
+
+      await moxieToken.connect(owner).approve(stakingAddress, estimatedBuyAmountSubject1.moxieAmount_ + estimatedBuyAmountSubject2.moxieAmount_);
+
+      const block = await hre.ethers.provider.getBlock('latest');
+      const estimatedUnlockTime = block!.timestamp + lockTime + 1;
+
+      const balanceBefore1 = await subjectToken.balanceOf(stakingAddress);
+      const balanceBefore2 = await subjectToken2.balanceOf(stakingAddress);
+      await expect(
+        staking.connect(owner).buyAndLockMultipleV2(
+          [subject, subject2],
+          [estimatedBuyAmountSubject1.moxieAmount_, estimatedBuyAmountSubject2.moxieAmount_],
+          [0, 0],
+          lockTime,
+          orderReferrer
+        ),
+      )
+        .to.emit(staking, "Lock")
+        .withArgs(
+          owner.address,
+          subject.address,
+          await subjectToken.getAddress(),
+          0,
+          amt,
+          estimatedUnlockTime,
+          lockTime,
+          owner.address,
+          estimatedBuyAmountSubject1.moxieAmount_
+        ).to.emit(staking, "Lock")
+        .withArgs(
+          owner.address,
+          subject2.address,
+          await subjectToken2.getAddress(),
+          1,
+          amt,
+          estimatedUnlockTime,
+          lockTime,
+          owner.address,
+          estimatedBuyAmountSubject2.moxieAmount_
+        );
+      let lockInfo = await staking.locks(0);
+      let lockInfo2 = await staking.locks(1);
+
+      expect(lockInfo.amount).to.eq(amt);
+      expect(lockInfo.subject).to.eq(subject.address);
+      expect(lockInfo.subjectToken).to.eq(await subjectToken.getAddress());
+      expect(lockInfo.user).to.eq(owner.address);
+      expect(lockInfo.unlockTimeInSec).to.eq(estimatedUnlockTime);
+      expect(lockInfo.lockPeriodInSec).to.eq(lockTime);
+
+      expect(lockInfo2.amount).to.eq(amt);
+      expect(lockInfo2.subject).to.eq(subject2.address);
+      expect(lockInfo2.subjectToken).to.eq(await subjectToken2.getAddress());
+      expect(lockInfo2.user).to.eq(owner.address);
+      expect(lockInfo2.unlockTimeInSec).to.eq(estimatedUnlockTime);
+      expect(lockInfo2.lockPeriodInSec).to.eq(lockTime);
+
+      const balanceAfter1 = await subjectToken.balanceOf(stakingAddress);
+      const balanceAfter2 = await subjectToken2.balanceOf(stakingAddress);
+
+      expect(balanceAfter1 - balanceBefore1).to.eq(amt);
+      expect(balanceAfter2 - balanceBefore2).to.eq(amt);
+
+
+      const totalMoxieAmount = estimatedBuyAmountSubject1.moxieAmount_ + estimatedBuyAmountSubject2.moxieAmount_;
+      const orderReferrerAmount = BigInt(totalMoxieAmount) * BigInt(feeInput.protocolBuyFeePct) * BigInt(referralFeeInput.orderReferrerBuyFeePct) / (PCT_BASE * PCT_BASE)
+      expect(await protocolRewards.balanceOf(orderReferrer)).to.equal(
+        orderReferrerAmount
+      )
+    });
 
     it("should buy and lock tokens for zero deposit", async () => {
       const {
@@ -1699,6 +1943,102 @@ describe("Staking", () => {
 
       expect(balanceAfter1 - balanceBefore1).to.eq(amt);
       expect(balanceAfter2 - balanceBefore2).to.eq(amt);
+
+    });
+
+    it("should buy and lock tokens with order referrer", async () => {
+      const {
+        staking,
+        buyer,
+        subject,
+        subjectToken,
+        subject2,
+        subjectToken2,
+        lockTime,
+        owner,
+        moxieToken,
+        moxieBondingCurve,
+        stakingAddress,
+        PCT_BASE,
+        orderReferrer,
+        feeInput,
+        referralFeeInput,
+        protocolRewards
+      } = await loadFixture(deploy);
+
+      const amt = (10e18).toString();
+
+      const estimatedBuyAmountSubject1 = await moxieBondingCurve.calculateTokensForBuy(subject.address, amt);
+      const estimatedBuyAmountSubject2 = await moxieBondingCurve.calculateTokensForBuy(subject2.address, amt);
+
+      await moxieToken.connect(owner).approve(stakingAddress, estimatedBuyAmountSubject1.moxieAmount_ + estimatedBuyAmountSubject2.moxieAmount_);
+
+      const balanceBefore1 = await subjectToken.balanceOf(stakingAddress);
+      const balanceBefore2 = await subjectToken2.balanceOf(stakingAddress);
+      const block = await hre.ethers.provider.getBlock('latest');
+      const estimatedUnlockTime = block!.timestamp + lockTime + 1;
+      await expect(
+        staking.connect(owner).buyAndLockMultipleForV2(
+          [subject, subject2],
+          [estimatedBuyAmountSubject1.moxieAmount_,
+          estimatedBuyAmountSubject2.moxieAmount_],
+          [0, 0],
+          lockTime,
+          buyer.address,
+          orderReferrer
+        ),
+      )
+        .to.emit(staking, "Lock")
+        .withArgs(
+          buyer.address,
+          subject.address,
+          await subjectToken.getAddress(),
+          0,
+          amt,
+          estimatedUnlockTime,
+          lockTime,
+          owner.address,
+          estimatedBuyAmountSubject1.moxieAmount_
+        ).to.emit(staking, "Lock")
+        .withArgs(
+          buyer.address,
+          subject2.address,
+          await subjectToken2.getAddress(),
+          1,
+          amt,
+          estimatedUnlockTime,
+          lockTime,
+          owner.address,
+          estimatedBuyAmountSubject2.moxieAmount_
+        );
+      let lockInfo = await staking.locks(0);
+      let lockInfo2 = await staking.locks(1);
+
+      expect(lockInfo.amount).to.eq(amt);
+      expect(lockInfo.subject).to.eq(subject.address);
+      expect(lockInfo.subjectToken).to.eq(await subjectToken.getAddress());
+      expect(lockInfo.user).to.eq(buyer.address);
+      expect(lockInfo.unlockTimeInSec).to.eq(estimatedUnlockTime);
+      expect(lockInfo.lockPeriodInSec).to.eq(lockTime);
+
+      expect(lockInfo2.amount).to.eq(amt);
+      expect(lockInfo2.subject).to.eq(subject2.address);
+      expect(lockInfo2.subjectToken).to.eq(await subjectToken2.getAddress());
+      expect(lockInfo2.user).to.eq(buyer.address);
+      expect(lockInfo2.unlockTimeInSec).to.eq(estimatedUnlockTime);
+      expect(lockInfo2.lockPeriodInSec).to.eq(lockTime);
+
+      const balanceAfter1 = await subjectToken.balanceOf(stakingAddress);
+      const balanceAfter2 = await subjectToken2.balanceOf(stakingAddress);
+
+      expect(balanceAfter1 - balanceBefore1).to.eq(amt);
+      expect(balanceAfter2 - balanceBefore2).to.eq(amt);
+
+      const totalMoxieAmount = estimatedBuyAmountSubject1.moxieAmount_ + estimatedBuyAmountSubject2.moxieAmount_;
+      const orderReferrerAmount = BigInt(totalMoxieAmount) * BigInt(feeInput.protocolBuyFeePct) * BigInt(referralFeeInput.orderReferrerBuyFeePct) / (PCT_BASE * PCT_BASE)
+      expect(await protocolRewards.balanceOf(orderReferrer)).to.equal(
+        orderReferrerAmount
+      )
 
     });
 
