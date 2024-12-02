@@ -4,13 +4,13 @@ pragma solidity ^0.8.24;
 
 interface IProtocolRewards {
 
-    error ADDRESS_ZERO();
-    error INVALID_DEPOSIT();
-    error ARRAY_LENGTH_MISMATCH();
-    error INVALID_WITHDRAW();
-    error SIGNATURE_DEADLINE_EXPIRED();
-    error INVALID_SIGNATURE();
-    error BLOCKED();
+    error PROTOCOL_REWARDS_ADDRESS_ZERO();
+    error PROTOCOL_REWARDS_INVALID_DEPOSIT();
+    error PROTOCOL_REWARDS_ARRAY_LENGTH_MISMATCH();
+    error PROTOCOL_REWARDS_INVALID_WITHDRAW();
+    error PROTOCOL_REWARDS_SIGNATURE_DEADLINE_EXPIRED();
+    error PROTOCOL_REWARDS_INVALID_SIGNATURE();
+    error PROTOCOL_REWARDS_BLOCKED();
 
     event Deposit(
         address indexed _from,

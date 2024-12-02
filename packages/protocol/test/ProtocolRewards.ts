@@ -63,13 +63,13 @@ describe('Protocol Rewards', () => {
             await expect(protocolRewards.initialize(
                 ethers.ZeroAddress,
                 owner
-            )).to.revertedWithCustomError(protocolRewards, "ADDRESS_ZERO");
+            )).to.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_ADDRESS_ZERO");
 
 
             await expect(protocolRewards.initialize(
                 moxieTokenAddress,
                 ethers.ZeroAddress,
-            )).to.revertedWithCustomError(protocolRewards, "ADDRESS_ZERO");
+            )).to.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_ADDRESS_ZERO");
 
         });
 
@@ -147,7 +147,7 @@ describe('Protocol Rewards', () => {
                 depositAmount,
                 reason,
                 comment
-            )).to.be.revertedWithCustomError(protocolRewards, "ADDRESS_ZERO");
+            )).to.be.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_ADDRESS_ZERO");
         });
 
         it('should revert when depositing without allowance', async () => {
@@ -211,7 +211,7 @@ describe('Protocol Rewards', () => {
                 amounts,
                 reasons,
                 comment
-            )).to.be.revertedWithCustomError(protocolRewards, "ARRAY_LENGTH_MISMATCH");
+            )).to.be.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_ARRAY_LENGTH_MISMATCH");
         });
 
         it('should revert when recipients and amounts arrays have different lengths', async () => {
@@ -231,7 +231,7 @@ describe('Protocol Rewards', () => {
                 amounts,
                 reasons,
                 comment
-            )).to.be.revertedWithCustomError(protocolRewards, "ARRAY_LENGTH_MISMATCH");
+            )).to.be.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_ARRAY_LENGTH_MISMATCH");
         });
 
         it('should revert when any recipient is zero address', async () => {
@@ -253,7 +253,7 @@ describe('Protocol Rewards', () => {
                 amounts,
                 reasons,
                 comment
-            )).to.be.revertedWithCustomError(protocolRewards, "ADDRESS_ZERO");
+            )).to.be.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_ADDRESS_ZERO");
         });
 
         it('should revert when depositing batch without allowance', async () => {
@@ -345,7 +345,7 @@ describe('Protocol Rewards', () => {
             await expect(protocolRewards.withdraw(
                 ethers.ZeroAddress,
                 ethers.parseEther("50")
-            )).to.be.revertedWithCustomError(protocolRewards, "ADDRESS_ZERO");
+            )).to.be.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_ADDRESS_ZERO");
         });
 
         it("should revert when withdrawing more than balance", async () => {
@@ -363,7 +363,7 @@ describe('Protocol Rewards', () => {
             await expect(protocolRewards.withdraw(
                 owner.address,
                 ethers.parseEther("50")
-            )).to.be.revertedWithCustomError(protocolRewards, "INVALID_WITHDRAW");
+            )).to.be.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_INVALID_WITHDRAW");
         });
 
         it("should successfully withdraw rewards", async () => {
@@ -449,7 +449,7 @@ describe('Protocol Rewards', () => {
             await expect(protocolRewards.connect(deployer).withdraw(
                 owner.address,
                 ethers.parseEther("50")
-            )).to.be.revertedWithCustomError(protocolRewards, "BLOCKED");
+            )).to.be.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_BLOCKED");
         });
     });
 
@@ -568,7 +568,7 @@ describe('Protocol Rewards', () => {
                 v,
                 r,
                 s
-            )).to.be.revertedWithCustomError(protocolRewards, "SIGNATURE_DEADLINE_EXPIRED");
+            )).to.be.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_SIGNATURE_DEADLINE_EXPIRED");
         });
 
         it("should revert with invalid signature", async () => {
@@ -620,7 +620,7 @@ describe('Protocol Rewards', () => {
                 v,
                 r,
                 s
-            )).to.be.revertedWithCustomError(protocolRewards, "INVALID_SIGNATURE");
+            )).to.be.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_INVALID_SIGNATURE");
         });
 
         it("should revert when withdrawing while blocked", async () => {
@@ -673,7 +673,7 @@ describe('Protocol Rewards', () => {
                 v,
                 r,
                 s
-            )).to.be.revertedWithCustomError(protocolRewards, "BLOCKED");
+            )).to.be.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_BLOCKED");
         });
     });
 
@@ -688,7 +688,7 @@ describe('Protocol Rewards', () => {
 
             await expect(protocolRewards.connect(owner).addToBlockList(
                 ethers.ZeroAddress
-            )).to.be.revertedWithCustomError(protocolRewards, "ADDRESS_ZERO");
+            )).to.be.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_ADDRESS_ZERO");
         });
 
         it("should revert when caller doesn't have BLOCK_UNBLOCK_ROLE", async () => {
@@ -732,7 +732,7 @@ describe('Protocol Rewards', () => {
 
             await expect(protocolRewards.connect(owner).removeFromBLockList(
                 ethers.ZeroAddress
-            )).to.be.revertedWithCustomError(protocolRewards, "ADDRESS_ZERO");
+            )).to.be.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_ADDRESS_ZERO");
         });
 
         it("should revert when caller doesn't have BLOCK_UNBLOCK_ROLE", async () => {

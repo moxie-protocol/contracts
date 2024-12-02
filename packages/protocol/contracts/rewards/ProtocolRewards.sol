@@ -32,7 +32,7 @@ contract ProtocolRewards is
 
     modifier IfNonBlocked(address _address) {
         if (_address != address(0) && blockList[_address] == true)
-            revert BLOCKED();
+            revert PROTOCOL_REWARDS_BLOCKED();
         _;
     }
 
@@ -45,11 +45,11 @@ contract ProtocolRewards is
         __EIP712_init("ProtocolRewards", "1");
 
         if (_token == address(0)) {
-            revert ADDRESS_ZERO();
+            revert PROTOCOL_REWARDS_ADDRESS_ZERO();
         }
 
         if (_owner == address(0)) {
-            revert ADDRESS_ZERO();
+            revert PROTOCOL_REWARDS_ADDRESS_ZERO();
         }
 
         token = IERC20Extended(_token);
@@ -75,7 +75,7 @@ contract ProtocolRewards is
         string calldata _comment
     ) external {
         if (_to == address(0)) {
-            revert ADDRESS_ZERO();
+            revert PROTOCOL_REWARDS_ADDRESS_ZERO();
         }
 
         token.transferFrom(msg.sender, address(this), _amount);
@@ -103,7 +103,7 @@ contract ProtocolRewards is
         if (
             numRecipients != amounts.length || numRecipients != reasons.length
         ) {
-            revert ARRAY_LENGTH_MISMATCH();
+            revert PROTOCOL_REWARDS_ARRAY_LENGTH_MISMATCH();
         }
 
         uint256 expectedTotalValue;
@@ -122,7 +122,7 @@ contract ProtocolRewards is
             currentAmount = amounts[i];
 
             if (currentRecipient == address(0)) {
-                revert ADDRESS_ZERO();
+                revert PROTOCOL_REWARDS_ADDRESS_ZERO();
             }
 
             balanceOf[currentRecipient] += currentAmount;
@@ -147,13 +147,13 @@ contract ProtocolRewards is
         uint256 amount
     ) external whenNotPaused IfNonBlocked(msg.sender) {
         if (to == address(0)) {
-            revert ADDRESS_ZERO();
+            revert PROTOCOL_REWARDS_ADDRESS_ZERO();
         }
 
         address owner = msg.sender;
 
         if (amount > balanceOf[owner]) {
-            revert INVALID_WITHDRAW();
+            revert PROTOCOL_REWARDS_INVALID_WITHDRAW();
         }
 
         if (amount == 0) {
@@ -187,7 +187,7 @@ contract ProtocolRewards is
         bytes32 s
     ) external whenNotPaused IfNonBlocked(from) {
         if (block.timestamp > deadline) {
-            revert SIGNATURE_DEADLINE_EXPIRED();
+            revert PROTOCOL_REWARDS_SIGNATURE_DEADLINE_EXPIRED();
         }
 
         bytes32 withdrawHash;
@@ -210,15 +210,15 @@ contract ProtocolRewards is
         address recoveredAddress = ecrecover(digest, v, r, s);
 
         if (recoveredAddress == address(0) || recoveredAddress != from) {
-            revert INVALID_SIGNATURE();
+            revert PROTOCOL_REWARDS_INVALID_SIGNATURE();
         }
 
         if (to == address(0)) {
-            revert ADDRESS_ZERO();
+            revert PROTOCOL_REWARDS_ADDRESS_ZERO();
         }
 
         if (amount > balanceOf[from]) {
-            revert INVALID_WITHDRAW();
+            revert PROTOCOL_REWARDS_INVALID_WITHDRAW();
         }
 
         if (amount == 0) {
@@ -239,7 +239,7 @@ contract ProtocolRewards is
     function addToBlockList(
         address _wallet
     ) external onlyRole(BLOCK_UNBLOCK_ROLE) {
-        if (_wallet == address(0)) revert ADDRESS_ZERO();
+        if (_wallet == address(0)) revert PROTOCOL_REWARDS_ADDRESS_ZERO();
 
         blockList[_wallet] = true;
 
@@ -253,7 +253,7 @@ contract ProtocolRewards is
     function removeFromBLockList(
         address _wallet
     ) external onlyRole(BLOCK_UNBLOCK_ROLE) {
-        if (_wallet == address(0)) revert ADDRESS_ZERO();
+        if (_wallet == address(0)) revert PROTOCOL_REWARDS_ADDRESS_ZERO();
 
         blockList[_wallet] = false;
 
