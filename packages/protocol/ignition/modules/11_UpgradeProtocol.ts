@@ -80,16 +80,10 @@ export default buildModule("UpgradeProtocol", (m) => {
     id: "subjectFactoryV2Upgrade"
   });
 
-  // // set UPDATE_PROTOCOL_REWARD_ROLE role
-  // const updateProtocolRewardRole = m.staticCall(moxieBondingCurveInstance, "UPDATE_PROTOCOL_REWARD_ROLE");
-  // const updateFeesRole = m.staticCall(moxieBondingCurveInstance, "UPDATE_FEES_ROLE");
-  // // TODO: verify who should be the beneficiary
-  // const grantUpdateProtocolRewardRole = m.call(moxieBondingCurveInstance, 'grantRole', [updateProtocolRewardRole, config.adminRoleBeneficiary,], { from: owner, id: "moxieBondingCurveUpdateProtocolRewardRole" });
-  // const grantUpdateFeesRole = m.call(moxieBondingCurveInstance, 'grantRole', [updateFeesRole, config.adminRoleBeneficiary,], { from: owner, id: "moxieBondingCurveUpdateFeesRole" });
-  // // set the protocol rewARD contract 
-  // m.call(moxieBondingCurveV2, "updateProtocolRewardAddress", [protocolRewards], { from: config.adminRoleBeneficiary, id: "updateProtocolRewardAddress", after: [grantUpdateProtocolRewardRole, grantUpdateFeesRole] });
-  // // set the platform & order referral fee  // platfrom 20% order: 25%
-  // m.call(moxieBondingCurveV2, "updateReferralFee", [config.platformReferrerBuyFeePct, config.platformReferrerSellFeePct, config.orderReferrerBuyFeePct, config.orderReferrerSellFeePct], { from: config.adminRoleBeneficiary, id: "updateReferralFee", after: [grantUpdateProtocolRewardRole, grantUpdateFeesRole] });
+  const moxieBondingCurveV2Instance = m.contractAt('MoxieBondingCurveV2', moxieBondingCurveInstance, { id: 'moxieBondingCurveV2Instance' });
 
-  return { moxieBondingCurveV2, subjectFactoryV2 };
+  const subjectFactoryV2Instance = m.contractAt('SubjectFactoryV2', subjectFactoryInstance, { id: 'subjectFactoryV2Instance' });
+
+
+  return { moxieBondingCurveV2, subjectFactoryV2, moxieBondingCurveV2Instance, subjectFactoryV2Instance };
 });

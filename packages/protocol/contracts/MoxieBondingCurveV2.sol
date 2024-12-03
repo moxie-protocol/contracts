@@ -47,6 +47,8 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
     error MoxieBondingCurve_InvalidSellAmount();
     error MoxieBondingCurve_InvalidAmount();
     error MoxieBondingCurve_InvalidProtocolRewardAddress();
+    error MoxieBondingCurve_SubjectNotPaused();
+    error MoxieBondingCurve_TradingPaused();
 
     event UpdateFees(
         uint256 _protocolBuyFeePct, uint256 _protocolSellFeePct, uint256 _subjectBuyFeePct, uint256 _subjectSellFeePct
@@ -96,8 +98,12 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         uint32 _oldReserveRatio,
         uint32 _newReserveRatio
     );
-    /// @dev Address of moxie token.
 
+    event TradingPaused(
+        address _subject,
+        bool _isPaused
+    );
+    /// @dev Address of moxie token.
     IERC20Extended public token;
     /// @dev address of Bancors formula.
     IBancorFormula public formula;
@@ -129,6 +135,8 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
     IProtocolRewards public protocolRewards;
 
     mapping(address subject => address _platformReferrer) public platformReferrer;
+    /// @dev mapping to track if subject trading is paused.
+    mapping(address subject => uint256 _paused) public lastPaused;
 
     /// @dev these fee is calculated from protocol fees.
     uint256 public platformReferrerBuyFeePct;
@@ -176,6 +184,12 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         subjectFactory = _subjectFactory;
 
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
+    }
+
+
+    modifier whenNotTradingPaused(address _subject) {
+       if (lastPaused[_subject] != 0) revert MoxieBondingCurve_TradingPaused();
+       _;
     }
 
     /**
@@ -472,7 +486,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         address _onBehalfOf,
         uint256 _minReturnAmountAfterFee,
         address _orderReferrer
-    ) internal whenNotPaused returns (uint256 returnAmount_) {
+    ) internal returns (uint256 returnAmount_) {
         if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
         if (_sellAmount == 0) revert MoxieBondingCurve_InvalidSellAmount();
 
@@ -618,6 +632,27 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
     }
 
     /**
+     * @notice Pause or unpause trading for a specific subject.
+     * @param _subject Address of the subject to pause or unpause trading for.
+     * @param _pause True to pause trading, false to unpause trading.
+     */
+    function pauseTrading(
+        address _subject,
+        bool _pause
+    ) external onlyRole(UPDATE_RESERVE_RATIO) {
+
+        uint32 subjectReserveRatio = reserveRatio[_subject];
+
+        if (subjectReserveRatio == 0) {
+            revert MoxieBondingCurve_SubjectNotInitialized();
+        }
+
+        if (_pause) lastPaused[_subject] = block.timestamp;
+        else lastPaused[_subject] = 0;
+
+        emit TradingPaused(_subject, _pause);
+    }
+    /**
      * @dev Allow updation of reserve ratio by determined by DAO for specific subject.
      * @param _subject Address of subject.
      * @param _newReserveRatio new Reserve ratio. 
@@ -626,6 +661,9 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         address _subject,
         uint32 _newReserveRatio
     ) external onlyRole(UPDATE_RESERVE_RATIO) {
+
+         if (lastPaused[_subject] == 0) 
+              revert MoxieBondingCurve_SubjectNotPaused();
 
         uint32 currentReserveRatio = reserveRatio[_subject];
 
@@ -729,7 +767,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         uint256 _depositAmount,
         address _onBehalfOf,
         uint256 _minReturnAmountAfterFee
-    ) external whenNotPaused returns (uint256 shares_) {
+    ) external whenNotPaused whenNotTradingPaused(_subject) returns (uint256 shares_) {
         shares_ = _buySharesInternal(_subject, _depositAmount, _onBehalfOf, _minReturnAmountAfterFee, address(0));
     }
 
@@ -742,6 +780,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
     function buyShares(address _subject, uint256 _depositAmount, uint256 _minReturnAmountAfterFee)
         external
         whenNotPaused
+        whenNotTradingPaused(_subject)
         returns (uint256 shares_)
     {
         shares_ = _buySharesInternal(_subject, _depositAmount, msg.sender, _minReturnAmountAfterFee, address(0));
@@ -757,6 +796,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
     function sellSharesFor(address _subject, uint256 _sellAmount, address _onBehalfOf, uint256 _minReturnAmountAfterFee)
         external
         whenNotPaused
+        whenNotTradingPaused(_subject)
         returns (uint256 returnAmount_)
     {
         returnAmount_ = _sellSharesInternal(_subject, _sellAmount, _onBehalfOf, _minReturnAmountAfterFee, address(0));
@@ -771,6 +811,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
     function sellShares(address _subject, uint256 _sellAmount, uint256 _minReturnAmountAfterFee)
         external
         whenNotPaused
+        whenNotTradingPaused(_subject)
         returns (uint256 returnAmount_)
     {
         returnAmount_ = _sellSharesInternal(_subject, _sellAmount, msg.sender, _minReturnAmountAfterFee, address(0));
@@ -804,7 +845,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         uint256 _depositAmount,
         uint256 _minReturnAmountAfterFee,
         address _orderReferrer
-    ) external whenNotPaused returns (uint256 shares_) {
+    ) external whenNotPaused whenNotTradingPaused(_subject) returns (uint256 shares_) {
         shares_ = _buySharesInternal(_subject, _depositAmount, msg.sender, _minReturnAmountAfterFee, _orderReferrer);
     }
 
@@ -821,7 +862,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         address _onBehalfOf,
         uint256 _minReturnAmountAfterFee,
         address _orderReferrer
-    ) external whenNotPaused returns (uint256 returnAmount_) {
+    ) external whenNotPaused whenNotTradingPaused(_subject) returns (uint256 returnAmount_) {
         returnAmount_ =
             _sellSharesInternal(_subject, _sellAmount, _onBehalfOf, _minReturnAmountAfterFee, _orderReferrer);
     }
@@ -837,7 +878,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         uint256 _sellAmount,
         uint256 _minReturnAmountAfterFee,
         address _orderReferrer
-    ) external whenNotPaused returns (uint256 returnAmount_) {
+    ) external whenNotPaused whenNotTradingPaused(_subject) returns (uint256 returnAmount_) {
         returnAmount_ = _sellSharesInternal(_subject, _sellAmount, msg.sender, _minReturnAmountAfterFee, _orderReferrer);
     }
 

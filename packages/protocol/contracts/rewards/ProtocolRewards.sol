@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {IERC20Extended} from "../interfaces/IERC20Extended.sol";
 
 import {SecurityModule} from "../SecurityModule.sol";
@@ -15,7 +16,7 @@ contract ProtocolRewards is
     EIP712Upgradeable
 {
     using SafeERC20 for IERC20Extended;
-
+    using ECDSA for bytes32;
     bytes32 public constant WITHDRAW_TYPEHASH =
         keccak256(
             "Withdraw(address from,address to,uint256 amount,uint256 nonce,uint256 deadline)"
@@ -207,7 +208,7 @@ contract ProtocolRewards is
 
         bytes32 digest = _hashTypedDataV4(withdrawHash);
 
-        address recoveredAddress = ecrecover(digest, v, r, s);
+        address recoveredAddress = digest.recover(v, r, s);
 
         if (recoveredAddress == address(0) || recoveredAddress != from) {
             revert PROTOCOL_REWARDS_INVALID_SIGNATURE();
