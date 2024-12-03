@@ -830,7 +830,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         address _onBehalfOf,
         uint256 _minReturnAmountAfterFee,
         address _orderReferrer
-    ) external whenNotPaused returns (uint256 shares_) {
+    ) external whenNotPaused whenNotTradingPaused(_subject) returns (uint256 shares_) {
         shares_ = _buySharesInternal(_subject, _depositAmount, _onBehalfOf, _minReturnAmountAfterFee, _orderReferrer);
     }
 
