@@ -28,7 +28,17 @@ export default buildModule("ProtocolRewards", (m) => {
         from: deployer
     });
 
+
+    const protocolRewardAdminAddress = m.readEventArgument(
+        protocolRewardProxy,
+        "AdminChanged",
+        "newAdmin",
+        { id: 'protocolRewardProxyAdminAddress' }
+    );
+
+    const protocolRewardsProxyAdmin = m.contractAt("ProxyAdmin", protocolRewardAdminAddress, { id: 'protocolRewardsProxyAdmin' });
+
     const protocolRewardInstance = m.contractAt('ProtocolRewards', protocolRewardProxy, { id: 'protocolRewardsInstance' });
 
-    return { protocolRewards, protocolRewardInstance, protocolRewardProxy };
+    return { protocolRewards, protocolRewardInstance, protocolRewardProxy, protocolRewardsProxyAdmin };
 });
