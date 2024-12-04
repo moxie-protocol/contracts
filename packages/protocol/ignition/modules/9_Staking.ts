@@ -5,6 +5,7 @@ import MoxieToken from "./2_MoxieToken";
 import ProtocolContractsProxy from "./5_ProtocolContractsProxy";
 import config from "../config/config.json";
 import MoxiePass from "./1_MoxiePass";
+import Permissions from "./6_Permissions";
 
 export default buildModule("Staking", (m) => {
     
@@ -17,6 +18,8 @@ export default buildModule("Staking", (m) => {
 
     const { moxieToken } = m.useModule(MoxieToken);
     const { moxiePass } = m.useModule(MoxiePass);
+    // TODO: confirm, added to fix `addToTransferAllowList` failure
+    const { } = m.useModule(Permissions)
 
     const {  tokenManagerInstance, moxieBondingCurveInstance } = m.useModule(ProtocolContractsProxy);
 
@@ -36,6 +39,15 @@ export default buildModule("Staking", (m) => {
         from: deployer
     });
 
+    const stakingProxyAdminAddress = m.readEventArgument(
+        stakingProxy,
+        "AdminChanged",
+        "newAdmin",
+        { id: 'stakingProxyAdminAddress', }
+    );
+
+    const stakingProxyAdmin = m.contractAt("ProxyAdmin", stakingProxyAdminAddress, { id: 'stakingProxyAdmin' });
+
     const stakingInstance = m.contractAt('Staking', stakingProxy, { id: 'stakingInstance' });
 
     // mint moxie pass for staking contract
@@ -53,5 +65,5 @@ export default buildModule("Staking", (m) => {
     const adminRole = m.staticCall(stakingInstance, "DEFAULT_ADMIN_ROLE");
 
     m.call(stakingInstance, 'grantRole', [adminRole, config.adminRoleBeneficiary], { from: owner, id: "stakingAdminBeneficiary" });
-    return { staking, stakingInstance };
+    return { staking, stakingInstance, stakingProxyAdmin };
 });

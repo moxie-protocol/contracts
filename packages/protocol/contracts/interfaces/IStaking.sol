@@ -80,7 +80,7 @@ interface IStaking {
         uint256 _lockPeriodInSec,
         address _beneficiary
     ) external returns (uint256 amount_, uint256 unlockTimeInSec_);
-    
+
     function withdraw(address _subject, uint256[] memory _indexes) external returns (uint256 totalAmount_);
 
     function extendLock(address _subject, uint256[] memory _indexes, uint256 _lockPeriodInSec)
@@ -89,7 +89,7 @@ interface IStaking {
 
     function extendLockFor(address _subject, uint256[] memory _indexes, uint256 _lockPeriodInSec, address _beneficiary)
         external
-        returns (uint256 totalAmount_, uint256 unlockTimeInSec_);    
+        returns (uint256 totalAmount_, uint256 unlockTimeInSec_);
     function setLockPeriod(uint256 _lockPeriodInSec, bool _allowed) external;
 
     function getTotalStakedAmount(address _user, address _subject, uint256[] calldata _indexes)

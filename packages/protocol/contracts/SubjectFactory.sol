@@ -14,11 +14,9 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     using SafeERC20 for IERC20Extended;
 
     bytes32 public constant ONBOARDING_ROLE = keccak256("ONBOARDING_ROLE");
-    bytes32 public constant UPDATE_BENEFICIARY_ROLE =
-        keccak256("UPDATE_BENEFICIARY_ROLE");
+    bytes32 public constant UPDATE_BENEFICIARY_ROLE = keccak256("UPDATE_BENEFICIARY_ROLE");
     bytes32 public constant UPDATE_FEES_ROLE = keccak256("UPDATE_FEES_ROLE");
-    bytes32 public constant UPDATE_AUCTION_ROLE =
-        keccak256("UPDATE_AUCTION_ROLE");
+    bytes32 public constant UPDATE_AUCTION_ROLE = keccak256("UPDATE_AUCTION_ROLE");
 
     /// @dev Represent Percentage for fee 0% = 0; 1% = 10 ** 16; 100% = 10 ** 18
     uint256 public constant PCT_BASE = 10 ** 18;
@@ -79,25 +77,32 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
     ) external initializer {
         if (_owner == address(0)) revert SubjectFactory_InvalidOwner();
 
-        if (_tokenManager == address(0))
+        if (_tokenManager == address(0)) {
             revert SubjectFactory_InvalidTokenManager();
-        if (_moxieBondingCurve == address(0))
+        }
+        if (_moxieBondingCurve == address(0)) {
             revert SubjectFactory_InvalidMoxieBondingCurve();
+        }
         if (_token == address(0)) revert SubjectFactory_InvalidToken();
-        if (_easyAuction == address(0))
+        if (_easyAuction == address(0)) {
             revert SubjectFactory_InvalidAuctionContract();
+        }
 
-        if (!_feeIsValid(_feeInput.protocolFeePct + _feeInput.subjectFeePct))
+        if (!_feeIsValid(_feeInput.protocolFeePct + _feeInput.subjectFeePct)) {
             revert SubjectFactory_InvalidFeePercentage();
+        }
 
-        if (!_feeBeneficiaryIsValid(_feeBeneficiary))
+        if (!_feeBeneficiaryIsValid(_feeBeneficiary)) {
             revert SubjectFactory_InvalidBeneficiary();
+        }
 
-        if (_auctionOrderCancellationDuration == 0)
+        if (_auctionOrderCancellationDuration == 0) {
             revert SubjectFactory_InvalidAuctionOrderCancellationDuration();
+        }
 
-        if (_auctionDuration < _auctionOrderCancellationDuration)
+        if (_auctionDuration < _auctionOrderCancellationDuration) {
             revert SubjectFactory_InvalidAuctionDuration();
+        }
 
         protocolFeePct = _feeInput.protocolFeePct;
         subjectFeePct = _feeInput.subjectFeePct;
@@ -124,9 +129,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      * @dev Check if fee beneficiary is valid.
      * @param _beneficiary Address of beneficiary.
      */
-    function _feeBeneficiaryIsValid(
-        address _beneficiary
-    ) internal pure returns (bool) {
+    function _feeBeneficiaryIsValid(address _beneficiary) internal pure returns (bool) {
         return _beneficiary != address(0);
     }
 
@@ -145,10 +148,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      * @param _protocolFeePct Protocol fee in PCT.
      * @param _subjectFeePct Subject fee in PCT.
      */
-    function _updateFees(
-        uint256 _protocolFeePct,
-        uint256 _subjectFeePct
-    ) internal {
+    function _updateFees(uint256 _protocolFeePct, uint256 _subjectFeePct) internal {
         protocolFeePct = _protocolFeePct;
         subjectFeePct = _subjectFeePct;
 
@@ -162,11 +162,10 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      * @return auctionId_ Auction Id.
      * @return auctionEndDate_ Auction end date.
      */
-    function _createAuction(
-        address _subject,
-        address _subjectToken,
-        SubjectAuctionInput memory _auctionInput
-    ) internal returns (uint256 auctionId_, uint256 auctionEndDate_) {
+    function _createAuction(address _subject, address _subjectToken, SubjectAuctionInput memory _auctionInput)
+        internal
+        returns (uint256 auctionId_, uint256 auctionEndDate_)
+    {
         auctionEndDate_ = block.timestamp + auctionDuration;
         auctions[_subject].auctionEndDate = auctionEndDate_;
         auctions[_subject].initialSupply = _auctionInput.initialSupply;
@@ -194,9 +193,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      * @return buyAmount Amount of Moxie token.
      * @return sellAmount Amount of Subject Token.
      */
-    function _decodeOrder(
-        bytes32 _orderData
-    )
+    function _decodeOrder(bytes32 _orderData)
         internal
         pure
         returns (uint64 userId, uint96 buyAmount, uint96 sellAmount)
@@ -216,36 +213,20 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      * @return amountRaised_ Amount of moxie raised.
      * @return clearingOrder Clearning order to calculate price of auction.
      */
-    function _closeAuction(
-        uint256 _auctionId,
-        address _subject,
-        uint256 _initialSupply
-    )
+    function _closeAuction(uint256 _auctionId, address _subject, uint256 _initialSupply)
         internal
-        returns (
-            uint256 soldSupply_,
-            uint256 amountRaised_,
-            bytes32 clearingOrder
-        )
+        returns (uint256 soldSupply_, uint256 amountRaised_, bytes32 clearingOrder)
     {
         address subjectToken = tokenManager.tokens(_subject);
-        uint256 beforeBalanceInSubjectToken = IERC20Extended(subjectToken)
-            .balanceOf(address(this));
-        uint256 beforeBalanceInMoxieToken = IERC20Extended(token).balanceOf(
-            address(this)
-        );
+        uint256 beforeBalanceInSubjectToken = IERC20Extended(subjectToken).balanceOf(address(this));
+        uint256 beforeBalanceInMoxieToken = IERC20Extended(token).balanceOf(address(this));
 
         clearingOrder = easyAuction.settleAuction(_auctionId);
 
-        uint256 afterBalanceInSubjectToken = IERC20Extended(subjectToken)
-            .balanceOf(address(this));
-        uint256 afterBalanceInMoxieToken = IERC20Extended(token).balanceOf(
-            address(this)
-        );
+        uint256 afterBalanceInSubjectToken = IERC20Extended(subjectToken).balanceOf(address(this));
+        uint256 afterBalanceInMoxieToken = IERC20Extended(token).balanceOf(address(this));
 
-        soldSupply_ =
-            _initialSupply -
-            (afterBalanceInSubjectToken - beforeBalanceInSubjectToken);
+        soldSupply_ = _initialSupply - (afterBalanceInSubjectToken - beforeBalanceInSubjectToken);
         amountRaised_ = afterBalanceInMoxieToken - beforeBalanceInMoxieToken;
 
         uint256 amountToBurn = _initialSupply - soldSupply_;
@@ -262,9 +243,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      * @return protocolFee_ protocol fee in PCT_BASE.
      * @return subjectFee_  subject fee in PCT_BASE.
      */
-    function _calculateFee(
-        uint256 _amount
-    ) internal view returns (uint256 protocolFee_, uint256 subjectFee_) {
+    function _calculateFee(uint256 _amount) internal view returns (uint256 protocolFee_, uint256 subjectFee_) {
         protocolFee_ = (_amount * protocolFeePct) / PCT_BASE;
         subjectFee_ = (_amount * subjectFeePct) / PCT_BASE;
     }
@@ -274,10 +253,11 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      * @param _clearingOrder Clearing order from auction.
      * @param _amount Amount of reserve tokens from onboarding.
      */
-    function _calculateTokensMintAfterAuction(
-        bytes32 _clearingOrder,
-        uint256 _amount
-    ) internal pure returns (uint256) {
+    function _calculateTokensMintAfterAuction(bytes32 _clearingOrder, uint256 _amount)
+        internal
+        pure
+        returns (uint256)
+    {
         /// @dev buyAmount is subject token amount & sell amount is moxie token.
         (, uint96 buyAmount, uint96 sellAmount) = _decodeOrder(_clearingOrder);
         return (buyAmount * _amount) / sellAmount;
@@ -302,10 +282,7 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         bytes32 _clearningOrder,
         uint256 _buyAmount
     ) internal {
-        uint256 newSupplyToMint = _calculateTokensMintAfterAuction(
-            _clearningOrder,
-            _buyAmount
-        );
+        uint256 newSupplyToMint = _calculateTokensMintAfterAuction(_clearningOrder, _buyAmount);
 
         if (newSupplyToMint == 0) {
             revert SubjectFactory_BuyAmountTooLess();
@@ -316,21 +293,13 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
         (uint256 protocolFee_, uint256 subjectFee_) = _calculateFee(
             _amountRaised + _buyAmount // total amount is sum of auction amount + reserve amount from onboarding flow.
         );
-        uint256 bondingAmount_ = _amountRaised +
-            _buyAmount -
-            protocolFee_ -
-            subjectFee_;
+        uint256 bondingAmount_ = _amountRaised + _buyAmount - protocolFee_ - subjectFee_;
 
         // approve bonding curve to spend moxie
         token.approve(address(moxieBondingCurve), bondingAmount_);
 
         uint256 bondingSupply_ = _supply + newSupplyToMint;
-        moxieBondingCurve.initializeSubjectBondingCurve(
-            _subject,
-            _reserveRatio,
-            bondingSupply_,
-            bondingAmount_
-        );
+        moxieBondingCurve.initializeSubjectBondingCurve(_subject, _reserveRatio, bondingSupply_, bondingAmount_);
 
         token.safeTransfer(feeBeneficiary, protocolFee_);
 
@@ -363,14 +332,17 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      * @param _subject Address of subject.
      * @param _auctionInput Input for auction creation.
      */
-    function initiateSubjectOnboarding(
-        address _subject,
-        SubjectAuctionInput memory _auctionInput
-    ) external whenNotPaused onlyRole(ONBOARDING_ROLE) returns (uint256) {
+    function initiateSubjectOnboarding(address _subject, SubjectAuctionInput memory _auctionInput)
+        external
+        whenNotPaused
+        onlyRole(ONBOARDING_ROLE)
+        returns (uint256)
+    {
         if (_subject == address(0)) revert SubjectFactory_InvalidSubject();
 
-        if (auctions[_subject].auctionId != 0)
+        if (auctions[_subject].auctionId != 0) {
             revert SubjectFactory_AuctionAlreadyCreated();
+        }
 
         address subjectToken = tokenManager.create(
             _subject,
@@ -380,24 +352,12 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
             _auctionInput.accessManagerContract
         );
 
-        IERC20Extended(subjectToken).approve(
-            address(easyAuction),
-            _auctionInput.initialSupply
-        );
+        IERC20Extended(subjectToken).approve(address(easyAuction), _auctionInput.initialSupply);
 
-        (uint256 auctionId, uint256 auctionEndDate) = _createAuction(
-            _subject,
-            subjectToken,
-            _auctionInput
-        );
+        (uint256 auctionId, uint256 auctionEndDate) = _createAuction(_subject, subjectToken, _auctionInput);
 
         emit SubjectOnboardingInitiated(
-            _subject,
-            subjectToken,
-            _auctionInput.initialSupply,
-            address(token),
-            auctionEndDate,
-            auctionId
+            _subject, subjectToken, _auctionInput.initialSupply, address(token), auctionEndDate, auctionId
         );
         return auctionId;
     }
@@ -415,11 +375,11 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      * reserve will be locked in this contract forever.
      * @param _reserveRatio Reserve ratio of bonding curve.
      */
-    function finalizeSubjectOnboarding(
-        address _subject,
-        uint256 _buyAmount,
-        uint32 _reserveRatio
-    ) external whenNotPaused onlyRole(ONBOARDING_ROLE) {
+    function finalizeSubjectOnboarding(address _subject, uint256 _buyAmount, uint32 _reserveRatio)
+        external
+        whenNotPaused
+        onlyRole(ONBOARDING_ROLE)
+    {
         if (_subject == address(0)) revert SubjectFactory_InvalidSubject();
         if (_reserveRatio == 0) revert SubjectFactory_InvalidReserveRatio();
 
@@ -429,37 +389,26 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
 
         if (auctionId == 0) revert SubjectFactory_AuctionNotCreated();
 
-        if (block.timestamp < auction.auctionEndDate)
+        if (block.timestamp < auction.auctionEndDate) {
             revert SubjectFactory_AuctionNotDoneYet();
+        }
 
-        (
-            uint256 soldSupply,
-            uint256 amountRaised,
-            bytes32 clearingOrder
-        ) = _closeAuction(auctionId, _subject, auction.initialSupply);
+        (uint256 soldSupply, uint256 amountRaised, bytes32 clearingOrder) =
+            _closeAuction(auctionId, _subject, auction.initialSupply);
         // transfer buy amount from caller to contract.
         token.safeTransferFrom(msg.sender, address(this), _buyAmount);
 
-        _initializeBondingCurve(
-            auctionId,
-            _subject,
-            amountRaised,
-            soldSupply,
-            _reserveRatio,
-            clearingOrder,
-            _buyAmount
-        );
+        _initializeBondingCurve(auctionId, _subject, amountRaised, soldSupply, _reserveRatio, clearingOrder, _buyAmount);
     }
 
     /**
      * @notice Update beneficiary to `_beneficiary. It can be done by UPDATE_BENEFICIARY_ROLE.
      * @param _feeBeneficiary The address of the new beneficiary [to whom fees are to be sent]
      */
-    function updateFeeBeneficiary(
-        address _feeBeneficiary
-    ) external onlyRole(UPDATE_BENEFICIARY_ROLE) {
-        if (!_feeBeneficiaryIsValid(_feeBeneficiary))
+    function updateFeeBeneficiary(address _feeBeneficiary) external onlyRole(UPDATE_BENEFICIARY_ROLE) {
+        if (!_feeBeneficiaryIsValid(_feeBeneficiary)) {
             revert SubjectFactory_InvalidBeneficiary();
+        }
 
         _updateFeeBeneficiary(_feeBeneficiary);
     }
@@ -468,11 +417,10 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      * @notice Update fee only be called by role UPDATE_FEES_ROLE.
      * @param _feeInput Fee input struct.
      */
-    function updateFees(
-        FeeInput memory _feeInput
-    ) external onlyRole(UPDATE_FEES_ROLE) {
-        if (!_feeIsValid(_feeInput.protocolFeePct + _feeInput.subjectFeePct))
+    function updateFees(FeeInput memory _feeInput) external onlyRole(UPDATE_FEES_ROLE) {
+        if (!_feeIsValid(_feeInput.protocolFeePct + _feeInput.subjectFeePct)) {
             revert SubjectFactory_InvalidFeePercentage();
+        }
 
         _updateFees(_feeInput.protocolFeePct, _feeInput.subjectFeePct);
     }
@@ -482,22 +430,21 @@ contract SubjectFactory is SecurityModule, ISubjectFactory {
      * @param _auctionDuration Duration of auction in timestamp.
      * @param _auctionOrderCancellationDuration  Duration on order cancellation in timestamp.
      */
-    function updateAuctionTime(
-        uint256 _auctionDuration,
-        uint256 _auctionOrderCancellationDuration
-    ) external onlyRole(UPDATE_AUCTION_ROLE) {
-        if (_auctionOrderCancellationDuration == 0)
+    function updateAuctionTime(uint256 _auctionDuration, uint256 _auctionOrderCancellationDuration)
+        external
+        onlyRole(UPDATE_AUCTION_ROLE)
+    {
+        if (_auctionOrderCancellationDuration == 0) {
             revert SubjectFactory_InvalidAuctionOrderCancellationDuration();
+        }
 
-        if (_auctionDuration < _auctionOrderCancellationDuration)
+        if (_auctionDuration < _auctionOrderCancellationDuration) {
             revert SubjectFactory_InvalidAuctionDuration();
+        }
 
         auctionDuration = _auctionDuration;
         auctionOrderCancellationDuration = _auctionOrderCancellationDuration;
 
-        emit UpdateAuctionParam(
-            _auctionDuration,
-            _auctionOrderCancellationDuration
-        );
+        emit UpdateAuctionParam(_auctionDuration, _auctionOrderCancellationDuration);
     }
 }

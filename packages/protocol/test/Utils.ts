@@ -11,7 +11,8 @@ export const getExpectedSellReturnAndFee = async (
     reserveRatio: number,
     feeInput: any,
     PCT_BASE: bigint,
-    sellAmount: bigint
+    sellAmount: bigint,
+    referralFeeInput?: any
 ) => {
 
     const supply = await subjectToken.totalSupply();
@@ -26,12 +27,24 @@ export const getExpectedSellReturnAndFee = async (
 
     const protocolFee = (BigInt(feeInput.protocolSellFeePct) * BigInt(returnAmount)) / BigInt(PCT_BASE);
     const subjectFee = (BigInt(feeInput.subjectSellFeePct) * BigInt(returnAmount)) / BigInt(PCT_BASE);
+    
+    if(referralFeeInput) {
+        return {
+            returnAmount,
+            protocolFee,
+            subjectFee,
+            platformReferrerFee: (BigInt(referralFeeInput.platformReferrerSellFeePct) * BigInt(protocolFee)) / BigInt(PCT_BASE),
+            orderReferrrerFee: (BigInt(referralFeeInput.orderReferrerSellFeePct) * BigInt(protocolFee)) / BigInt(PCT_BASE),
+        }
+    }
 
     return {
         returnAmount,
         protocolFee,
-        subjectFee
-    };
+        subjectFee,
+        platformReferrerFee: 0,
+        orderReferrrerFee: 0
+    }
 
 }
 
@@ -44,7 +57,8 @@ export const getExpectedBuyAmountAndFee = async (
     reserveRatio: number,
     feeInput: any,
     PCT_BASE: bigint,
-    buyAmount: bigint
+    buyAmount: bigint,
+    referralFeeInput?: any
 ) => {
 
 
@@ -63,10 +77,23 @@ export const getExpectedBuyAmountAndFee = async (
         effectiveBuyAmount
     );
 
+    
+    if(referralFeeInput) {
+        return {
+            expectedShares,
+            protocolFee,
+            subjectFee,
+            platformReferrerFee: (BigInt(referralFeeInput.platformReferrerBuyFeePct) * BigInt(protocolFee)) / BigInt(PCT_BASE),
+            orderReferrrerFee: (BigInt(referralFeeInput.orderReferrerBuyFeePct) * BigInt(protocolFee)) / BigInt(PCT_BASE),
+        }
+    }
+
     return {
         expectedShares,
         protocolFee,
-        subjectFee
+        subjectFee,
+        platformReferrerFee: 0,
+        orderReferrrerFee: 0
     }
 
 
