@@ -23,5 +23,6 @@
   "ProtocolContractsProxy#moxieBondingCurveProxyAdmin": "0x7631884b5F0A8cB67CBc4B8B008fb00CDf2BeD76",
   "Staking#Staking": "0x26270a887787aC5E0c14DB21953A0d11A17dDe2B",
   "Staking#stakingProxy": "0xCb2513d389354F7ac80F5042bB8948A234A439B2",
-  "Staking#stakingInstance": "0xCb2513d389354F7ac80F5042bB8948A234A439B2"
+  "Staking#stakingInstance": "0xCb2513d389354F7ac80F5042bB8948A234A439B2",
+  "Staking#stakingProxyAdmin": "0xA5086bc4c72C9fc002872d0C3Bd44E8eF1Eb8f76"
 }
