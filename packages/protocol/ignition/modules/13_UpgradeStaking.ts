@@ -10,7 +10,7 @@ import BondingCurve from "./11_UpgradeProtocol";
 import MoxiePass from "./1_MoxiePass";
 
 export default buildModule("UpgradeStaking", (m) => {
-    const proxyAdminOwnerAccount = m.getAccount(8);
+    const proxyAdminOwnerAccount = m.getAccount(1);
     const deployer = m.getAccount(0);
     const owner = m.getAccount(1);
 
