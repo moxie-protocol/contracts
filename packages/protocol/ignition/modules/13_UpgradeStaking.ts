@@ -33,5 +33,7 @@ export default buildModule("UpgradeStaking", (m) => {
         id: "stakingV2Upgrade"
     });
 
-    return { stakingV2, stakingProxyAdmin, stakingInstance };
+    const stakingV2Instance = m.contractAt('StakingV2', stakingInstance, { id: 'stakingV2Instance' });
+
+    return { stakingV2, stakingProxyAdmin, stakingInstance, stakingV2Instance };
 });

@@ -1238,6 +1238,40 @@ describe("MoxieBondingCurve", () => {
             expect(expectedShares2).to.be.lessThan(expectedShares);
         });
 
+        it('should not allow trading when paused', async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                owner,
+                subject,
+                subjectFactory,
+                reserveRatio,
+                initialReserve,
+                initialSupply,
+                moxieToken,
+                moxieBondingCurveAddress,
+                buyer
+            } = deployment;
+
+            await moxieToken
+                .connect(subjectFactory)
+                .approve(moxieBondingCurveAddress, initialReserve);
+
+            await moxieBondingCurve.connect(subjectFactory).initializeSubjectBondingCurve(
+                subject.address,
+                reserveRatio,
+                initialSupply,
+                initialReserve,
+                ethers.ZeroAddress
+            );
+
+            await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
+            await moxieBondingCurve.connect(owner).pauseTrading(subject, true);
+
+            await expect(moxieBondingCurve.connect(buyer).buySharesFor(subject.address, ethers.parseEther("1.0"), buyer.address, 0))
+                .to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_TradingPaused");
+        });
+
         it("should be able to buy subject token with zero address as beneficiary", async () => {
             const deployment = await loadFixture(deploy);
             const {
@@ -1860,6 +1894,40 @@ describe("MoxieBondingCurve", () => {
             );
         });
 
+        it('should not allow trading when paused', async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                owner,
+                subject,
+                subjectFactory,
+                reserveRatio,
+                initialReserve,
+                initialSupply,
+                moxieToken,
+                moxieBondingCurveAddress,
+                buyer
+            } = deployment;
+
+            await moxieToken
+                .connect(subjectFactory)
+                .approve(moxieBondingCurveAddress, initialReserve);
+
+            await moxieBondingCurve.connect(subjectFactory).initializeSubjectBondingCurve(
+                subject.address,
+                reserveRatio,
+                initialSupply,
+                initialReserve,
+                ethers.ZeroAddress
+            );
+
+            await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
+            await moxieBondingCurve.connect(owner).pauseTrading(subject, true);
+
+            await expect(moxieBondingCurve.connect(buyer).buyShares(subject.address, ethers.parseEther("1.0"), 0))
+                .to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_TradingPaused");
+        });
+
         it("should not be able to buy for zero deposit amount", async () => {
             const deployment = await loadFixture(deploy);
             const {
@@ -2371,6 +2439,45 @@ describe("MoxieBondingCurve", () => {
             expect(await protocolRewards.balanceOf(subject.address)).to.equal(
                 BigInt(subjectBeneficiaryPreviousMoxieBalance2) + subjectFee2,
             );
+        });
+
+        it("should not be able to sell subject token when trading is paused", async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                subject,
+                moxieBondingCurveAddress,
+                subjectToken,
+                seller,
+                owner
+            } = deployment;
+
+            await setupSell(deployment);
+
+            const totalSellAmountSeller1 = await subjectToken.balanceOf(
+                seller.address,
+            );
+
+            await subjectToken
+                .connect(seller)
+                .approve(moxieBondingCurveAddress, totalSellAmountSeller1);
+
+
+            await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
+            await moxieBondingCurve.connect(owner).pauseTrading(subject, true);
+
+            await expect(
+                moxieBondingCurve
+                    .connect(seller)
+                    .sellSharesFor(
+                        subject.address,
+                        totalSellAmountSeller1,
+                        seller.address,
+                        0,
+                    ),
+            )
+                .to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_TradingPaused")
+
         });
 
         it("should be able to sell all subject token till supply is 0 ", async () => {
@@ -2928,6 +3035,44 @@ describe("MoxieBondingCurve", () => {
             expect(await protocolRewards.balanceOf(subject.address)).to.equal(
                 BigInt(subjectBeneficiaryPreviousMoxieBalance2) + subjectFee2,
             );
+        });
+
+        it("should not be able to sell subject token when trading is paused", async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                subject,
+                moxieBondingCurveAddress,
+                subjectToken,
+                seller,
+                owner
+            } = deployment;
+
+            await setupSell(deployment);
+
+            const totalSellAmountSeller1 = await subjectToken.balanceOf(
+                seller.address,
+            );
+
+            await subjectToken
+                .connect(seller)
+                .approve(moxieBondingCurveAddress, totalSellAmountSeller1);
+
+
+            await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
+            await moxieBondingCurve.connect(owner).pauseTrading(subject, true);
+
+            await expect(
+                moxieBondingCurve
+                    .connect(seller)
+                    .sellShares(
+                        subject.address,
+                        totalSellAmountSeller1,
+                        0,
+                    ),
+            )
+                .to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_TradingPaused")
+
         });
 
         it("should be able to sell all subject token till supply is 0 ", async () => {
@@ -4121,6 +4266,65 @@ describe("MoxieBondingCurve", () => {
 
         });
 
+        it("should fail to buy shares with platform referrer fee & order referrer fee when trading is paused", async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                subject,
+                moxieToken,
+                moxieBondingCurveAddress,
+                reserveRatio,
+                vaultInstance,
+                subjectTokenAddress,
+                moxieTokenAddress,
+                orderReferrer,
+                buyer,
+                subjectToken,
+                formula,
+                feeInput,
+                PCT_BASE,
+                referralFeeInput,
+                owner
+            } = deployment;
+
+
+            await setupBuyV2(deployment);
+            const buyAmount = ethers.parseEther("100");
+
+            const { expectedShares } =
+                await getExpectedBuyAmountAndFee(
+                    subjectToken,
+                    vaultInstance,
+                    subjectTokenAddress,
+                    moxieTokenAddress,
+                    formula,
+                    reserveRatio,
+                    feeInput,
+                    PCT_BASE,
+                    BigInt(buyAmount),
+                    referralFeeInput
+                );
+
+
+            await moxieToken
+                .connect(buyer)
+                .approve(moxieBondingCurveAddress, buyAmount);
+
+
+            await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
+            await moxieBondingCurve.connect(owner).pauseTrading(subject, true);
+            // Buy shares with order referrer and platform referrer
+            await expect(moxieBondingCurve
+                .connect(buyer)
+                .buySharesV2(
+                    subject.address,
+                    buyAmount,
+                    expectedShares,
+                    orderReferrer.address
+                )).to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_TradingPaused")
+
+
+        });
 
         it("should not transfer order referrer fee if order referrer is zero address during buy", async () => {
             const deployment = await loadFixture(deploy);
@@ -4503,6 +4707,44 @@ describe("MoxieBondingCurve", () => {
             );
         });
 
+        it("should  not be able to sell subject token with platform referrer fee & order referrer fee when trading is paused", async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                subject,
+                moxieBondingCurveAddress,
+                subjectToken,
+                seller,
+                orderReferrer,
+                owner
+            } = deployment;
+
+            await setupSellV2(deployment);
+
+            const totalSellAmountSeller1 = await subjectToken.balanceOf(
+                seller.address,
+            );
+
+            await subjectToken
+                .connect(seller)
+                .approve(moxieBondingCurveAddress, totalSellAmountSeller1);
+
+
+            await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
+            await moxieBondingCurve.connect(owner).pauseTrading(subject, true);
+            await expect(
+                moxieBondingCurve
+                    .connect(seller)
+                    .sellSharesForV2(
+                        subject.address,
+                        totalSellAmountSeller1,
+                        seller.address,
+                        0,
+                        orderReferrer
+                    ),
+            ).to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_TradingPaused");
+        });
+
         it("should not transfer order referrer fee if order referrer is zero address during sell", async () => {
             const deployment = await loadFixture(deploy);
             const {
@@ -4774,12 +5016,49 @@ describe("MoxieBondingCurve", () => {
             const newReserveRatio = 2000;
             await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
 
+            await moxieBondingCurve.connect(owner).pauseTrading(subject, true);
+
             await expect(moxieBondingCurve.connect(owner).updateReserveRatio(subject, newReserveRatio))
                 .to.emit(moxieBondingCurve, 'SubjectReserveRatioUpdated')
                 .withArgs(subject, reserveRatio, newReserveRatio);
 
             const updatedReserveRatio = await moxieBondingCurve.reserveRatio(subject);
             expect(updatedReserveRatio).to.be.equal(newReserveRatio);
+        });
+
+        it('should not update reserve ratio successfully if trading is not paused', async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                owner,
+                subject,
+                subjectFactory,
+                reserveRatio,
+                initialReserve,
+                initialSupply,
+                moxieToken,
+                moxieBondingCurveAddress
+            } = deployment;
+
+
+            await moxieToken
+                .connect(subjectFactory)
+                .approve(moxieBondingCurveAddress, initialReserve);
+
+
+            await moxieBondingCurve.connect(subjectFactory).initializeSubjectBondingCurve(
+                subject.address,
+                reserveRatio,
+                initialSupply,
+                initialReserve,
+                ethers.ZeroAddress
+            );
+
+            const newReserveRatio = 2000;
+            await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
+
+            await expect(moxieBondingCurve.connect(owner).updateReserveRatio(subject, newReserveRatio))
+                .to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_SubjectNotPaused")
         });
 
         it('should not update reserve ratio to zero', async () => {
@@ -4803,6 +5082,7 @@ describe("MoxieBondingCurve", () => {
 
             await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
 
+
             await moxieBondingCurve.connect(subjectFactory).initializeSubjectBondingCurve(
                 subject.address,
                 reserveRatio,
@@ -4810,6 +5090,8 @@ describe("MoxieBondingCurve", () => {
                 initialReserve,
                 ethers.ZeroAddress
             );
+
+            await moxieBondingCurve.connect(owner).pauseTrading(subject, true);
 
             await expect(moxieBondingCurve.connect(owner).updateReserveRatio(subject, 0)).
                 to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_InvalidReserveRation");
@@ -4837,6 +5119,7 @@ describe("MoxieBondingCurve", () => {
 
             await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
 
+
             await moxieBondingCurve.connect(subjectFactory).initializeSubjectBondingCurve(
                 subject.address,
                 reserveRatio,
@@ -4845,9 +5128,133 @@ describe("MoxieBondingCurve", () => {
                 ethers.ZeroAddress
             );
 
+            await moxieBondingCurve.connect(owner).pauseTrading(subject, true);
+
             await expect(moxieBondingCurve.connect(owner).updateReserveRatio(subject, 0)).
                 to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_InvalidReserveRation");
         });
     })
+
+    describe("pauseTrading function", () => {
+        it('should pause trading', async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                owner,
+                subject,
+                subjectFactory,
+                reserveRatio,
+                initialReserve,
+                initialSupply,
+                moxieToken,
+                moxieBondingCurveAddress
+            } = deployment;
+
+
+            await moxieToken
+                .connect(subjectFactory)
+                .approve(moxieBondingCurveAddress, initialReserve);
+
+
+            await moxieBondingCurve.connect(subjectFactory).initializeSubjectBondingCurve(
+                subject.address,
+                reserveRatio,
+                initialSupply,
+                initialReserve,
+                ethers.ZeroAddress
+            );
+            await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
+
+            await expect(moxieBondingCurve.connect(owner).pauseTrading(subject, true)).
+                to.emit(moxieBondingCurve, "TradingPaused").withArgs(subject, true)
+        });
+
+        it('should unpause trading', async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                owner,
+                subject,
+                subjectFactory,
+                reserveRatio,
+                initialReserve,
+                initialSupply,
+                moxieToken,
+                moxieBondingCurveAddress
+            } = deployment;
+
+
+            await moxieToken
+                .connect(subjectFactory)
+                .approve(moxieBondingCurveAddress, initialReserve);
+
+
+            await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
+            await moxieBondingCurve.connect(subjectFactory).initializeSubjectBondingCurve(
+                subject.address,
+                reserveRatio,
+                initialSupply,
+                initialReserve,
+                ethers.ZeroAddress
+            );
+
+            await moxieBondingCurve.connect(owner).pauseTrading(subject, false);
+
+            await expect(moxieBondingCurve.connect(owner).pauseTrading(subject, false)).
+                to.emit(moxieBondingCurve, "TradingPaused").withArgs(subject, false)
+        });
+
+        it('should not pause trading when not owner', async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                subject,
+                subjectFactory,
+                reserveRatio,
+                initialReserve,
+                initialSupply,
+                moxieToken,
+                moxieBondingCurveAddress,
+                buyer
+            } = deployment;
+
+
+            await moxieToken
+                .connect(subjectFactory)
+                .approve(moxieBondingCurveAddress, initialReserve);
+
+
+            await moxieBondingCurve.connect(subjectFactory).initializeSubjectBondingCurve(
+                subject.address,
+                reserveRatio,
+                initialSupply,
+                initialReserve,
+                ethers.ZeroAddress
+            );
+
+            await expect(moxieBondingCurve.connect(buyer).pauseTrading(subject, true))
+                .to.revertedWithCustomError(
+                    moxieBondingCurve,
+                    "AccessControlUnauthorizedAccount",
+                )
+                .withArgs(
+                    buyer.address,
+                    await moxieBondingCurve.UPDATE_RESERVE_RATIO(),
+                );
+        });
+
+
+        it('should not pause trading for invalid subject', async () => {
+            const deployment = await loadFixture(deploy);
+            const {
+                moxieBondingCurve,
+                owner,
+            } = deployment;
+
+            await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
+            await expect(moxieBondingCurve.connect(owner).pauseTrading(owner, false)).
+                to.revertedWithCustomError(moxieBondingCurve, "MoxieBondingCurve_SubjectNotInitialized")
+        });
+    });
 
 });

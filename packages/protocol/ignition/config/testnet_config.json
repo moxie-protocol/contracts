@@ -14,9 +14,9 @@
   "moxiePassURL": "https://assets.airstack.xyz/moxiepass/metadata/0.json",
   "feeBeneficiary": "0x648e7e89A70ef654B5754E9EB91BF931a477e3CD",
   "stakingLockDurationInSec": 120,
-  "platformReferrerBuyFeePct": "20000000000000000",
-  "platformReferrerSellFeePct": "20000000000000000",
-  "orderReferrerBuyFeePct": "25000000000000000",
-  "orderReferrerSellFeePct": "25000000000000000",
-  "platformReferrerFeePct": "20000000000000000"
+  "platformReferrerBuyFeePct": "300000000000000000",
+  "platformReferrerSellFeePct": "300000000000000000",
+  "orderReferrerBuyFeePct": "300000000000000000",
+  "orderReferrerSellFeePct": "300000000000000000",
+  "platformReferrerFeePct": "300000000000000000"
 }
