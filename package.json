@@ -8,6 +8,7 @@
     "clean": "yarn workspaces foreach --all --parallel --verbose run clean",
     "compile": "yarn workspaces foreach --all --verbose run compile",
     "check": "yarn workspaces foreach --all --parallel --verbose run check",
-    "test": "yarn workspaces foreach --all --parallel --verbose --interlaced run test"
+    "test": "yarn workspaces foreach --all --parallel --verbose --interlaced run test",
+    "coverage": "yarn workspaces foreach --all --parallel --verbose --interlaced run coverage"
   }
 }
