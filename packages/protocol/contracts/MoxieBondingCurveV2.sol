@@ -416,6 +416,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
      * @param _minReturnAmountAfterFee Minimum amount of funds that should be returned.
      * @param _subject Address of subject.
      * @param _subjectReserveRatio Subject Reserve ratio.
+     * @param _orderReferrer Address of order referrer.
      */
     function _sellShares(
         IERC20Extended _subjectToken,
@@ -823,6 +824,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
      * @param _depositAmount Deposit amount to buy shares.
      * @param _onBehalfOf  Beneficiary where shares will be minted.
      * @param _minReturnAmountAfterFee Minimum shares that must be returned.
+     * @param _orderReferrer Address of order referrer.
      */
     function buySharesForV2(
         address _subject,
@@ -839,6 +841,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
      * @param _subject Address of subject.
      * @param _depositAmount Deposit amount to buy shares.
      * @param _minReturnAmountAfterFee Minimum shares that must be returned.
+     * @param _orderReferrer Address of order referrer.
      */
     function buySharesV2(
         address _subject,
@@ -855,6 +858,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
      * @param _sellAmount Amount of subject shares to sell.
      * @param _onBehalfOf Address of buy token beneficiary.
      * @param _minReturnAmountAfterFee Minimum buy token that must be returned.
+     * @param _orderReferrer Address of order referrer.
      */
     function sellSharesForV2(
         address _subject,
@@ -871,7 +875,8 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
      * @dev Sell shares of subject.
      * @param _subject Address of subject.
      * @param _sellAmount Amount of subject shares to sell.
-     * @param _minReturnAmountAfterFee Minimum buy token that must be returned.
+     * @param _minReturnAmountAfterFee Minimum buy token that must be returned
+     * @param _orderReferrer Address of order referrer.
      */
     function sellSharesV2(
         address _subject,
