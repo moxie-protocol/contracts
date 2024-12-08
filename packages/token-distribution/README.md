@@ -47,7 +47,7 @@ The following functions signatures will be authorized for use:
 
 Contract that works as a factory of **MoxieTokenLockWallet** contracts. It manages the function calls authorized to be called on any MoxieTokenWallet and also holds addresses of our protocol contracts configured as targets.
 
-The Manager supports creating TokenLock contracts based on a mastercopy bytecode using a Minimal Proxy to save gas. It also do so with CREATE2 to have reproducible addresses, this way any future to be deployed contract address can be passed to beneficiaries before actual deployment.
+The Manager supports creating TokenLock contracts based on a mastercopy bytecode using a Minimal Proxy to save gas. It also does so with CREATE2 to have reproducible addresses, this way any future to be deployed contract address can be passed to beneficiaries before actual deployment.
 
 For convenience, the Manager will also fund the created contract with the amount of each contract's managed tokens.
 
@@ -70,7 +70,7 @@ INFURA_KEY=
 
 **2) Create the deployment file**
 
-The file must be have CSV format in placed in the `/tasks` folder with the following header:
+The file must be in CSV format and placed in the `/tasks` folder with the following header:
 ```
 beneficiary,managedAmount,startTime,endTime,periods,revocable,releaseStartTime,vestingCliffTime
 ... line 1

@@ -97,7 +97,7 @@ contract MoxiePassVerifier is Ownable, IAllowListVerifier {
             return bytes4(0);
         }
 
-        // If the erc721ContractAddress is 0, that mean the check if the user holds the NFT is not required.
+        // If the erc721ContractAddress is 0, that means the check if the user holds the NFT is not required.
         // @dev this is by design, as the contract owner can set the erc721ContractAddress to 0 to disable the check
         if (address(erc721ContractAddress) == address(0)) {
             return MAGICVALUE;
