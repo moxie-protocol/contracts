@@ -157,6 +157,7 @@ describe("StakingUpgradeTest", () => {
       protocolSellFeePct,
       subjectBuyFeePct,
       subjectSellFeePct,
+      swapFeeRatioProtocolPct: 0,
     };
 
     await moxieBondingCurveLegacyV1.initialize(
@@ -176,8 +177,19 @@ describe("StakingUpgradeTest", () => {
     const moxieBondingCurve = await upgrades.upgradeProxy(
       await moxieBondingCurveLegacyV1.getAddress(),
       MoxieBondingCurve,
+      {
+        call: {
+          fn: "reinitialize",
+          args: [
+            ethers.MaxUint256 / BigInt("1000000000000000000"),
+            ethers.ZeroAddress,
+            ethers.ZeroAddress,
+            ethers.ZeroAddress,
+            0
+          ],
+        },
+      },
     );
-
     await moxieBondingCurve
       .connect(owner)
       .grantRole(await moxieBondingCurve.UPDATE_PROTOCOL_REWARD_ROLE(), owner);

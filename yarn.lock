@@ -4276,6 +4276,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@uniswap/briefcase@npm:^0.1.9":
+  version: 0.1.9
+  resolution: "@uniswap/briefcase@npm:0.1.9"
+  checksum: 10c0/efd240441068eddea1d319d3277f4be067950a1b6b68c863299ae8756a0e2afc4beaf2d8dfd8ed9b5f5f1826426d873aee743d7f321bf4fe665b3e594f0d67cc
+  languageName: node
+  linkType: hard
+
 "@whatwg-node/cookie-store@npm:^0.0.1":
   version: 0.0.1
   resolution: "@whatwg-node/cookie-store@npm:0.0.1"
@@ -14868,6 +14875,7 @@ __metadata:
     "@typechain/hardhat": "npm:^9.0.0"
     "@types/chai": "npm:^4.2.0"
     "@types/mocha": "npm:>=9.1.0"
+    "@uniswap/briefcase": "npm:^0.1.9"
     chai: "npm:^4.2.0"
     dotenv: "npm:^16.4.5"
     ethers: "npm:^6.13.1"
