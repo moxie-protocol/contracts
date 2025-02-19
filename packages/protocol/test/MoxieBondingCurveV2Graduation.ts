@@ -152,8 +152,8 @@ describe("MoxieBondingCurveV2Graduation", () => {
       graduationHookAddress,
       await uniswapDeployer.positionManager(),
       await uniswapDeployer.universalRouter(),
-      // 50%
-      ethers.parseEther("0.5"),
+      // 60%
+      ethers.parseEther("0.6"),
     );
 
     await moxieBondingCurve
@@ -805,6 +805,10 @@ describe("MoxieBondingCurveV2Graduation", () => {
                 const poolManager = await d.uniswapDeployer.poolManager();
                 const poolManagerMoxieBalanceBefore = await d.moxieToken.balanceOf(poolManager);
                 const subjectSupplyBefore = await subjectToken.totalSupply();
+                const protocolFeeBefore = await d.protocolRewards.balanceOf(d.feeBeneficiary);
+                const subjectFeeBefore = await d.protocolRewards.balanceOf(
+                  lower ? d.subjectLower.address : d.subjectHigher.address,
+                );
                 await d.moxieBondingCurve
                   .connect(d.owner)
                   .distributeSwapFee(
@@ -828,7 +832,21 @@ describe("MoxieBondingCurveV2Graduation", () => {
                   1,
                   "did not transfer moxie"
                 );
-          });
+                const protocolFeeAfter = await d.protocolRewards.balanceOf(d.feeBeneficiary);
+                expect(protocolFeeAfter - protocolFeeBefore).to.approximately(
+                  (donationAmount * BigInt(6)) / BigInt(10),
+                  1,
+                  "did not transfer moxie",
+                );
+                const subjectFeeAfter = await d.protocolRewards.balanceOf(
+                  lower ? d.subjectLower.address : d.subjectHigher.address,
+                );
+                expect(subjectFeeAfter - subjectFeeBefore).to.approximately(
+                  (donationAmount * BigInt(4)) / BigInt(10),
+                  1,
+                  "did not transfer moxie",
+                );
+            });
         });
       });
     });
