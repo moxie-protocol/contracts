@@ -1,4 +1,5 @@
 import type { HardhatUserConfig } from "hardhat/config";
+import "@nomicfoundation/hardhat-foundry";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomiclabs/hardhat-solhint";
 import "@nomicfoundation/hardhat-ignition-ethers";
@@ -31,14 +32,13 @@ const config: HardhatUserConfig = {
       // uniswap deployer contract used during testing is too large
       allowUnlimitedContractSize: true,
       // increase gas limit to be able to mine hook address
-      blockGasLimit: 1000000000000
+      blockGasLimit: 1000000000000,
     },
     "base-sepolia": {
       url: `https://base-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY as string}`,
       accounts: {
         mnemonic: process.env.MNEMONIC as string,
       },
-      // To fix replacement transaction underpriced
       // ignition: {
       //   maxPriorityFeePerGas: BigInt(2200000),
       // },

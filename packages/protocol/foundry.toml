@@ -1,0 +1,9 @@
+[profile.default]
+optimizer = true
+optimizer_runs = 1
+allow_unlimited_contract_size = true
+src = 'contracts'
+out = 'out'
+libs = ['node_modules', 'lib']
+test = 'test'
+cache_path  = 'cache_forge'

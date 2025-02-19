@@ -18,5 +18,6 @@
   "platformReferrerSellFeePct": "300000000000000000",
   "orderReferrerBuyFeePct": "300000000000000000",
   "orderReferrerSellFeePct": "300000000000000000",
-  "platformReferrerFeePct": "300000000000000000"
+  "platformReferrerFeePct": "300000000000000000",
+  "swapFeeRatioProtocolPct": "50000000000000000"
 }
