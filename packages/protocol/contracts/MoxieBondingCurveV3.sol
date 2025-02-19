@@ -4,14 +4,16 @@ pragma solidity ^0.8.24;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IBancorFormula} from "./interfaces/IBancorFormula.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {SecurityModule} from "./SecurityModule.sol";
 import {ITokenManager} from "./interfaces/ITokenManager.sol";
 import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
 import {IVault} from "./interfaces/IVault.sol";
-import {IMoxieBondingCurveV3} from "./interfaces/IMoxieBondingCurveV3.sol";
+import {IMoxieBondingCurveV2} from "./interfaces/IMoxieBondingCurveV2.sol";
 import {IProtocolRewards} from "./rewards/IProtocolRewards.sol";
 import {IGraduationHook} from "./uniswap/GraduationHook.sol";
-import {IPoolManager, PoolKey, Currency} from "@uniswap/briefcase/src/protocols/v4-core/interfaces/IPoolManager.sol";
+import {IPoolManager, PoolKey, IHooks, Currency} from "@uniswap/briefcase/src/protocols/v4-core/interfaces/IPoolManager.sol";
+import {SqrtPriceMath} from "@uniswap/briefcase/src/protocols/v4-core/libraries/SqrtPriceMath.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IPositionManager} from "@uniswap/briefcase/src/protocols/v4-periphery/interfaces/IPositionManager.sol";
 import {Actions} from "@uniswap/briefcase/src/protocols/v4-periphery/libraries/Actions.sol";
@@ -1635,11 +1637,11 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
 
         recipients[0] = feeBeneficiary;
         amounts[0] = (totalMoxieBalance * swapFeeRatioProtocolPct) / PCT_BASE;
-        reasons[0] = bytes4(keccak256("SWAP_FEE"));
+        reasons[0] = bytes4(keccak256("PROTOCOL_FEE"));
 
         recipients[1] = _subject;
         amounts[1] = totalMoxieBalance - amounts[0];
-        reasons[1] = bytes4(keccak256("PROTOCOL_FEE"));
+        reasons[1] = bytes4(keccak256("SWAP_FEE"));
 
         IERC20Extended(moxie).approve(
             address(protocolRewards),
