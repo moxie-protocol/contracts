@@ -24,6 +24,7 @@ contract HelperConfig is DeriveKeys {
         uint256 defaultGraduationMarketCap;
         address positionManager;
         address router;
+        address deterministicDeploymentProxy;
     }
 
     NetworkConfig public currentNetworkConfig;
@@ -43,14 +44,15 @@ contract HelperConfig is DeriveKeys {
                 protocolSellFeePct: 25000000000000000,
                 subjectBuyFeePct: 0,
                 subjectSellFeePct: 25000000000000000,
-                swapFeeRatioProtocolPct: 0
+                swapFeeRatioProtocolPct: 500000000000000000
             }),
             feeBeneficiary: 0x7F472aaa6492a07BFfbE98664A11f76615150584,
             subjectFactory: 0x85EF5592E533915706d16355807F0D2ed44Cf58F,
             moxieBondingCurveProxyAdminOwner: 0x73eB398583548ac0278656EF6c3805389fF46ccf,
-            defaultGraduationMarketCap: 1000000000000000,
+            defaultGraduationMarketCap: 100000000000000000000000,
             positionManager: 0x0B32f74f8365d535783949E014B7754047B64e31,
-            router: 0xe14A7950D57A4Ee635F69F61a669174F802E6201
+            router: 0xe14A7950D57A4Ee635F69F61a669174F802E6201,
+            deterministicDeploymentProxy: 0x4e59b44847b379578588920cA78FbF26c0B4956C
         });
         currentNetworkConfig = networkConfigs[block.chainid];
     }

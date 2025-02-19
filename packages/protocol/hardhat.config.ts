@@ -6,7 +6,7 @@ import "@nomicfoundation/hardhat-ignition-ethers";
 import "@nomicfoundation/hardhat-verify";
 import "@openzeppelin/hardhat-upgrades";
 import * as dotenv from "dotenv";
-import "hardhat-contract-sizer";
+// import "hardhat-contract-sizer";
 
 dotenv.config();
 

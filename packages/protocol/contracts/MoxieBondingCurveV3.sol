@@ -9,7 +9,7 @@ import {SecurityModule} from "./SecurityModule.sol";
 import {ITokenManager} from "./interfaces/ITokenManager.sol";
 import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
 import {IVault} from "./interfaces/IVault.sol";
-import {IMoxieBondingCurveV2} from "./interfaces/IMoxieBondingCurveV2.sol";
+import {IMoxieBondingCurveV3} from "./interfaces/IMoxieBondingCurveV3.sol";
 import {IProtocolRewards} from "./rewards/IProtocolRewards.sol";
 import {IGraduationHook} from "./uniswap/GraduationHook.sol";
 import {IPoolManager, PoolKey, IHooks, Currency} from "@uniswap/briefcase/src/protocols/v4-core/interfaces/IPoolManager.sol";
