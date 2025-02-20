@@ -95,6 +95,7 @@ describe("MoxieBondingCurve", () => {
             protocolSellFeePct,
             subjectBuyFeePct,
             subjectSellFeePct,
+            swapFeeRatioProtocolPct: 0,
         };
 
         await moxieBondingCurve.initialize(
@@ -105,7 +106,15 @@ describe("MoxieBondingCurve", () => {
             vaultAddress,
             feeInput,
             feeBeneficiary.address,
-            subjectFactory.address,
+            subjectFactory.address
+        );
+
+        await moxieBondingCurve.reinitialize(
+          ethers.MaxUint256 / BigInt("1000000000000000000"),
+          ethers.ZeroAddress,
+          ethers.ZeroAddress,
+          ethers.ZeroAddress,
+          0
         );
 
         await moxieBondingCurve.connect(owner).grantRole(await moxieBondingCurve.UPDATE_PROTOCOL_REWARD_ROLE(), owner);
@@ -3411,12 +3420,14 @@ describe("MoxieBondingCurve", () => {
             const protocolSellFeePct = (2 * 1e16).toString(); // 2%
             const subjectBuyFeePct = (3 * 1e16).toString(); // 3%
             const subjectSellFeePct = (4 * 1e16).toString(); // 4%
+            const swapFeeRatioProtocolPct = (5 * 1e16).toString(); // 5%
 
             const feeInput = {
                 protocolBuyFeePct,
                 protocolSellFeePct,
                 subjectBuyFeePct,
                 subjectSellFeePct,
+                swapFeeRatioProtocolPct,
             };
 
             await expect(moxieBondingCurve.connect(deployer).updateFees(feeInput))
@@ -3426,6 +3437,7 @@ describe("MoxieBondingCurve", () => {
                     feeInput.protocolSellFeePct,
                     feeInput.subjectBuyFeePct,
                     feeInput.subjectSellFeePct,
+                    feeInput.swapFeeRatioProtocolPct,
                 );
         });
 
@@ -3442,6 +3454,7 @@ describe("MoxieBondingCurve", () => {
                 protocolSellFeePct,
                 subjectBuyFeePct,
                 subjectSellFeePct,
+                swapFeeRatioProtocolPct: 0,
             };
 
             await expect(moxieBondingCurve.connect(deployer).updateFees(feeInput))
@@ -3472,6 +3485,7 @@ describe("MoxieBondingCurve", () => {
                 protocolSellFeePct,
                 subjectBuyFeePct,
                 subjectSellFeePct,
+                swapFeeRatioProtocolPct: 0,
             };
 
             await expect(
@@ -3502,6 +3516,7 @@ describe("MoxieBondingCurve", () => {
                 protocolSellFeePct,
                 subjectBuyFeePct,
                 subjectSellFeePct,
+                swapFeeRatioProtocolPct: 0,
             };
 
             await expect(
@@ -3532,6 +3547,7 @@ describe("MoxieBondingCurve", () => {
                 protocolSellFeePct,
                 subjectBuyFeePct,
                 subjectSellFeePct,
+                swapFeeRatioProtocolPct: 0,
             };
 
             await expect(
@@ -3562,6 +3578,7 @@ describe("MoxieBondingCurve", () => {
                 protocolSellFeePct,
                 subjectBuyFeePct,
                 subjectSellFeePct,
+                swapFeeRatioProtocolPct: 0,
             };
 
             await expect(

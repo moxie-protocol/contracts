@@ -137,6 +137,7 @@ describe("Staking", () => {
       protocolSellFeePct,
       subjectBuyFeePct,
       subjectSellFeePct,
+      swapFeeRatioProtocolPct: 0,
     };
 
     await moxieBondingCurve.initialize(
@@ -148,6 +149,13 @@ describe("Staking", () => {
       feeInput,
       feeBeneficiary.address,
       subjectFactory.address,
+    );
+    await moxieBondingCurve.reinitialize(
+      ethers.MaxUint256 / BigInt("1000000000000000000"),
+      ethers.ZeroAddress,
+      ethers.ZeroAddress,
+      ethers.ZeroAddress,
+      0
     );
     const moxieBondingCurveAddress = await moxieBondingCurve.getAddress();
 

@@ -102,6 +102,7 @@ describe('Subject Factory', () => {
             protocolSellFeePct,
             subjectBuyFeePct,
             subjectSellFeePct,
+            swapFeeRatioProtocolPct: 0,
         };
 
         await moxieBondingCurve.initialize(
@@ -113,6 +114,14 @@ describe('Subject Factory', () => {
             feeInput,
             feeBeneficiary.address,
             subjectFactoryAddress
+        );
+
+        await moxieBondingCurve.reinitialize(
+          ethers.MaxUint256 / BigInt("1000000000000000000"),
+          ethers.ZeroAddress,
+          ethers.ZeroAddress,
+          ethers.ZeroAddress,
+          0
         );
 
         const feeInputSubjectFactory = {
