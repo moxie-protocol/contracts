@@ -16,7 +16,7 @@ import {TokenManager} from "../contracts/TokenManager.sol";
 
 import {IERC20Extended} from "../contracts/interfaces/IERC20Extended.sol";
 
-contract DeployGraduation is HelperConfig {
+contract TestDumping is HelperConfig {
     function deployHook(
         bytes memory creationCode,
         bytes memory constructorArgs,
@@ -54,6 +54,31 @@ contract DeployGraduation is HelperConfig {
             uint256 proxyAdminOwnerAccount
         ) = deriveKeys();
         address owner = vm.addr(ownerKey);
+
+        MoxieBondingCurveV3 implementation = MoxieBondingCurveV3(
+            currentNetworkConfig.moxieBondingCurveInstance
+        );
+        MoxieToken moxieToken = MoxieToken(currentNetworkConfig.moxieToken);
+        address subject = 0x7FEbaDA1daEFdA307c6F52f4818De6fE190C5B82;
+        address richUser = 0x9b36D8BED0AFB3EE990961786271ED136d798dBe;
+        uint256 moxieAmount = 100000000000000000000000; // 100k moxie
+
+        vm.startPrank(richUser);
+        uint256 moxieBalanceBefore = moxieToken.balanceOf(richUser);
+        moxieToken.approve(
+            currentNetworkConfig.moxieBondingCurveInstance,
+            moxieAmount
+        );
+        uint256 subjectTokensGot = implementation.buyShares(
+            subject,
+            moxieAmount,
+            0
+        );
+        console.log("subject tokens got", subjectTokensGot);
+        uint256 moxieBalanceAfter = moxieToken.balanceOf(richUser);
+        uint256 moxieSpent = moxieBalanceBefore - moxieBalanceAfter;
+        console.log("moxie spent for first buy", moxieSpent);
+        vm.stopPrank();
 
         vm.startBroadcast(deployerKey);
         bytes memory graduationConstructorArgs = abi.encode(
@@ -122,62 +147,24 @@ contract DeployGraduation is HelperConfig {
         );
         vm.stopBroadcast();
 
+        //----------------------------------
+        ///           Test dumping
         /// ----------------------------------
-        ///           Testing swap
-        /// ----------------------------------
-        vm.startPrank(0x9b36D8BED0AFB3EE990961786271ED136d798dBe);
-        // vm.startPrank(0x7FEbaDA1daEFdA307c6F52f4818De6fE190C5B82);
-        address subjectToken = tokenManager.tokens(
-            0x7FEbaDA1daEFdA307c6F52f4818De6fE190C5B82
-        );
-        MoxieBondingCurveV3 implementation = MoxieBondingCurveV3(
-            currentNetworkConfig.moxieBondingCurveInstance
-        );
-        MoxieToken moxieToken = MoxieToken(currentNetworkConfig.moxieToken);
-        uint256 initialMoxieBalance = moxieToken.balanceOf(
-            // 0x7FEbaDA1daEFdA307c6F52f4818De6fE190C5B82
-            0x9b36D8BED0AFB3EE990961786271ED136d798dBe
-        );
-        console.log("initial moxie balance", initialMoxieBalance);
-        // 1. Graduate
-        implementation.graduateSubject(
-            0x7FEbaDA1daEFdA307c6F52f4818De6fE190C5B82
-        );
-        // 2. Swap - buy sell
-        uint256 moxieAmount = 100000000000000000000000; // 100k moxie
-        moxieToken.approve(
+        vm.startPrank(richUser);
+        moxieBalanceBefore = moxieToken.balanceOf(richUser);
+        implementation.graduateSubject(subject);
+        address subjectToken = tokenManager.tokens(subject);
+        IERC20Extended(subjectToken).approve(
             currentNetworkConfig.moxieBondingCurveInstance,
-            moxieAmount
+            subjectTokensGot
         );
-        uint256 initialSubjectBalance = IERC20Extended(subjectToken).balanceOf(
-            // 0x7FEbaDA1daEFdA307c6F52f4818De6fE190C5B82
-            0x9b36D8BED0AFB3EE990961786271ED136d798dBe
-        );
-        console.log("initial moxie balance", initialMoxieBalance);
-        console.log("initial subject balance", initialSubjectBalance);
-        // buy
-        implementation.swap(
-            0x7FEbaDA1daEFdA307c6F52f4818De6fE190C5B82,
-            true,
-            moxieAmount,
-            0
-        );
-        uint256 moxieBalanceAfterBuy = moxieToken.balanceOf(
-            // 0x7FEbaDA1daEFdA307c6F52f4818De6fE190C5B82
-            0x9b36D8BED0AFB3EE990961786271ED136d798dBe
-        );
-        uint256 subjectBalanceAfterBuy = IERC20Extended(subjectToken).balanceOf(
-                // 0x7FEbaDA1daEFdA307c6F52f4818De6fE190C5B82
-                0x9b36D8BED0AFB3EE990961786271ED136d798dBe
-            );
-        console.log("moxie balance after buy", moxieBalanceAfterBuy);
-        console.log("subject balance after buy", subjectBalanceAfterBuy);
-
-        // 3. Fee distribution
-        // take out fee, burn subjectFee, moxie part of fee 50% to protocolRewards 50% to feeBeneficiary
-        implementation.distributeSwapFee(
-            0x7FEbaDA1daEFdA307c6F52f4818De6fE190C5B82
-        );
+        implementation.swap(subject, false, subjectTokensGot, 0);
+        moxieBalanceAfter = moxieToken.balanceOf(richUser);
+        uint256 moxieGot = moxieBalanceAfter - moxieBalanceBefore;
+        console.log("moxieAmount", moxieAmount);
+        console.log("moxie got after dumping", moxieGot);
+        // console.log("profit", moxieGot - moxieAmount);
+        console.log("loss", moxieAmount - moxieGot);
         vm.stopPrank();
     }
 }
