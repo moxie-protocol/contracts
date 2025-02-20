@@ -1264,11 +1264,11 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
 
         recipients[0] = feeBeneficiary;
         amounts[0] = totalMoxieBalance * swapFeeRatioProtocolPct / PCT_BASE;
-        reasons[0] = bytes4(keccak256("SWAP_FEE"));
+        reasons[0] = bytes4(keccak256("PROTOCOL_FEE"));
 
         recipients[1] = _subject;
         amounts[1] = totalMoxieBalance - amounts[0];
-        reasons[1] = bytes4(keccak256("PROTOCOL_FEE"));
+        reasons[1] = bytes4(keccak256("SWAP_FEE"));
         
         IERC20Extended(moxie).approve(address(protocolRewards), totalMoxieBalance);
         protocolRewards.depositBatch(recipients, amounts, reasons, "SWAP_FEE");
