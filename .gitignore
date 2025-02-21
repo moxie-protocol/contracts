@@ -77,3 +77,7 @@ venv
 
 # track aritifacts in ignition directory
 !*/*/ignition/deployments/*/artifacts
+
+cache_forge
+out
+lib

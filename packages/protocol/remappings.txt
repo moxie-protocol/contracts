@@ -1,0 +1,6 @@
+forge-std/=lib/forge-std/src/
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+@nomicfoundation/=../../node_modules/@nomicfoundation/ 
+hardhat/=../../node_modules/hardhat/
+@uniswap/briefcase/=lib/@uniswap/briefcase/
+@openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
