@@ -7,6 +7,7 @@ interface IMoxieBondingCurveV2 {
         uint256 protocolSellFeePct;
         uint256 subjectBuyFeePct;
         uint256 subjectSellFeePct;
+        uint256 swapFeeRatioProtocolPct;
     }
 
     function initializeSubjectBondingCurve(
