@@ -21,7 +21,7 @@ const getFactories = async () => {
   const MoxieBondingCurveLegacyV1 =
     await hre.ethers.getContractFactory("MoxieBondingCurve");
   const MoxieBondingCurve = await hre.ethers.getContractFactory(
-    "MoxieBondingCurveV2",
+    "MoxieBondingCurveV3",
   );
   const StakingLegacyV1 = await hre.ethers.getContractFactory("Staking");
   const Staking = await hre.ethers.getContractFactory("StakingV2");

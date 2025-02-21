@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.24;
 
-interface IMoxieBondingCurveV2 {
+interface IMoxieBondingCurveV3 {
     struct FeeInput {
         uint256 protocolBuyFeePct;
         uint256 protocolSellFeePct;

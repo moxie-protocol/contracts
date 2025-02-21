@@ -34,7 +34,7 @@ describe("MoxieBondingCurveV2Graduation", () => {
     const TokenManager = await hre.ethers.getContractFactory("TokenManager");
 
     const MoxieBondingCurve = await hre.ethers.getContractFactory(
-      "MoxieBondingCurveV2",
+      "MoxieBondingCurveV3",
     );
 
     const ProtocolRewards =
