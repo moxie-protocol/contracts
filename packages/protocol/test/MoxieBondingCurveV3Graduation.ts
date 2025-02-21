@@ -851,4 +851,64 @@ describe("MoxieBondingCurveV2Graduation", () => {
       });
     });
   });
+
+  describe.only("Arbitrage test after graduation", () => {
+    it("Verify Profit/loss after graduation", async () => {
+      
+      const reserveRatio = 400000
+
+      const d = await loadFixture(deploy);
+      const initialMarketCap = ethers.parseEther("200000000");
+
+      // upgrade market cap to 200M
+      await d.moxieBondingCurve
+      .connect(d.owner)
+      .updateGraduationMarketCap(reserveRatio, initialMarketCap);
+
+   
+      // other buyer buy 100M worth of subject token
+      const otherBuyer = d.owner;
+      const bigBuy = ethers.parseEther('100000000');
+      d.moxieToken.connect(otherBuyer).approve(d.moxieBondingCurveAddress, bigBuy);
+      d.moxieBondingCurve.connect(otherBuyer).buyShares(d.subjectHigher.address, bigBuy, 0);
+
+
+      //Test buyer buy 25M worth of subject token
+      const buyer = d.deployer;
+
+      const moxieAmountForBuy = ethers.parseEther("25000000");
+
+      d.moxieToken.connect(buyer).approve(d.moxieBondingCurveAddress, moxieAmountForBuy);
+      
+      const subjectTokenBalanceBefore = await d.subjectTokenHigher.balanceOf(buyer.address);
+      d.moxieBondingCurve.connect(buyer).buyShares(d.subjectHigher.address, moxieAmountForBuy, 0);
+      const subjectTokenBalanceAfter = await d.subjectTokenHigher.balanceOf(buyer.address);
+      const subjectTokenAmount = subjectTokenBalanceAfter - subjectTokenBalanceBefore;
+
+
+      // update graduation market cap to 25M
+      await d.moxieBondingCurve
+        .connect(d.owner)
+        .updateGraduationMarketCap(reserveRatio, moxieAmountForBuy);
+
+
+      // graduate subject token
+    await d.moxieBondingCurve.graduateSubject(d.subjectHigher.address);
+
+
+    await d.subjectTokenHigher.connect(buyer).approve(d.moxieBondingCurveAddress, subjectTokenAmount);
+    
+    const moxieTokenBalanceBefore = await d.moxieToken.balanceOf(buyer.address);
+    //sell all subject token
+    await d.moxieBondingCurve.connect(buyer).swap(d.subjectHigher.address, false, subjectTokenAmount, 0);
+    const moxieTokenBalanceAfter = await d.moxieToken.balanceOf(buyer.address);
+    const moxieReturned = moxieTokenBalanceAfter - moxieTokenBalanceBefore;
+
+    console.log("moxieReturned", ethers.formatEther(moxieReturned));
+    console.log("moxieSpend", ethers.formatEther(moxieAmountForBuy));
+    const profitPercentage = (Number(moxieReturned - moxieAmountForBuy) / Number(moxieAmountForBuy)) * 100;
+    console.log("Profit percentage:", profitPercentage.toFixed(2) + "%");
+
+    });
+  });
 });
