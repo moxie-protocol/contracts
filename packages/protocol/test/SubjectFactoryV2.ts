@@ -28,7 +28,7 @@ describe('Subject Factory', () => {
         const TokenManager = await hre.ethers.getContractFactory("TokenManager");
 
         const MoxieBondingCurve =
-            await hre.ethers.getContractFactory("MoxieBondingCurveV2");
+            await hre.ethers.getContractFactory("MoxieBondingCurveV3");
 
         const EasyAuction = await hre.ethers.getContractFactoryFromArtifact(EasyAuctionArtifact);;
 

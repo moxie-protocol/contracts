@@ -37,7 +37,7 @@ describe("SubjectFactoryUpgradeTest", () => {
     const MoxieBondingCurveLegacyV1 =
       await hre.ethers.getContractFactory("MoxieBondingCurve");
     const MoxieBondingCurve = await hre.ethers.getContractFactory(
-      "MoxieBondingCurveV2",
+      "MoxieBondingCurveV3",
     );
 
     const EasyAuction =

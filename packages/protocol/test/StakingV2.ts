@@ -19,7 +19,7 @@ const getFactories = async () => {
   );
   const TokenManager = await hre.ethers.getContractFactory("TokenManager");
   const MoxieBondingCurve =
-    await hre.ethers.getContractFactory("MoxieBondingCurveV2");
+    await hre.ethers.getContractFactory("MoxieBondingCurveV3");
   const Staking = await hre.ethers.getContractFactory("StakingV2");
   const ProtocolRewards = await hre.ethers.getContractFactory("ProtocolRewards");
 
