@@ -2,12 +2,12 @@
 
 .PHONY: deploy
 
-deploy graduation:;
-	forge script script/DeployGraduation.s.sol:DeployGraduation --rpc-url $(RPC_URL) --via-ir -vvvv
 
+install:
+	npm install && forge install OpenZeppelin/openzeppelin-contracts --no-commit && forge install foundry-rs/forge-std@v1.8.2 --no-commit && cd lib && mkdir @uniswap && cd @uniswap && git clone https://github.com/Uniswap/briefcase.git && cd .. 
 
-deploy dumping:;
-	forge script script/TestDumping.s.sol:TestDumping --rpc-url $(RPC_URL) --via-ir -vvvv
+deploy graduation:; forge script script/DeployGraduation.s.sol:DeployGraduation --rpc-url $(RPC_URL) --via-ir -vvvv
 
-clean:;
-	forge clean
+deploy dumping:; forge script script/TestDumping.s.sol:TestDumping --rpc-url $(RPC_URL) --via-ir -vvvv
+
+clean:; forge clean
