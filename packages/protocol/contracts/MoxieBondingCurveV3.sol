@@ -525,7 +525,8 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
             tickSpacing: 200,
             hooks: graduationHook
         });
-        price = graduationMarketCap(reserveRatio[_subject]) * 1e18 / IERC20Extended(tokenManager.tokens(_subject)).totalSupply();
+        uint256 currentMarketCap = PPM * vault.balanceOf(_subjectToken, address(token)) / reserveRatio[_subject];
+        price = currentMarketCap * 1e18 / IERC20Extended(tokenManager.tokens(_subject)).totalSupply();
         // @audit sqrt(2^256)*2^96 does not overflow so we only need to make sure that price * 1e36 does not overflow, which should not be the case
         uint256 sqrtPriceX96 = Math.sqrt(moxieIsZero ? 1e72 / price : price * 1e36) * (2**96) / 10 ** 27;
         assert(sqrtPriceX96 <= type(uint160).max);
