@@ -1,6 +1,6 @@
 import hre, { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { HDNodeWallet } from "ethers";
+import { HDNodeWallet, parseEther } from "ethers";
 import { expect } from "chai";
 import { IERC20 } from "../typechain-types";
 
@@ -858,14 +858,21 @@ describe("MoxieBondingCurveV2Graduation", () => {
       const reserveRatio = 400000
 
       const d = await loadFixture(deploy);
-      const initialMarketCap = ethers.parseEther("200000000");
+      const initialMarketCap = ethers.parseEther("500000000");
 
-      // upgrade market cap to 200M
+
+      await setupForGraduation(
+        d,
+        reserveRatio,
+        amountWithFee(d,  parseEther("1")),
+        false,
+      );
+
+      // upgrade market cap to 500M
       await d.moxieBondingCurve
       .connect(d.owner)
       .updateGraduationMarketCap(reserveRatio, initialMarketCap);
 
-   
       // other buyer buy 100M worth of subject token
       const otherBuyer = d.owner;
       const bigBuy = ethers.parseEther('100000000');
@@ -881,25 +888,27 @@ describe("MoxieBondingCurveV2Graduation", () => {
       d.moxieToken.connect(buyer).approve(d.moxieBondingCurveAddress, moxieAmountForBuy);
       
       const subjectTokenBalanceBefore = await d.subjectTokenHigher.balanceOf(buyer.address);
-      d.moxieBondingCurve.connect(buyer).buyShares(d.subjectHigher.address, moxieAmountForBuy, 0);
+
+
+      await d.moxieToken.connect(d.owner).transfer(buyer.address,moxieAmountForBuy);
+
+
+      await d.moxieBondingCurve.connect(buyer).buyShares(d.subjectHigher.address, moxieAmountForBuy, 0);
       const subjectTokenBalanceAfter = await d.subjectTokenHigher.balanceOf(buyer.address);
       const subjectTokenAmount = subjectTokenBalanceAfter - subjectTokenBalanceBefore;
-
 
       // update graduation market cap to 25M
       await d.moxieBondingCurve
         .connect(d.owner)
         .updateGraduationMarketCap(reserveRatio, moxieAmountForBuy);
 
-
       // graduate subject token
-    await d.moxieBondingCurve.graduateSubject(d.subjectHigher.address);
+    await expect(d.moxieBondingCurve.graduateSubject(d.subjectHigher.address)).to.emit(d.moxieBondingCurve, "SubjectGraduated");
 
 
-    await d.subjectTokenHigher.connect(buyer).approve(d.moxieBondingCurveAddress, subjectTokenAmount);
-    
+    // sell all subject token bought with 25M mox
     const moxieTokenBalanceBefore = await d.moxieToken.balanceOf(buyer.address);
-    //sell all subject token
+    await d.subjectTokenHigher.connect(buyer).approve(d.moxieBondingCurveAddress,subjectTokenAmount);
     await d.moxieBondingCurve.connect(buyer).swap(d.subjectHigher.address, false, subjectTokenAmount, 0);
     const moxieTokenBalanceAfter = await d.moxieToken.balanceOf(buyer.address);
     const moxieReturned = moxieTokenBalanceAfter - moxieTokenBalanceBefore;
@@ -907,7 +916,7 @@ describe("MoxieBondingCurveV2Graduation", () => {
     console.log("moxieReturned", ethers.formatEther(moxieReturned));
     console.log("moxieSpend", ethers.formatEther(moxieAmountForBuy));
     const profitPercentage = (Number(moxieReturned - moxieAmountForBuy) / Number(moxieAmountForBuy)) * 100;
-    console.log("Profit percentage:", profitPercentage.toFixed(2) + "%");
+    console.log("Profit/loss percentage:", profitPercentage.toFixed(2) + "%");
 
     });
   });
