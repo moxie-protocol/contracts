@@ -506,9 +506,6 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         uint256 tokenId = positionManager.nextTokenId();
         subjectTokenId[_subject] = tokenId;
         _addLiquidity(_subject, subjectToken, key, price, moxieIsZero);
-        (PoolKey memory keyFromPosition, ) = positionManager.getPoolAndPositionInfo(tokenId);
-        // sanity check that the tokenId is correct
-        assert(keccak256(abi.encode(keyFromPosition)) == keccak256(abi.encode(key)));
         if (remainder != 0) _swapRemainder(subjectToken, key, moxieIsZero, remainder, sender, remainingMinAmountOut);
         emit SubjectGraduated(_subject, key.toId(), tokenId);
         return 0;
@@ -529,15 +526,12 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         price = currentMarketCap * 1e18 / IERC20Extended(tokenManager.tokens(_subject)).totalSupply();
         // @audit sqrt(2^256)*2^96 does not overflow so we only need to make sure that price * 1e36 does not overflow, which should not be the case
         uint256 sqrtPriceX96 = Math.sqrt(moxieIsZero ? 1e72 / price : price * 1e36) * (2**96) / 10 ** 27;
-        assert(sqrtPriceX96 <= type(uint160).max);
         IPoolManager(graduationHook.poolManager()).initialize(key, uint160(sqrtPriceX96));
     }
 
     function _addLiquidity(address _subject, address _subjectToken, PoolKey memory key, uint256 price, bool moxieIsZero) internal {
         uint256 tokenAmount = vault.balanceOf(_subjectToken, address(token));
         uint256 subjectAmount = tokenAmount * 1e18 / price;
-        assert(subjectAmount < type(uint128).max);
-        assert(tokenAmount < type(uint128).max);
         (uint256 amount0Max, uint256 amount1Max) = moxieIsZero ? (tokenAmount, subjectAmount) : (subjectAmount, tokenAmount);
         bytes[] memory params = new bytes[](5);
         params[0] = abi.encode(token, tokenAmount, false);
@@ -567,8 +561,6 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
     }
 
     function _swapRemainder(address _subjectToken, PoolKey memory key, bool moxieIsZero, uint256 remainder, address sender, uint256 remainingMinAmountOut) internal {
-        assert(remainder < type(uint128).max);
-        assert(remainingMinAmountOut < type(uint128).max);
         token.transfer(address(router), remainder);
 
         IV4Router.ExactInputSingleParams memory swapParams = IV4Router.ExactInputSingleParams({
