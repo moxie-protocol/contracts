@@ -1242,6 +1242,8 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         address token1 = Currency.unwrap(key.currency1);    
         (address moxie, address subjectToken) =  token0 == address(token) ? (token0, token1) : (token1, token0);
        
+        uint256 subjectTokenBalanceBefore = _balanceOf(subjectToken, address(this));
+        uint256 moxieBalanceBefore = _balanceOf(moxie, address(this));
         bytes[] memory params = new bytes[](2);
         // decreasing liquidity with 0 amount just claims fees without actually decreasing liquidity
         params[0] = abi.encode(tokenId, 0, 0, 0, "");
@@ -1257,23 +1259,29 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
             ),
             block.timestamp
         );
-        IERC20Extended(subjectToken).burn(IERC20Extended(subjectToken).balanceOf(address(this)));
 
-        uint256 totalMoxieBalance = IERC20Extended(moxie).balanceOf(address(this));
+        uint256 subjectTokenAmount = _balanceOf(subjectToken, address(this)) - subjectTokenBalanceBefore;
+        IERC20Extended(subjectToken).burn(subjectTokenAmount);
+
+        uint256 moxieAmount = _balanceOf(moxie, address(this)) - moxieBalanceBefore;
 
         address[] memory recipients = new address[](2);
         uint256[] memory amounts = new uint256[](2);
         bytes4[] memory reasons = new bytes4[](2);
 
         recipients[0] = feeBeneficiary;
-        amounts[0] = totalMoxieBalance * swapFeeRatioProtocolPct / PCT_BASE;
+        amounts[0] = moxieAmount * swapFeeRatioProtocolPct / PCT_BASE;
         reasons[0] = bytes4(keccak256("PROTOCOL_FEE"));
 
         recipients[1] = _subject;
-        amounts[1] = totalMoxieBalance - amounts[0];
+        amounts[1] = moxieAmount - amounts[0];
         reasons[1] = bytes4(keccak256("SWAP_FEE"));
         
-        IERC20Extended(moxie).approve(address(protocolRewards), totalMoxieBalance);
+        IERC20Extended(moxie).approve(address(protocolRewards), moxieAmount);
         protocolRewards.depositBatch(recipients, amounts, reasons, "SWAP_FEE");
+    }
+
+    function _balanceOf(address _token, address _account) internal view returns (uint256) {
+        return IERC20Extended(_token).balanceOf(_account);
     }
 }
