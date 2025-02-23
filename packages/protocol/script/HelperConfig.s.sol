@@ -28,6 +28,7 @@ contract HelperConfig is DeriveKeys {
     }
 
     NetworkConfig public currentNetworkConfig;
+    address public currentOwner;
     mapping(uint256 chainId => NetworkConfig) public networkConfigs;
 
     constructor() {
@@ -63,10 +64,10 @@ contract HelperConfig is DeriveKeys {
             tokenManager: 0xFfeACE4541276aC65c4e433B7fC63cdA32b30470,
             vault: 0x58708f65BacdF5040eac739cf01299fA756a1154,
             feeInput: IMoxieBondingCurveV3.FeeInput({
-                protocolBuyFeePct: 0,
-                protocolSellFeePct: 25000000000000000,
-                subjectBuyFeePct: 0,
-                subjectSellFeePct: 25000000000000000,
+                protocolBuyFeePct: 5000000000000000,
+                protocolSellFeePct: 5000000000000000,
+                subjectBuyFeePct: 5000000000000000,
+                subjectSellFeePct: 5000000000000000,
                 swapFeeRatioProtocolPct: 500000000000000000
             }),
             feeBeneficiary: 0x7F472aaa6492a07BFfbE98664A11f76615150584,
@@ -79,5 +80,10 @@ contract HelperConfig is DeriveKeys {
         });
 
         currentNetworkConfig = networkConfigs[block.chainid];
+        if (block.chainid == 84532) {
+            currentOwner = 0x9313eDE439fC91852D4Fd8f753C5569255286790;
+        } else if (block.chainid == 8453) {
+            currentOwner = 0x96feEd3b3071ebe641C2eCa422C6f57fd9EE4BbC; // TODO: confirm this owner
+        }
     }
 }

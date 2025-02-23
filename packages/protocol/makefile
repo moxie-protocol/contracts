@@ -9,7 +9,10 @@ install:
 	cd lib && mkdir -p @uniswap && cd @uniswap && git clone https://github.com/Uniswap/briefcase.git
 
 deploy-graduation-testnet:
-	forge script script/DeployGraduation.s.sol:DeployGraduation --rpc-url $(TESTNET_RPC_URL) --via-ir --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvv --broadcast
+	forge script script/DeployGraduation.s.sol:DeployGraduation --rpc-url $(TESTNET_RPC_URL) --via-ir --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvv
+
+deploy-graduation-mainnet:
+	forge script script/DeployGraduation.s.sol:DeployGraduation --rpc-url $(MAINNET_RPC_URL) --via-ir --etherscan-api-key $(ETHERSCAN_API_KEY) -vvvv
 
 deploy-dumping-mainnet:
 	forge script script/TestDumping.s.sol:TestDumping --rpc-url $(MAINNET_RPC_URL) --via-ir -vvvv 
