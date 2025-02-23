@@ -7,7 +7,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PoolKey} from "@uniswap/briefcase/src/protocols/v4-core/types/PoolKey.sol";
 import {Currency} from "@uniswap/briefcase/src/protocols/v4-core/types/Currency.sol";
 import {IHooks} from "@uniswap/briefcase/src/protocols/v4-core/interfaces/IHooks.sol";
-import {console} from "hardhat/console.sol";
 
 
 contract FakeDonator {
