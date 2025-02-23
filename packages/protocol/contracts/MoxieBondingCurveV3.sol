@@ -1188,6 +1188,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         view
         returns (uint256 moxieAmount_, uint256 protocolFee_, uint256 subjectFee_)
     {
+        _whenNotGraduated(_subject);
         (uint32 subjectReserveRatio_, uint256 subjectReserve_, uint256 subjectSupply_) =
             _validateSubjectInput(_subject, _subjectTokenAmount);
 
@@ -1210,6 +1211,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         view
         returns (uint256 moxieAmount_, uint256 protocolFee_, uint256 subjectFee_)
     {
+        _whenNotGraduated(_subject);
         (uint32 subjectReserveRatio_, uint256 subjectReserve_, uint256 subjectSupply_) =
             _validateSubjectInput(_subject, _subjectTokenAmount);
 
