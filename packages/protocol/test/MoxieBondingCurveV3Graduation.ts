@@ -430,58 +430,6 @@ describe("MoxieBondingCurveV2Graduation", () => {
             expect(await d.moxieBondingCurve.subjectGraduated(subject.address)).to.be.true;
           }
         });
-
-        it("should revert if subject already graduated", async () => {
-          for (const reserveRatio of reserveRatios) {
-            const d = await loadFixture(deploy);
-            
-            await d.moxieBondingCurve
-              .connect(d.owner)
-              .updateGraduationMarketCap(reserveRatio, graduationMarketCap);
-            
-            await setupForGraduation(
-              d,
-              reserveRatio,
-              amountWithFee(d, graduationReserve(reserveRatio)),
-              lower
-            );
-
-            const subject = lower ? d.subjectLower : d.subjectHigher;
-            
-            await expect(
-              d.moxieBondingCurve.connect(d.buyer).graduateSubject(subject.address)
-            ).to.be.revertedWithCustomError(
-              d.moxieBondingCurve,
-              "MoxieBondingCurve_SubjectAlreadyGraduated"
-            );
-          }
-        });
-
-        it("should revert if reserves below graduation threshold", async () => {
-          for (const reserveRatio of reserveRatios) {
-            const d = await loadFixture(deploy);
-            
-            await d.moxieBondingCurve
-              .connect(d.owner)
-              .updateGraduationMarketCap(reserveRatio, graduationMarketCap);
-            
-            await setupForGraduation(
-              d,
-              reserveRatio,
-              amountWithFee(d, graduationReserve(reserveRatio) / 2n),
-              lower
-            );
-
-            const subject = lower ? d.subjectLower : d.subjectHigher;
-            
-            await expect(
-              d.moxieBondingCurve.connect(d.buyer).graduateSubject(subject.address)
-            ).to.be.revertedWithCustomError(
-              d.moxieBondingCurve,
-              "MoxieBondingCurve_SubjectNotReadyForGraduation"
-            );
-          }
-        });
       });
     });
   });
@@ -594,7 +542,7 @@ describe("MoxieBondingCurveV2Graduation", () => {
       await expect(
         d.moxieBondingCurve
           .connect(d.owner)
-          .graduateSubject(d.subjectLower.address)
+          .buyShares(d.subjectLower.address, 1, 0)
       ).to.emit(d.moxieBondingCurve, "SubjectGraduated");
     });
   });
@@ -662,12 +610,6 @@ describe("MoxieBondingCurveV2Graduation", () => {
                 .connect(d.owner)
                 .updateGraduationMarketCap(reserveRatio, reducedMarketCap);
 
-              await expect(
-                d.moxieBondingCurve
-                  .connect(d.owner)
-                  .graduateSubject(lower ? d.subjectLower.address : d.subjectHigher.address)
-              ).to.emit(d.moxieBondingCurve, "SubjectGraduated");
-
                 const subjectToken = lower ? d.subjectTokenLower : d.subjectTokenHigher;
                 const subjectAddress = lower ? d.subjectLower.address : d.subjectHigher.address;
                 const initialMoxieBalance = await d.moxieToken.balanceOf(d.buyer.address);
@@ -679,8 +621,9 @@ describe("MoxieBondingCurveV2Graduation", () => {
                 await expect(
                   d.moxieBondingCurve
                     .connect(d.buyer)
-                    .swap(subjectAddress, true, swapAmount, 0)
-                ).to.emit(d.moxieBondingCurve, "Swap");
+                    .buyShares(subjectAddress, swapAmount, 0),
+                )
+                  .to.emit(d.moxieBondingCurve, "SubjectGraduated")
 
                 const postSwapMoxieBalance = await d.moxieToken.balanceOf(d.buyer.address);
                 const postSwapSubjectBalance = await subjectToken.balanceOf(d.buyer.address);
@@ -709,16 +652,6 @@ describe("MoxieBondingCurveV2Graduation", () => {
                 const requiredReserve = (initialMarketCap * BigInt(reserveRatio)) / BigInt(10 ** 6);
                 const buyAmount = amountWithFee(d, requiredReserve - d.initialReserve - ethers.parseEther("1000"));
                 await setupForGraduation(d, reserveRatio, buyAmount, lower);
-
-                await d.moxieBondingCurve
-                .connect(d.owner)
-                .updateGraduationMarketCap(reserveRatio, reducedMarketCap);
-
-              await expect(
-                d.moxieBondingCurve
-                  .connect(d.owner)
-                  .graduateSubject(lower ? d.subjectLower.address : d.subjectHigher.address)
-              ).to.emit(d.moxieBondingCurve, "SubjectGraduated");
               
                 await d.moxieToken
                   .connect(d.buyer)
@@ -726,7 +659,14 @@ describe("MoxieBondingCurveV2Graduation", () => {
 
                 await d.moxieBondingCurve
                   .connect(d.buyer)
-                  .swap(subjectAddress, true, swapAmount, 0);
+                  .buyShares(subjectAddress, swapAmount, 0);
+
+                await d.moxieBondingCurve
+                  .connect(d.owner)
+                  .updateGraduationMarketCap(
+                    reserveRatio,
+                    reducedMarketCap,
+                  );
 
                 const initialMoxieBalance = await d.moxieToken.balanceOf(d.buyer.address);
                 const initialSubjectBalance = await subjectToken.balanceOf(d.buyer.address);
@@ -738,8 +678,10 @@ describe("MoxieBondingCurveV2Graduation", () => {
                 await expect(
                   d.moxieBondingCurve
                     .connect(d.buyer)
-                    .swap(subjectAddress, false, initialSubjectBalance, 0)
-                ).to.emit(d.moxieBondingCurve, "Swap");
+                    .sellShares(subjectAddress, initialSubjectBalance, 0),
+                )
+                  .to.emit(d.moxieBondingCurve, "SubjectGraduated")
+                  .to.emit(d.moxieBondingCurve, "Swap");
 
                 const postSwapMoxieBalance = await d.moxieToken.balanceOf(d.buyer.address);
                 const postSwapSubjectBalance = await subjectToken.balanceOf(d.buyer.address);
@@ -790,7 +732,7 @@ describe("MoxieBondingCurveV2Graduation", () => {
                 await expect(
                   d.moxieBondingCurve
                     .connect(d.owner)
-                    .graduateSubject(lower ? d.subjectLower.address : d.subjectHigher.address)
+                    .buyShares(lower ? d.subjectLower.address : d.subjectHigher.address, 1, 0)
                 ).to.emit(d.moxieBondingCurve, "SubjectGraduated");
                 const subjectToken = lower ? d.subjectTokenLower : d.subjectTokenHigher;
                 await d.moxieToken.transfer(await d.fakeDonator.getAddress(), donationAmount);

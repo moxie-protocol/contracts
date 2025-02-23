@@ -434,7 +434,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         return subjectTokenId[_subject] != 0;
     }
 
-    function swap(address _subject, bool buySubject, uint256 amountIn, uint256 minAmountOut) external {
+    function _swap(address _subject, bool buySubject, uint256 amountIn, uint256 minAmountOut, address _recipient) internal returns (uint256 amountReturned) {
         if (!subjectGraduated(_subject)) {
             revert MoxieBondingCurve_SubjectNotGraduated();
         }
@@ -443,33 +443,36 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         if(minAmountOut >= type(uint128).max) revert MoxieBondingCurve_InvalidAmount();
         IERC20Extended sellToken = buySubject ? token : IERC20Extended(subjectToken);
         sellToken.transferFrom(msg.sender, address(router), amountIn);
-        (address token0, address token1, bool moxieIsZero) = address(token) < subjectToken ? (address(token), subjectToken, true) : (subjectToken, address(token), false);
-        PoolKey memory key = PoolKey({
-            currency0: Currency.wrap(token0),
-            currency1: Currency.wrap(token1),
-            fee: 10000,
-            tickSpacing: 200,
-            hooks: graduationHook
-        });
+        IV4Router.ExactInputSingleParams memory swapParams;
+        {
+            (address token0, address token1, bool moxieIsZero) = address(token) < subjectToken ? (address(token), subjectToken, true) : (subjectToken, address(token), false);
+            PoolKey memory key = PoolKey({
+                currency0: Currency.wrap(token0),
+                currency1: Currency.wrap(token1),
+                fee: 10000,
+                tickSpacing: 200,
+                hooks: graduationHook
+            });
 
-        IV4Router.ExactInputSingleParams memory swapParams = IV4Router.ExactInputSingleParams({
-            poolKey: key,
-            // moxie is token0, buy subject token: true, true => true
-            // moxie is token0, sell subject token => true, false => false
-            // moxie is token1, buy subject token => false, true => false
-            // moxie is token1, sell subject token => false, false => true
-            // => XNOR
-            zeroForOne: moxieIsZero == buySubject,
-            amountIn: uint128(amountIn),
-            amountOutMinimum: uint128(minAmountOut),
-            hookData: ""
-        });
+            swapParams = IV4Router.ExactInputSingleParams({
+                poolKey: key,
+                // moxie is token0, buy subject token: true, true => true
+                // moxie is token0, sell subject token => true, false => false
+                // moxie is token1, buy subject token => false, true => false
+                // moxie is token1, sell subject token => false, false => true
+                // => XNOR
+                zeroForOne: moxieIsZero == buySubject,
+                amountIn: uint128(amountIn),
+                amountOutMinimum: uint128(minAmountOut),
+                hookData: ""
+            });
+        }
         bytes[] memory params = new bytes[](3);
         params[0] = abi.encode(swapParams);
         params[1] = abi.encode(buySubject ? address(token) : subjectToken, amountIn, false);
         params[2] = abi.encode(
             buySubject ? subjectToken : address(token),
-            msg.sender,
+            _recipient,
             0
         );
         bytes memory command = abi.encode(
@@ -482,22 +485,10 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         );
         bytes[] memory commands = new bytes[](1);
         commands[0] = command;
+        uint256 amountOutBefore = _balanceOf(buySubject ? subjectToken : address(token), _recipient);
         router.execute(abi.encodePacked(uint8(Commands.V4_SWAP)), commands, block.timestamp);
+        amountReturned = _balanceOf(buySubject ? subjectToken : address(token), _recipient) - amountOutBefore;
         emit Swap(msg.sender, _subject, buySubject, amountIn, minAmountOut);
-    }
-
-    function graduateSubject(address _subject) external {
-        if (subjectGraduated(_subject)) revert MoxieBondingCurve_SubjectAlreadyGraduated();
-        
-        uint32 subjectReserveRatio = reserveRatio[_subject];
-        address subjectToken = tokenManager.tokens(_subject);
-        uint256 currentReserves = vault.balanceOf(subjectToken, address(token));
-        uint256 requiredReserves = _reservesRequiredForGraduation(subjectReserveRatio);
-
-        if (currentReserves < requiredReserves) {
-            revert MoxieBondingCurve_SubjectNotReadyForGraduation();
-        }
-        _graduateSubject(_subject, 0, address(0), 0);
     }
 
     function _graduateSubject(address _subject, uint256 remainder, address sender, uint256 remainingMinAmountOut) internal returns (uint256 subjectTokens) {
@@ -627,7 +618,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
             uint256 reservesRequiredForGraduation = _reservesRequiredForGraduation(_subjectReserveRatio);
             if (subjectReserve + vaultDeposit > reservesRequiredForGraduation) {
                 // the vault deposit would exceed the graduation market cap after the full deposit. Calculate values for a partial deposit.
-                vaultDeposit = reservesRequiredForGraduation - subjectReserve;
+                vaultDeposit = reservesRequiredForGraduation > subjectReserve ? reservesRequiredForGraduation - subjectReserve : 0;
                 // new deposit amount (d) = vault deposit (v) + fees (f)
                 // d = v + d * (f1 + f2)
                 // d * (1 - f1 - f2) = v
@@ -638,27 +629,28 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
                 (protocolFee, subjectFee) = _calculateBuySideFee(_depositAmount);
             }
 
-            _processFeeForBuySell(_subject, subjectFee, protocolFee, _orderReferrer, true);
-
-            token.approve(address(vault), vaultDeposit);
-            vault.deposit(address(_subjectToken), address(token), vaultDeposit);
+            if (_depositAmount > 0) {
+                _processFeeForBuySell(_subject, subjectFee, protocolFee, _orderReferrer, true);
+                token.approve(address(vault), vaultDeposit);
+                vault.deposit(address(_subjectToken), address(token), vaultDeposit);
+            }
 
             shares_ = formula.calculatePurchaseReturn(
                 _subjectToken.totalSupply(), subjectReserve, _subjectReserveRatio, vaultDeposit
             );
         }
 
+        ///@dev Don't mint if intent is to burn
+        if (!_isZeroAddress(_onBehalfOf) && shares_ > 0) {
+            tokenManager.mint(_subject, _onBehalfOf, shares_);
+        }
+
         if (remainder > 0) {
             uint256 remainingMinAmountOut = _minReturnAmountAfterFee < shares_ ? 0 :  _minReturnAmountAfterFee - shares_;
             // we have a remainder, therefore graduate the subject and swap the remainder on the liquidity pool
-            _graduateSubject(_subject, remainder, _onBehalfOf, remainingMinAmountOut);
+            shares_ += _graduateSubject(_subject, remainder, _onBehalfOf, remainingMinAmountOut);
         } else if (shares_ < _minReturnAmountAfterFee) {
             revert MoxieBondingCurve_SlippageExceedsLimit();
-        }
-
-        ///@dev Don't mint if intent is to burn
-        if (!_isZeroAddress(_onBehalfOf)) {
-            tokenManager.mint(_subject, _onBehalfOf, shares_);
         }
 
         emit SubjectSharePurchased(
@@ -747,12 +739,16 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         // check that the subject is not already graduated
         if (subjectGraduated(_subject)) revert MoxieBondingCurve_SubjectAlreadyGraduated();
         // check that the subject is currently not above the graduation market cap after the contract upgrade
+        if (_canGraduate(_subject)) {
+            revert MoxieBondingCurve_SubjectReadyForGraduation();
+        }
+    }
+
+    function _canGraduate(address _subject) internal view returns (bool) {
         uint32 subjectReserveRatio = reserveRatio[_subject];
         address subjectToken = tokenManager.tokens(_subject);
         uint256 currentReserves = vault.balanceOf(subjectToken, address(token));
-        if (currentReserves >= _reservesRequiredForGraduation(subjectReserveRatio)) {
-            revert MoxieBondingCurve_SubjectReadyForGraduation();
-        }
+        return currentReserves >= _reservesRequiredForGraduation(subjectReserveRatio);
     }
 
     function _sellSharesInternal(
@@ -777,16 +773,27 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
             revert MoxieBondingCurve_InvalidSubjectToken();
         }
 
-        _whenNotGraduated(_subject);
-
-        returnAmount_ = _sellShares(
-            subjectToken,
-            _sellAmount,
-            _onBehalfOf,
-            _minReturnAmountAfterFee,
+        if (!subjectGraduated(_subject)) {
+            if (_canGraduate(_subject)) {
+                _graduateSubject(_subject, 0, address(0), 0);
+            } else {
+                return _sellShares(
+                    subjectToken,
+                    _sellAmount,
+                    _onBehalfOf,
+                    _minReturnAmountAfterFee,
+                    _subject,
+                    subjectReserveRatio,
+                    _orderReferrer
+                );
+            }
+        }
+        return _swap(
             _subject,
-            subjectReserveRatio,
-            _orderReferrer
+            false,
+            _sellAmount,
+            _minReturnAmountAfterFee,
+            _onBehalfOf
         );
     }
 
@@ -814,17 +821,25 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
             revert MoxieBondingCurve_InvalidSubjectToken();
         }
 
-        _whenNotGraduated(_subject);
-
-        shares_ = _buyShares(
-            subjectToken,
-            _depositAmount,
-            _onBehalfOf,
-            _minReturnAmountAfterFee,
-            _subject,
-            subjectReserveRatio,
-            _orderReferrer
-        );
+        if (!subjectGraduated(_subject)) {
+            shares_ = _buyShares(
+                subjectToken,
+                _depositAmount,
+                _onBehalfOf,
+                _minReturnAmountAfterFee,
+                _subject,
+                subjectReserveRatio,
+                _orderReferrer
+            );
+        } else {
+            shares_ = _swap(
+                _subject,
+                true,
+                _depositAmount,
+                _minReturnAmountAfterFee,
+                _onBehalfOf
+            );
+        }
     }
 
     /**
@@ -1046,6 +1061,10 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         token.safeTransferFrom(msg.sender, address(this), _reserveAmount);
         token.approve(address(vault), _reserveAmount);
         vault.deposit(subjectToken, address(token), _reserveAmount);
+
+        if (_canGraduate(_subject)) {
+            _graduateSubject(_subject, 0, address(0), 0);
+        }
 
         return true;
     }
