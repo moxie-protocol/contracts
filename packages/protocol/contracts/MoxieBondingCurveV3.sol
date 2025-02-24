@@ -142,7 +142,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         address indexed _subject,
         bool _buySubject,
         uint256 _amountIn,
-        uint256 _minAmountOut
+        uint256 _amountOut
     );
 
     /// @dev Address of moxie token.
@@ -467,7 +467,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
             });
         }
         amountReturned = _executeSwap(swapParams, buySubject ? address(token) : subjectToken, amountIn, buySubject ? subjectToken : address(token), _recipient);
-        emit Swap(msg.sender, _subject, buySubject, amountIn, minAmountOut);
+        emit Swap(msg.sender, _subject, buySubject, amountIn, amountReturned);
     }
 
     /**
