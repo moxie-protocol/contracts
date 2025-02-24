@@ -438,9 +438,8 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         if (!subjectGraduated(_subject)) {
             revert MoxieBondingCurve_SubjectNotGraduated();
         }
-        address subjectToken = tokenManager.tokens(_subject);
-        if(amountIn >= type(uint128).max) revert MoxieBondingCurve_InvalidAmount();
         if(minAmountOut >= type(uint128).max) revert MoxieBondingCurve_InvalidAmount();
+        address subjectToken = tokenManager.tokens(_subject);
         IERC20Extended sellToken = buySubject ? token : IERC20Extended(subjectToken);
         sellToken.transferFrom(msg.sender, address(router), amountIn);
         IV4Router.ExactInputSingleParams memory swapParams;
@@ -467,28 +466,34 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
                 hookData: ""
             });
         }
+        amountReturned = _executeSwap(swapParams, buySubject ? address(token) : subjectToken, amountIn, buySubject ? subjectToken : address(token), _recipient);
+        emit Swap(msg.sender, _subject, buySubject, amountIn, minAmountOut);
+    }
+
+    /**
+     * @dev Internal function to execute a swap on Uniswap v4.
+     * @param _swapParams Swap parameters.
+     * @param _tokenIn Input token address.
+     * @param _amountIn Amount of input tokens to swap.
+     * @param _tokenOut Output token address.
+     * @param _recipient Recipient address.
+     * @return amountReturned Amount of output tokens received.
+     */
+    function _executeSwap(IV4Router.ExactInputSingleParams memory _swapParams, address _tokenIn, uint256 _amountIn, address _tokenOut, address _recipient) internal returns (uint256 amountReturned) {
+        if(_amountIn >= type(uint128).max) revert MoxieBondingCurve_InvalidAmount();
         bytes[] memory params = new bytes[](3);
-        params[0] = abi.encode(swapParams);
-        params[1] = abi.encode(buySubject ? address(token) : subjectToken, amountIn, false);
-        params[2] = abi.encode(
-            buySubject ? subjectToken : address(token),
-            _recipient,
-            0
-        );
+        params[0] = abi.encode(_swapParams);
+        params[1] = abi.encode(_tokenIn, _amountIn, false);
+        // 0 means take all
+        params[2] = abi.encode(_tokenOut, _recipient, 0);
         bytes memory command = abi.encode(
-            abi.encodePacked(
-                uint8(Actions.SWAP_EXACT_IN_SINGLE),
-                uint8(Actions.SETTLE),
-                uint8(Actions.TAKE)
-            ),
-            params
-        );
+            abi.encodePacked(uint8(Actions.SWAP_EXACT_IN_SINGLE), uint8(Actions.SETTLE), uint8(Actions.TAKE)),
+            params);
         bytes[] memory commands = new bytes[](1);
         commands[0] = command;
-        uint256 amountOutBefore = _balanceOf(buySubject ? subjectToken : address(token), _recipient);
+        uint256 amountOutBefore = _balanceOf(_tokenOut, _recipient);
         router.execute(abi.encodePacked(uint8(Commands.V4_SWAP)), commands, block.timestamp);
-        amountReturned = _balanceOf(buySubject ? subjectToken : address(token), _recipient) - amountOutBefore;
-        emit Swap(msg.sender, _subject, buySubject, amountIn, minAmountOut);
+        amountReturned = _balanceOf(_tokenOut, _recipient) - amountOutBefore;
     }
 
     /**
@@ -593,8 +598,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
      * @return subjectTokens Subject tokens received from the swap.
      */
     function _swapRemainder(address _subjectToken, PoolKey memory key, bool moxieIsZero, uint256 remainder, address sender, uint256 remainingMinAmountOut) internal returns (uint256 subjectTokens) {
-        assert(remainder < type(uint128).max);
-        assert(remainingMinAmountOut < type(uint128).max);
+        if(remainingMinAmountOut >= type(uint128).max) revert MoxieBondingCurve_InvalidAmount();
         token.transfer(address(router), remainder);
 
         IV4Router.ExactInputSingleParams memory swapParams = IV4Router.ExactInputSingleParams({
@@ -605,24 +609,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
             hookData: ""
         });
 
-        bytes[] memory params = new bytes[](3);
-        params[0] = abi.encode(swapParams);
-        params[1] = abi.encode(token, remainder, false);
-        // 0 means take all
-        params[2] = abi.encode(_subjectToken, sender, 0);
-        bytes memory command = abi.encode(
-            abi.encodePacked(
-                uint8(Actions.SWAP_EXACT_IN_SINGLE),
-                uint8(Actions.SETTLE),
-                uint8(Actions.TAKE)
-            ),
-            params
-        );
-        bytes[] memory commands = new bytes[](1);
-        commands[0] = command;
-        subjectTokens = _balanceOf(_subjectToken, sender); // balance before swap
-        router.execute(abi.encodePacked(uint8(Commands.V4_SWAP)), commands, block.timestamp);
-        subjectTokens = _balanceOf(_subjectToken, sender) - subjectTokens; // subject tokens received
+        return _executeSwap(swapParams, address(token), remainder, _subjectToken, sender);        
     }
 
     /**
