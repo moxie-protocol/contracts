@@ -11,7 +11,7 @@ import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transp
 import {HookMiner} from "../contracts/tests/UniswapDeployer.sol";
 import {IGraduationHook} from "../contracts/interfaces/IGraduationHook.sol";
 import {IERC20Extended} from "../contracts/interfaces/IERC20Extended.sol";
-
+import {IMoxieBondingCurveV3} from "../contracts/interfaces/IMoxieBondingCurveV3.sol";
 contract DeployGraduation is HelperConfig {
     function deployHook(bytes memory creationCode, bytes memory constructorArgs, bytes32 salt)
         public
@@ -61,28 +61,29 @@ contract DeployGraduation is HelperConfig {
                 create(0, add(moxieBondingCurveV3CreationCode, 0x20), mload(moxieBondingCurveV3CreationCode))
         }
         console.log("MoxieBondingCurveV3 deployed to %s", address(moxieBondingCurveV3MasterCopy));
+        IMoxieBondingCurveV3 moxieBondingCurveV3MasterCopyInstance = IMoxieBondingCurveV3(moxieBondingCurveV3MasterCopy);
         /// ----------------------------------
         ///           Initialize
         /// ----------------------------------
-        // moxieBondingCurveV3MasterCopy.initialize(
-        //     currentNetworkConfig.moxieToken,
-        //     currentNetworkConfig.formula,
-        //     currentNetworkConfig.tokenManager,
-        //     currentNetworkConfig.vault,
-        //     currentOwner,
-        //     currentNetworkConfig.feeInput,
-        //     currentNetworkConfig.feeBeneficiary,
-        //     currentNetworkConfig.subjectFactory
-        // );
+        moxieBondingCurveV3MasterCopyInstance.initialize(
+            currentNetworkConfig.moxieToken,
+            currentNetworkConfig.formula,
+            currentNetworkConfig.tokenManager,
+            currentNetworkConfig.vault,
+            currentOwner,
+            currentNetworkConfig.feeInput,
+            currentNetworkConfig.feeBeneficiary,
+            currentNetworkConfig.subjectFactory
+        );
 
         // reinitialize
-        // moxieBondingCurveV3MasterCopy.reinitialize(
-        //     currentNetworkConfig.defaultGraduationMarketCap,
-        //     IGraduationHook(graduationHook),
-        //     IPositionManager(currentNetworkConfig.positionManager),
-        //     IUniversalRouter(currentNetworkConfig.router),
-        //     currentNetworkConfig.feeInput.swapFeeRatioProtocolPct
-        // );
+        moxieBondingCurveV3MasterCopyInstance.reinitialize(
+            currentNetworkConfig.defaultGraduationMarketCap,
+            IGraduationHook(graduationHook),
+            IPositionManager(currentNetworkConfig.positionManager),
+            IUniversalRouter(currentNetworkConfig.router),
+            currentNetworkConfig.feeInput.swapFeeRatioProtocolPct
+        );
         ProxyAdmin proxyAdmin = ProxyAdmin(currentNetworkConfig.moxieBondingCurveProxyAdminOwner);
 
         vm.stopBroadcast();
@@ -94,16 +95,15 @@ contract DeployGraduation is HelperConfig {
         proxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(currentNetworkConfig.moxieBondingCurveInstance),
             address(moxieBondingCurveV3MasterCopy),
-            ""
+            abi.encodeWithSelector(
+                IMoxieBondingCurveV3.reinitialize.selector,
+                currentNetworkConfig.defaultGraduationMarketCap,
+                graduationHook,
+                IPositionManager(currentNetworkConfig.positionManager),
+                IUniversalRouter(currentNetworkConfig.router),
+                currentNetworkConfig.feeInput.swapFeeRatioProtocolPct
+            )
         );
-        // abi.encodeWithSelector(
-        //     MoxieBondingCurveV3.reinitialize.selector,
-        //     currentNetworkConfig.defaultGraduationMarketCap,
-        //     graduationHook,
-        //     IPositionManager(currentNetworkConfig.positionManager),
-        //     IUniversalRouter(currentNetworkConfig.router),
-        //     currentNetworkConfig.feeInput.swapFeeRatioProtocolPct
-        // )
 
         vm.stopBroadcast();
     }
