@@ -142,7 +142,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         address indexed _subject,
         bool _buySubject,
         uint256 _amountIn,
-        uint256 _minAmountOut
+        uint256 _amountOut
     );
 
     /// @dev Address of moxie token.
@@ -438,9 +438,8 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         if (!subjectGraduated(_subject)) {
             revert MoxieBondingCurve_SubjectNotGraduated();
         }
-        address subjectToken = tokenManager.tokens(_subject);
-        if(amountIn >= type(uint128).max) revert MoxieBondingCurve_InvalidAmount();
         if(minAmountOut >= type(uint128).max) revert MoxieBondingCurve_InvalidAmount();
+        address subjectToken = tokenManager.tokens(_subject);
         IERC20Extended sellToken = buySubject ? token : IERC20Extended(subjectToken);
         sellToken.transferFrom(msg.sender, address(router), amountIn);
         IV4Router.ExactInputSingleParams memory swapParams;
@@ -467,41 +466,64 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
                 hookData: ""
             });
         }
-        bytes[] memory params = new bytes[](3);
-        params[0] = abi.encode(swapParams);
-        params[1] = abi.encode(buySubject ? address(token) : subjectToken, amountIn, false);
-        params[2] = abi.encode(
-            buySubject ? subjectToken : address(token),
-            _recipient,
-            0
-        );
-        bytes memory command = abi.encode(
-            abi.encodePacked(
-                uint8(Actions.SWAP_EXACT_IN_SINGLE),
-                uint8(Actions.SETTLE),
-                uint8(Actions.TAKE)
-            ),
-            params
-        );
-        bytes[] memory commands = new bytes[](1);
-        commands[0] = command;
-        uint256 amountOutBefore = _balanceOf(buySubject ? subjectToken : address(token), _recipient);
-        router.execute(abi.encodePacked(uint8(Commands.V4_SWAP)), commands, block.timestamp);
-        amountReturned = _balanceOf(buySubject ? subjectToken : address(token), _recipient) - amountOutBefore;
-        emit Swap(msg.sender, _subject, buySubject, amountIn, minAmountOut);
+        amountReturned = _executeSwap(swapParams, buySubject ? address(token) : subjectToken, amountIn, buySubject ? subjectToken : address(token), _recipient);
+        emit Swap(msg.sender, _subject, buySubject, amountIn, amountReturned);
     }
 
+    /**
+     * @dev Internal function to execute a swap on Uniswap v4.
+     * @param _swapParams Swap parameters.
+     * @param _tokenIn Input token address.
+     * @param _amountIn Amount of input tokens to swap.
+     * @param _tokenOut Output token address.
+     * @param _recipient Recipient address.
+     * @return amountReturned Amount of output tokens received.
+     */
+    function _executeSwap(IV4Router.ExactInputSingleParams memory _swapParams, address _tokenIn, uint256 _amountIn, address _tokenOut, address _recipient) internal returns (uint256 amountReturned) {
+        if(_amountIn >= type(uint128).max) revert MoxieBondingCurve_InvalidAmount();
+        bytes[] memory params = new bytes[](3);
+        params[0] = abi.encode(_swapParams);
+        params[1] = abi.encode(_tokenIn, _amountIn, false);
+        // 0 means take all
+        params[2] = abi.encode(_tokenOut, _recipient, 0);
+        bytes memory command = abi.encode(
+            abi.encodePacked(uint8(Actions.SWAP_EXACT_IN_SINGLE), uint8(Actions.SETTLE), uint8(Actions.TAKE)),
+            params);
+        bytes[] memory commands = new bytes[](1);
+        commands[0] = command;
+        uint256 amountOutBefore = _balanceOf(_tokenOut, _recipient);
+        router.execute(abi.encodePacked(uint8(Commands.V4_SWAP)), commands, block.timestamp);
+        amountReturned = _balanceOf(_tokenOut, _recipient) - amountOutBefore;
+    }
+
+    /**
+     * @dev Initialize a new liquidity pool for the subject token to graduate, add liquidity and swap remainder.
+     * @param _subject Subject address.
+     * @param remainder Remainder amount to swap.
+     * @param sender Sender address.
+     * @param remainingMinAmountOut Minimum amount out for the swap.
+     * @return subjectTokens Subject tokens received from the swap.
+     */
     function _graduateSubject(address _subject, uint256 remainder, address sender, uint256 remainingMinAmountOut) internal returns (uint256 subjectTokens) {
         address subjectToken = tokenManager.tokens(_subject);
         (PoolKey memory key, uint256 price, bool moxieIsZero) = _initializeSubject(_subject, subjectToken);
         uint256 tokenId = positionManager.nextTokenId();
         subjectTokenId[_subject] = tokenId;
         _addLiquidity(_subject, subjectToken, key, price, moxieIsZero);
-        if (remainder != 0) _swapRemainder(subjectToken, key, moxieIsZero, remainder, sender, remainingMinAmountOut);
+        if (remainder != 0) {
+            subjectTokens = _swapRemainder(subjectToken, key, moxieIsZero, remainder, sender, remainingMinAmountOut);
+        }
         emit SubjectGraduated(_subject, key.toId(), tokenId);
-        return 0;
     }
 
+    /**
+     * @dev Initialize a new liquidity pool on Uniswap v4.
+     * @param _subject Subject address.
+     * @param _subjectToken Subject token address.
+     * @return key Pool key.
+     * @return price Price of the subject token in moxie.
+     * @return moxieIsZero True if moxie is token0, false otherwise.
+     */
     function _initializeSubject(address _subject, address _subjectToken) internal returns (PoolKey memory key, uint256 price, bool moxieIsZero) {
         address token_ = address(token);
         address token0; address token1;
@@ -520,6 +542,14 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         IPoolManager(graduationHook.poolManager()).initialize(key, uint160(sqrtPriceX96));
     }
 
+    /**
+     * @dev Add liquidity to the initialized pool.
+     * @param _subject Subject address.
+     * @param _subjectToken Subject token address.
+     * @param key Pool key.
+     * @param price Price of the subject token in moxie.
+     * @param moxieIsZero True if moxie is token0, false otherwise.
+     */
     function _addLiquidity(address _subject, address _subjectToken, PoolKey memory key, uint256 price, bool moxieIsZero) internal {
         uint256 tokenAmount = vault.balanceOf(_subjectToken, address(token));
         uint256 subjectAmount = tokenAmount * 1e18 / price;
@@ -551,7 +581,18 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         );
     }
 
-    function _swapRemainder(address _subjectToken, PoolKey memory key, bool moxieIsZero, uint256 remainder, address sender, uint256 remainingMinAmountOut) internal {
+    /**
+     * @dev Swap remainder of the subject token.
+     * @param _subjectToken Subject token address.
+     * @param key Pool key.
+     * @param moxieIsZero True if moxie is token0, false otherwise.
+     * @param remainder Remainder amount to swap.
+     * @param sender Sender address.
+     * @param remainingMinAmountOut Minimum amount out for the swap.
+     * @return subjectTokens Subject tokens received from the swap.
+     */
+    function _swapRemainder(address _subjectToken, PoolKey memory key, bool moxieIsZero, uint256 remainder, address sender, uint256 remainingMinAmountOut) internal returns (uint256 subjectTokens) {
+        if(remainingMinAmountOut >= type(uint128).max) revert MoxieBondingCurve_InvalidAmount();
         token.transfer(address(router), remainder);
 
         IV4Router.ExactInputSingleParams memory swapParams = IV4Router.ExactInputSingleParams({
@@ -562,26 +603,12 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
             hookData: ""
         });
 
-        bytes[] memory params = new bytes[](3);
-        params[0] = abi.encode(swapParams);
-        params[1] = abi.encode(token, remainder, false);
-        // 0 means take all
-        params[2] = abi.encode(_subjectToken, sender, 0);
-        bytes memory command = abi.encode(
-            abi.encodePacked(
-                uint8(Actions.SWAP_EXACT_IN_SINGLE),
-                uint8(Actions.SETTLE),
-                uint8(Actions.TAKE)
-            ),
-            params
-        );
-        bytes[] memory commands = new bytes[](1);
-        commands[0] = command;
-        router.execute(abi.encodePacked(uint8(Commands.V4_SWAP)), commands, block.timestamp);
+        return _executeSwap(swapParams, address(token), remainder, _subjectToken, sender);        
     }
 
     /**
      * @dev Internal function to buy  shares of subject.
+     * @dev If a token reaches the graduation market cap during the buy, the subject graduates and the remainder is then swapped on the liquidity pool
      * @param _subjectToken Address of Subject Token.
      * @param _depositAmount Amount of deposit to buy shares.
      * @param _onBehalfOf Address of beneficiary where shares will be minted. This address can be zero address too.
@@ -1010,6 +1037,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
 
     /**
      * @notice Initialize Bonding curve for subject, it's called by subject factory.
+     * @dev Should the initial reserve already exceed the graduation market cap, graduate the subject automatically.
      * @param _subject Address of subject.
      * @param _initialSupply Initial supply of subjects tokens at the time of bonding curve initialization.
      * @param _reserveRatio reserve ratio of subject for bonding curve.
@@ -1243,6 +1271,11 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
     }
 
 
+    /**
+     * @notice Distribute the swap fees for a graduated subject.
+     * @dev Subject tokens are burned, moxie is divided between the protocol and the subject.
+     * @param _subject Subject address.
+     */
     function distributeSwapFee(address _subject) external {
         if (!subjectGraduated(_subject)) revert MoxieBondingCurve_SubjectNotGraduated();
         uint256 tokenId = subjectTokenId[_subject];

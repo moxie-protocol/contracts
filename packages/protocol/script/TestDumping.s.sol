@@ -173,19 +173,19 @@ contract TestDumping is HelperConfig {
         /// ----------------------------------
         ///           Test dumping
         /// ----------------------------------
-        vm.startPrank(richUser);
-        implementation.graduateSubject(subject);
+        // vm.startPrank(richUser);
+        // implementation.graduateSubject(subject);
 
-        subjectTokenContract.approve(
-            currentNetworkConfig.moxieBondingCurveInstance,
-            subjectTokensGot
-        );
-        uint256 moxieBalanceBeforeSwap = moxieToken.balanceOf(richUser);
-        implementation.swap(subject, false, subjectTokensGot2, 0);
-        uint256 moxieBalanceAfterSwap = moxieToken.balanceOf(richUser);
-        console2.log("moxieBalanceBefore swap", moxieBalanceBeforeSwap);
-        console2.log("moxieBalanceAfter swap", moxieBalanceAfterSwap);
-        console2.log("moxieAmount", moxieAmount);
-        vm.stopPrank();
+        // subjectTokenContract.approve(
+        //     currentNetworkConfig.moxieBondingCurveInstance,
+        //     subjectTokensGot
+        // );
+        // uint256 moxieBalanceBeforeSwap = moxieToken.balanceOf(richUser);
+        // implementation.swap(subject, false, subjectTokensGot2, 0);
+        // uint256 moxieBalanceAfterSwap = moxieToken.balanceOf(richUser);
+        // console2.log("moxieBalanceBefore swap", moxieBalanceBeforeSwap);
+        // console2.log("moxieBalanceAfter swap", moxieBalanceAfterSwap);
+        // console2.log("moxieAmount", moxieAmount);
+        // vm.stopPrank();
     }
 }
