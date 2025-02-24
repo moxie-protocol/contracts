@@ -4786,6 +4786,8 @@ describe("MoxieBondingCurveUpgrade", () => {
         .connect(owner)
         .grantRole(await moxieBondingCurve.UPDATE_RESERVE_RATIO(), owner);
 
+      await moxieBondingCurve.connect(owner).pauseTrading(subject, true);
+      
       await expect(
         moxieBondingCurve
           .connect(owner)
@@ -4830,6 +4832,8 @@ describe("MoxieBondingCurveUpgrade", () => {
           ethers.ZeroAddress,
         );
 
+        await moxieBondingCurve.connect(owner).pauseTrading(subject, true);
+
       await expect(
         moxieBondingCurve.connect(owner).updateReserveRatio(subject, 0),
       ).to.revertedWithCustomError(
@@ -4870,6 +4874,7 @@ describe("MoxieBondingCurveUpgrade", () => {
           ethers.ZeroAddress,
         );
 
+      await moxieBondingCurve.connect(owner).pauseTrading(subject, true);
       await expect(
         moxieBondingCurve.connect(owner).updateReserveRatio(subject, 0),
       ).to.revertedWithCustomError(

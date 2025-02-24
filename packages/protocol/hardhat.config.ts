@@ -5,6 +5,7 @@ import "@nomicfoundation/hardhat-ignition-ethers";
 import "@nomicfoundation/hardhat-verify";
 import "@openzeppelin/hardhat-upgrades";
 import * as dotenv from "dotenv";
+import "hardhat-contract-sizer";
 
 dotenv.config();
 
@@ -17,8 +18,22 @@ const config: HardhatUserConfig = {
   //   maxFeeBumps: 4,
   //   requiredConfirmations: 5,
   // },
-  solidity: "0.8.24",
+  solidity: {
+    version: "0.8.24",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 1,
+      },
+    },
+  },
   networks: {
+    hardhat: {
+      // uniswap deployer contract used during testing is too large
+      allowUnlimitedContractSize: true,
+      // increase gas limit to be able to mine hook address
+      blockGasLimit: 1000000000000
+    },
     "base-sepolia": {
       url: `https://base-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY as string}`,
       accounts: {

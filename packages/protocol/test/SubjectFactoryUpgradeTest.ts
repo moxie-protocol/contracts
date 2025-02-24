@@ -37,7 +37,7 @@ describe("SubjectFactoryUpgradeTest", () => {
     const MoxieBondingCurveLegacyV1 =
       await hre.ethers.getContractFactory("MoxieBondingCurve");
     const MoxieBondingCurve = await hre.ethers.getContractFactory(
-      "MoxieBondingCurveV2",
+      "MoxieBondingCurveV3",
     );
 
     const EasyAuction =
@@ -124,6 +124,7 @@ describe("SubjectFactoryUpgradeTest", () => {
       protocolSellFeePct,
       subjectBuyFeePct,
       subjectSellFeePct,
+      swapFeeRatioProtocolPct: 0,
     };
 
     await moxieBondingCurveLegacyV1.initialize(
@@ -160,6 +161,18 @@ describe("SubjectFactoryUpgradeTest", () => {
     const moxieBondingCurve = await upgrades.upgradeProxy(
       moxieBondingCurveAddress,
       MoxieBondingCurve,
+      {
+        call: {
+          fn: "reinitialize",
+          args: [
+            ethers.MaxUint256 / BigInt("1000000000000000000"),
+            ethers.ZeroAddress,
+            ethers.ZeroAddress,
+            ethers.ZeroAddress,
+            0,
+          ],
+        },
+      },
     );
     // upgrade the Subject Factory contracts
     const subjectFactory = await upgrades.upgradeProxy(
