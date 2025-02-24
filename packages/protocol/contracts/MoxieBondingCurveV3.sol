@@ -491,6 +491,14 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         emit Swap(msg.sender, _subject, buySubject, amountIn, minAmountOut);
     }
 
+    /**
+     * @dev Initialize a new liquidity pool for the subject token to graduate, add liquidity and swap remainder.
+     * @param _subject Subject address.
+     * @param remainder Remainder amount to swap.
+     * @param sender Sender address.
+     * @param remainingMinAmountOut Minimum amount out for the swap.
+     * @return subjectTokens Subject tokens received from the swap.
+     */
     function _graduateSubject(address _subject, uint256 remainder, address sender, uint256 remainingMinAmountOut) internal returns (uint256 subjectTokens) {
         address subjectToken = tokenManager.tokens(_subject);
         (PoolKey memory key, uint256 price, bool moxieIsZero) = _initializeSubject(_subject, subjectToken);
@@ -506,6 +514,14 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         emit SubjectGraduated(_subject, key.toId(), tokenId);
     }
 
+    /**
+     * @dev Initialize a new liquidity pool on Uniswap v4.
+     * @param _subject Subject address.
+     * @param _subjectToken Subject token address.
+     * @return key Pool key.
+     * @return price Price of the subject token in moxie.
+     * @return moxieIsZero True if moxie is token0, false otherwise.
+     */
     function _initializeSubject(address _subject, address _subjectToken) internal returns (PoolKey memory key, uint256 price, bool moxieIsZero) {
         address token_ = address(token);
         address token0; address token1;
@@ -525,6 +541,14 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         IPoolManager(graduationHook.poolManager()).initialize(key, uint160(sqrtPriceX96));
     }
 
+    /**
+     * @dev Add liquidity to the initialized pool.
+     * @param _subject Subject address.
+     * @param _subjectToken Subject token address.
+     * @param key Pool key.
+     * @param price Price of the subject token in moxie.
+     * @param moxieIsZero True if moxie is token0, false otherwise.
+     */
     function _addLiquidity(address _subject, address _subjectToken, PoolKey memory key, uint256 price, bool moxieIsZero) internal {
         uint256 tokenAmount = vault.balanceOf(_subjectToken, address(token));
         uint256 subjectAmount = tokenAmount * 1e18 / price;
@@ -558,6 +582,16 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         );
     }
 
+    /**
+     * @dev Swap remainder of the subject token.
+     * @param _subjectToken Subject token address.
+     * @param key Pool key.
+     * @param moxieIsZero True if moxie is token0, false otherwise.
+     * @param remainder Remainder amount to swap.
+     * @param sender Sender address.
+     * @param remainingMinAmountOut Minimum amount out for the swap.
+     * @return subjectTokens Subject tokens received from the swap.
+     */
     function _swapRemainder(address _subjectToken, PoolKey memory key, bool moxieIsZero, uint256 remainder, address sender, uint256 remainingMinAmountOut) internal returns (uint256 subjectTokens) {
         assert(remainder < type(uint128).max);
         assert(remainingMinAmountOut < type(uint128).max);
@@ -593,6 +627,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
 
     /**
      * @dev Internal function to buy  shares of subject.
+     * @dev If a token reaches the graduation market cap during the buy, the subject graduates and the remainder is then swapped on the liquidity pool
      * @param _subjectToken Address of Subject Token.
      * @param _depositAmount Amount of deposit to buy shares.
      * @param _onBehalfOf Address of beneficiary where shares will be minted. This address can be zero address too.
@@ -1021,6 +1056,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
 
     /**
      * @notice Initialize Bonding curve for subject, it's called by subject factory.
+     * @dev Should the initial reserve already exceed the graduation market cap, graduate the subject automatically.
      * @param _subject Address of subject.
      * @param _initialSupply Initial supply of subjects tokens at the time of bonding curve initialization.
      * @param _reserveRatio reserve ratio of subject for bonding curve.
@@ -1254,6 +1290,11 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
     }
 
 
+    /**
+     * @notice Distribute the swap fees for a graduated subject.
+     * @dev Subject tokens are burned, moxie is divided between the protocol and the subject.
+     * @param _subject Subject address.
+     */
     function distributeSwapFee(address _subject) external {
         if (!subjectGraduated(_subject)) revert MoxieBondingCurve_SubjectNotGraduated();
         uint256 tokenId = subjectTokenId[_subject];
