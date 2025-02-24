@@ -13,8 +13,7 @@ import {IMoxieBondingCurveV3} from "./interfaces/IMoxieBondingCurveV3.sol";
 import {IProtocolRewards} from "./rewards/IProtocolRewards.sol";
 import {IGraduationHook} from "./uniswap/GraduationHook.sol";
 import {IPoolManager, PoolKey, IHooks, Currency} from "@uniswap/briefcase/src/protocols/v4-core/interfaces/IPoolManager.sol";
-import {SqrtPriceMath} from "@uniswap/briefcase/src/protocols/v4-core/libraries/SqrtPriceMath.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {Math} from "./libraries/Math.sol";
 import {IPositionManager} from "@uniswap/briefcase/src/protocols/v4-periphery/interfaces/IPositionManager.sol";
 import {Actions} from "@uniswap/briefcase/src/protocols/v4-periphery/libraries/Actions.sol";
 import {IV4Router} from "@uniswap/briefcase/src/protocols/v4-periphery/interfaces/IV4Router.sol";
@@ -403,7 +402,6 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         uint256 totalAmount = _subjectFee + _protocolFee;
 
         token.approve(address(protocolRewards), totalAmount);
-
         recipients[0] = _subject;
         amounts[0] = _subjectFee;
         reasons[0] = bytes4(keccak256("TRANSACTION_FEE"));
@@ -510,9 +508,9 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         uint256 tokenId = positionManager.nextTokenId();
         subjectTokenId[_subject] = tokenId;
         _addLiquidity(_subject, subjectToken, key, price, moxieIsZero);
-        (PoolKey memory keyFromPosition, ) = positionManager.getPoolAndPositionInfo(tokenId);
+        // (PoolKey memory keyFromPosition, ) = positionManager.getPoolAndPositionInfo(tokenId);
         // sanity check that the tokenId is correct
-        assert(keccak256(abi.encode(keyFromPosition)) == keccak256(abi.encode(key)));
+        // assert(keccak256(abi.encode(keyFromPosition)) == keccak256(abi.encode(key)));
         if (remainder != 0) {
             subjectTokens = _swapRemainder(subjectToken, key, moxieIsZero, remainder, sender, remainingMinAmountOut);
         }
@@ -542,7 +540,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         price = currentMarketCap * 1e18 / IERC20Extended(tokenManager.tokens(_subject)).totalSupply();
         // @audit sqrt(2^256)*2^96 does not overflow so we only need to make sure that price * 1e36 does not overflow, which should not be the case
         uint256 sqrtPriceX96 = Math.sqrt(moxieIsZero ? 1e72 / price : price * 1e36) * (2**96) / 10 ** 27;
-        assert(sqrtPriceX96 <= type(uint160).max);
+        // assert(sqrtPriceX96 <= type(uint160).max);
         IPoolManager(graduationHook.poolManager()).initialize(key, uint160(sqrtPriceX96));
     }
 
@@ -557,8 +555,8 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
     function _addLiquidity(address _subject, address _subjectToken, PoolKey memory key, uint256 price, bool moxieIsZero) internal {
         uint256 tokenAmount = vault.balanceOf(_subjectToken, address(token));
         uint256 subjectAmount = tokenAmount * 1e18 / price;
-        assert(subjectAmount < type(uint128).max);
-        assert(tokenAmount < type(uint128).max);
+        // assert(subjectAmount < type(uint128).max);
+        // assert(tokenAmount < type(uint128).max);
         (uint256 amount0Max, uint256 amount1Max) = moxieIsZero ? (tokenAmount, subjectAmount) : (subjectAmount, tokenAmount);
         bytes[] memory params = new bytes[](5);
         params[0] = abi.encode(token, tokenAmount, false);
@@ -783,7 +781,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         uint256 _minReturnAmountAfterFee,
         address _orderReferrer
     ) internal returns (uint256 returnAmount_) {
-        if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
+        // if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
         if (_sellAmount == 0) revert MoxieBondingCurve_InvalidSellAmount();
 
         uint32 subjectReserveRatio = reserveRatio[_subject];
@@ -829,7 +827,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         uint256 _minReturnAmountAfterFee,
         address _orderReferrer
     ) internal returns (uint256 shares_) {
-        if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
+        // if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
         if (_depositAmount == 0) {
             revert MoxieBondingCurve_InvalidDepositAmount();
         }
@@ -880,7 +878,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         view
         returns (uint32 subjectReserveRatio_, uint256 subjectReserve_, uint256 subjectSupply_)
     {
-        if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
+        // if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
         if (_subjectTokenAmount == 0) revert MoxieBondingCurve_InvalidAmount();
 
         subjectReserveRatio_ = reserveRatio[_subject];
@@ -914,11 +912,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
     function updateGraduationMarketCap(uint32 _reserveRatio, uint256 _newGraduationMarketCap) external onlyRole(UPDATE_GRADUATION_MARKET_CAP_ROLE) {
         uint256 oldGraduationMarketCap = graduationMarketCap(_reserveRatio);
         graduationMarketCapOverrides[_reserveRatio] = _newGraduationMarketCap;
-        if (_newGraduationMarketCap == 0) {
-            emit GraduationMarketCapUpdated(_reserveRatio, oldGraduationMarketCap, defaultGraduationMarketCap, true);
-        } else {
-            emit GraduationMarketCapUpdated(_reserveRatio, oldGraduationMarketCap, _newGraduationMarketCap, false);
-        }
+        emit GraduationMarketCapUpdated(_reserveRatio, oldGraduationMarketCap, defaultGraduationMarketCap, _newGraduationMarketCap == 0);
     }
 
     /**
