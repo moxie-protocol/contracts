@@ -387,11 +387,11 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         bool _isBuy
     ) private {
         address platformReferrerAddress = platformReferrer[_subject];
-        if (platformReferrerAddress == address(0)) {
+        if (_isZeroAddress(platformReferrerAddress)) {
             platformReferrerAddress = feeBeneficiary;
         }
 
-        if (_orderReferrer == address(0)) {
+        if (_isZeroAddress(_orderReferrer)) {
             _orderReferrer = feeBeneficiary;
         }
 
@@ -478,7 +478,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
      * @return amountReturned Amount of output tokens received.
      */
     function _executeSwap(IV4Router.ExactInputSingleParams memory _swapParams, address _tokenIn, uint256 _amountIn, address _tokenOut, address _recipient) internal returns (uint256 amountReturned) {
-        if(_amountIn >= type(uint128).max) revert MoxieBondingCurve_InvalidAmount();
+        // if(_amountIn >= type(uint128).max) revert MoxieBondingCurve_InvalidAmount();
         bytes[] memory params = new bytes[](3);
         params[0] = abi.encode(_swapParams);
         params[1] = abi.encode(_tokenIn, _amountIn, false);
@@ -596,7 +596,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
      * @return subjectTokens Subject tokens received from the swap.
      */
     function _swapRemainder(address _subjectToken, PoolKey memory key, bool moxieIsZero, uint256 remainder, address sender, uint256 remainingMinAmountOut) internal returns (uint256 subjectTokens) {
-        if(remainingMinAmountOut >= type(uint128).max) revert MoxieBondingCurve_InvalidAmount();
+        // if(remainingMinAmountOut >= type(uint128).max) revert MoxieBondingCurve_InvalidAmount();
         token.transfer(address(router), remainder);
 
         IV4Router.ExactInputSingleParams memory swapParams = IV4Router.ExactInputSingleParams({
@@ -839,10 +839,6 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         }
 
         IERC20Extended subjectToken = IERC20Extended(tokenManager.tokens(_subject));
-
-        if (_isZeroAddress(address(subjectToken))) {
-            revert MoxieBondingCurve_InvalidSubjectToken();
-        }
 
         if (!subjectGraduated(_subject)) {
             shares_ = _buyShares(
@@ -1264,10 +1260,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
 
     function graduationMarketCap(uint32 _reserveRatio) public view returns (uint256) {
         uint256 graduationMarketCapOverride = graduationMarketCapOverrides[_reserveRatio];
-        if (graduationMarketCapOverride == 0) {
-            return defaultGraduationMarketCap;
-        }
-        return graduationMarketCapOverride;
+        return graduationMarketCapOverride == 0 ? defaultGraduationMarketCap : graduationMarketCapOverride;
     }
 
 
