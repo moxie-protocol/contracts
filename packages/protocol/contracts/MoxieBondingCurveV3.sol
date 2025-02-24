@@ -13,7 +13,7 @@ import {IMoxieBondingCurveV3} from "./interfaces/IMoxieBondingCurveV3.sol";
 import {IProtocolRewards} from "./rewards/IProtocolRewards.sol";
 import {IGraduationHook} from "./uniswap/GraduationHook.sol";
 import {IPoolManager, PoolKey, IHooks, Currency} from "@uniswap/briefcase/src/protocols/v4-core/interfaces/IPoolManager.sol";
-import {Math} from "./libraries/Math.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IPositionManager} from "@uniswap/briefcase/src/protocols/v4-periphery/interfaces/IPositionManager.sol";
 import {Actions} from "@uniswap/briefcase/src/protocols/v4-periphery/libraries/Actions.sol";
 import {IV4Router} from "@uniswap/briefcase/src/protocols/v4-periphery/interfaces/IV4Router.sol";
