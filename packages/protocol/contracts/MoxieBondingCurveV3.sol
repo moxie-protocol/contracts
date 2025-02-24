@@ -500,9 +500,10 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         (PoolKey memory keyFromPosition, ) = positionManager.getPoolAndPositionInfo(tokenId);
         // sanity check that the tokenId is correct
         assert(keccak256(abi.encode(keyFromPosition)) == keccak256(abi.encode(key)));
-        if (remainder != 0) _swapRemainder(subjectToken, key, moxieIsZero, remainder, sender, remainingMinAmountOut);
+        if (remainder != 0) {
+            subjectTokens = _swapRemainder(subjectToken, key, moxieIsZero, remainder, sender, remainingMinAmountOut);
+        }
         emit SubjectGraduated(_subject, key.toId(), tokenId);
-        return 0;
     }
 
     function _initializeSubject(address _subject, address _subjectToken) internal returns (PoolKey memory key, uint256 price, bool moxieIsZero) {
@@ -557,7 +558,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         );
     }
 
-    function _swapRemainder(address _subjectToken, PoolKey memory key, bool moxieIsZero, uint256 remainder, address sender, uint256 remainingMinAmountOut) internal {
+    function _swapRemainder(address _subjectToken, PoolKey memory key, bool moxieIsZero, uint256 remainder, address sender, uint256 remainingMinAmountOut) internal returns (uint256 subjectTokens) {
         assert(remainder < type(uint128).max);
         assert(remainingMinAmountOut < type(uint128).max);
         token.transfer(address(router), remainder);
@@ -585,7 +586,9 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
         );
         bytes[] memory commands = new bytes[](1);
         commands[0] = command;
+        subjectTokens = _balanceOf(_subjectToken, sender); // balance before swap
         router.execute(abi.encodePacked(uint8(Commands.V4_SWAP)), commands, block.timestamp);
+        subjectTokens = _balanceOf(_subjectToken, sender) - subjectTokens; // subject tokens received
     }
 
     /**
