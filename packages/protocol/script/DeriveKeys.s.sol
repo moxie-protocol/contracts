@@ -22,8 +22,8 @@ contract DeriveKeys is Script {
             proxyAdminOwnerAccount = vm.deriveKey(mnemonic, 1);
         } else if (block.chainid == 84532) {
             proxyAdminOwnerAccount = vm.deriveKey(mnemonic, 8);
-        } else {
-            proxyAdminOwnerAccount = vm.deriveKey(mnemonic, 8);
+        } else if (block.chainid == 8453) {
+            proxyAdminOwnerAccount = ownerKey;
         }
     }
 }
