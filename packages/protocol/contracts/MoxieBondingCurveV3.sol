@@ -908,7 +908,7 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
     function updateGraduationMarketCap(uint32 _reserveRatio, uint256 _newGraduationMarketCap) external onlyRole(UPDATE_GRADUATION_MARKET_CAP_ROLE) {
         uint256 oldGraduationMarketCap = graduationMarketCap(_reserveRatio);
         graduationMarketCapOverrides[_reserveRatio] = _newGraduationMarketCap;
-        emit GraduationMarketCapUpdated(_reserveRatio, oldGraduationMarketCap, defaultGraduationMarketCap, _newGraduationMarketCap == 0);
+        emit GraduationMarketCapUpdated(_reserveRatio, oldGraduationMarketCap, _newGraduationMarketCap == 0 ?defaultGraduationMarketCap: _newGraduationMarketCap, _newGraduationMarketCap == 0);
     }
 
     /**
