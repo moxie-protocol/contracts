@@ -28,15 +28,16 @@ contract TestMoxieBondingCurveV3 is Test {
         tokenManager = TokenManager(0xFd990aF1c711cC0fc46E66B22877B028aF7eF59C);
     }
 
-    function test_buySharesOfGraduatedSubject() public {
+    function test_buyShareAndSellSharesOfGraduatedSubject() public {
         vm.selectFork(baseSepoliaFork);
         vm.startPrank(richUser);
+        uint256 inputAmount = 1000000000000000000;
         address graduatedSubject = 0x8e2d39591A720467E5324aD8b163D1C69a8C8193;
-        moxieToken.approve(address(moxieBondingCurveV3), 1000000000000000000);
+        moxieToken.approve(address(moxieBondingCurveV3), inputAmount);
         vm.recordLogs();
-        moxieBondingCurveV3.buyShares(
+        uint256 sharesBought = moxieBondingCurveV3.buyShares(
             address(graduatedSubject),
-            1000000000000000000,
+            inputAmount,
             0
         );
         Vm.Log[] memory entries = vm.getRecordedLogs();
@@ -51,6 +52,17 @@ contract TestMoxieBondingCurveV3 is Test {
             }
         }
         require(swapEventFound, "Swap event not found");
+        IERC20Extended subjectToken = IERC20Extended(
+            tokenManager.tokens(graduatedSubject)
+        );
+        subjectToken.approve(address(moxieBondingCurveV3), sharesBought);
+        uint256 returnedAmount = moxieBondingCurveV3.sellShares(
+            address(graduatedSubject),
+            sharesBought,
+            0
+        );
+        console2.log("returnedAmount", returnedAmount);
+        console2.log("inputAmount", inputAmount);
         vm.stopPrank();
     }
 
