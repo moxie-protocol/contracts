@@ -1,11 +1,21 @@
 [profile.default]
 src = "contracts"
-out = "artifacts"
+out = "foundry-out"
 libs = ["node_modules", "lib"]
 
 solc = "0.8.24"
 optimizer = true
 optimizer_runs = 1
+
+additional_compiler_profiles = [
+    {name = "via-ir", via_ir = true }
+]
+
+compilation_restrictions = [
+    { paths = "script/**", via_ir = true },
+    { paths = "contracts/tests/UniswapDeployer.sol", via_ir = true },
+    { paths = "contracts/[!i]*.sol", via_ir = false },
+]
 
 remappings = [
     "@ablack/=node_modules/@ablack/",

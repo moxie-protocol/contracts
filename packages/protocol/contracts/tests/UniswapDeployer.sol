@@ -3,12 +3,16 @@ pragma solidity ^0.8.24;
 
 import {PoolManagerDeployer, IPoolManager} from "@uniswap/briefcase/src/deployers/v4-core/PoolManagerDeployer.sol";
 import {Permit2Deployer, IPermit2} from "@uniswap/briefcase/src/deployers/permit2/Permit2Deployer.sol";
-import {PositionManagerDeployer, IPositionManager} from "@uniswap/briefcase/src/deployers/v4-periphery/PositionManagerDeployer.sol";
-import {UniversalRouterDeployer, IUniversalRouter} from "@uniswap/briefcase/src/deployers/universal-router/UniversalRouterDeployer.sol";
-import {GraduationHook} from "../uniswap/GraduationHook.sol";
+import {
+    PositionManagerDeployer,
+    IPositionManager
+} from "@uniswap/briefcase/src/deployers/v4-periphery/PositionManagerDeployer.sol";
+import {
+    UniversalRouterDeployer,
+    IUniversalRouter
+} from "@uniswap/briefcase/src/deployers/universal-router/UniversalRouterDeployer.sol";
 
 contract UniswapDeployer {
-
     IPermit2 internal permit2;
     IPoolManager public poolManager;
     IPositionManager public positionManager;
@@ -21,13 +25,8 @@ contract UniswapDeployer {
     function deployPositionManager() public {
         require(address(poolManager) != address(0), "Pool manager not deployed");
         permit2 = Permit2Deployer.deploy();
-        positionManager = PositionManagerDeployer.deploy(
-            address(poolManager),
-            address(permit2),
-            300000,
-            address(0),
-            address(0)
-        );
+        positionManager =
+            PositionManagerDeployer.deploy(address(poolManager), address(permit2), 300000, address(0), address(0));
     }
 
     function deployUniversalRouter() public {
@@ -45,21 +44,23 @@ contract UniswapDeployer {
         );
     }
 
-    function mineHookAddress(address deployer, uint160 flags, bytes memory creationCode, bytes memory constructorArgs) public view returns (address, bytes32) {
+    function mineHookAddress(address deployer, uint160 flags, bytes memory creationCode, bytes memory constructorArgs)
+        public
+        view
+        returns (address, bytes32)
+    {
         return HookMiner.find(deployer, flags, creationCode, constructorArgs);
     }
 
-    function deployHook(bytes memory creationCode, bytes memory constructorArgs, bytes32 salt) public returns (address hookAddress) {
+    function deployHook(bytes memory creationCode, bytes memory constructorArgs, bytes32 salt)
+        public
+        returns (address hookAddress)
+    {
         bytes memory initCode = abi.encodePacked(creationCode, constructorArgs);
         assembly {
             let ptr := mload(0x40)
-            let success := create2(
-                0,
-                add(initCode, 0x20),
-                mload(initCode),
-                salt
-            )
-            
+            let success := create2(0, add(initCode, 0x20), mload(initCode), salt)
+
             if iszero(success) {
                 // Get the size of the returned error message
                 let errorSize := returndatasize()
@@ -68,7 +69,7 @@ contract UniswapDeployer {
                 // Revert with the error message
                 revert(ptr, errorSize)
             }
-            
+
             hookAddress := success
         }
         return hookAddress;
