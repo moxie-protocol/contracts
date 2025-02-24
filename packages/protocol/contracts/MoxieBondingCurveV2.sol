@@ -2,16 +2,16 @@
 
 pragma solidity ^0.8.24;
 
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IBancorFormula } from "./interfaces/IBancorFormula.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IBancorFormula} from "./interfaces/IBancorFormula.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import { SecurityModule } from "./SecurityModule.sol";
-import { ITokenManager } from "./interfaces/ITokenManager.sol";
-import { IERC20Extended } from "./interfaces/IERC20Extended.sol";
-import { IVault } from "./interfaces/IVault.sol";
-import { IMoxieBondingCurveV2 } from "./interfaces/IMoxieBondingCurveV2.sol";
-import { IProtocolRewards } from "./rewards/IProtocolRewards.sol";
+import {SecurityModule} from "./SecurityModule.sol";
+import {ITokenManager} from "./interfaces/ITokenManager.sol";
+import {IERC20Extended} from "./interfaces/IERC20Extended.sol";
+import {IVault} from "./interfaces/IVault.sol";
+import {IMoxieBondingCurveV2} from "./interfaces/IMoxieBondingCurveV2.sol";
+import {IProtocolRewards} from "./rewards/IProtocolRewards.sol";
 
 /**
  * @title Moxie Bonding curve
@@ -51,10 +51,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
     error MoxieBondingCurve_TradingPaused();
 
     event UpdateFees(
-        uint256 _protocolBuyFeePct,
-        uint256 _protocolSellFeePct,
-        uint256 _subjectBuyFeePct,
-        uint256 _subjectSellFeePct
+        uint256 _protocolBuyFeePct, uint256 _protocolSellFeePct, uint256 _subjectBuyFeePct, uint256 _subjectSellFeePct
     );
 
     event UpdateBeneficiary(address _beneficiary);
@@ -96,9 +93,16 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         uint256 _orderReferrerSellFeePct
     );
 
-    event SubjectReserveRatioUpdated(address _subject, uint32 _oldReserveRatio, uint32 _newReserveRatio);
+    event SubjectReserveRatioUpdated(
+        address _subject,
+        uint32 _oldReserveRatio,
+        uint32 _newReserveRatio
+    );
 
-    event TradingPaused(address _subject, bool _isPaused);
+    event TradingPaused(
+        address _subject,
+        bool _isPaused
+    );
     /// @dev Address of moxie token.
     IERC20Extended public token;
     /// @dev address of Bancors formula.
@@ -182,9 +186,10 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
     }
 
+
     modifier whenNotTradingPaused(address _subject) {
-        if (lastPaused[_subject] != 0) revert MoxieBondingCurve_TradingPaused();
-        _;
+       if (lastPaused[_subject] != 0) revert MoxieBondingCurve_TradingPaused();
+       _;
     }
 
     /**
@@ -227,8 +232,8 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
      */
     function _validateFee(FeeInput memory _feeInput) internal pure {
         if (
-            !_feeIsValid(_feeInput.protocolBuyFeePct + _feeInput.subjectBuyFeePct) ||
-            !_feeIsValid(_feeInput.protocolSellFeePct + _feeInput.subjectSellFeePct)
+            !_feeIsValid(_feeInput.protocolBuyFeePct + _feeInput.subjectBuyFeePct)
+                || !_feeIsValid(_feeInput.protocolSellFeePct + _feeInput.subjectSellFeePct)
         ) revert MoxieBondingCurve_InvalidFeePercentage();
     }
 
@@ -329,14 +334,10 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         amounts[0] = _subjectFee;
         reasons[0] = bytes4(keccak256("TRANSACTION_FEE"));
 
-        uint256 orderReferrerFee = _calculateFee(
-            _protocolFee,
-            _isBuy ? orderReferrerBuyFeePct : orderReferrerSellFeePct
-        );
-        uint256 platformReferrerFee = _calculateFee(
-            _protocolFee,
-            _isBuy ? platformReferrerBuyFeePct : platformReferrerSellFeePct
-        );
+        uint256 orderReferrerFee =
+            _calculateFee(_protocolFee, _isBuy ? orderReferrerBuyFeePct : orderReferrerSellFeePct);
+        uint256 platformReferrerFee =
+            _calculateFee(_protocolFee, _isBuy ? platformReferrerBuyFeePct : platformReferrerSellFeePct);
 
         recipients[1] = _orderReferrer;
         amounts[1] = orderReferrerFee;
@@ -389,10 +390,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
             vault.deposit(address(_subjectToken), address(token), vaultDeposit);
 
             shares_ = formula.calculatePurchaseReturn(
-                _subjectToken.totalSupply(),
-                subjectReserve,
-                _subjectReserveRatio,
-                vaultDeposit
+                _subjectToken.totalSupply(), subjectReserve, _subjectReserveRatio, vaultDeposit
             );
         }
 
@@ -406,13 +404,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         }
 
         emit SubjectSharePurchased(
-            _subject,
-            address(token),
-            _depositAmount,
-            msg.sender,
-            address(_subjectToken),
-            shares_,
-            _onBehalfOf
+            _subject, address(token), _depositAmount, msg.sender, address(_subjectToken), shares_, _onBehalfOf
         );
     }
 
@@ -437,12 +429,8 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
     ) internal returns (uint256 returnedAmount_) {
         uint256 subjectReserve = vault.balanceOf(address(_subjectToken), address(token));
 
-        uint256 returnAmountWithoutFee = formula.calculateSaleReturn(
-            _subjectToken.totalSupply(),
-            subjectReserve,
-            _subjectReserveRatio,
-            _sellAmount
-        );
+        uint256 returnAmountWithoutFee =
+            formula.calculateSaleReturn(_subjectToken.totalSupply(), subjectReserve, _subjectReserveRatio, _sellAmount);
 
         (uint256 protocolFee, uint256 subjectFee) = _calculateSellSideFee(returnAmountWithoutFee);
 
@@ -451,13 +439,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
             revert MoxieBondingCurve_SlippageExceedsLimit();
         }
         emit SubjectShareSold(
-            _subject,
-            address(_subjectToken),
-            _sellAmount,
-            msg.sender,
-            address(token),
-            returnedAmount_,
-            _onBehalfOf
+            _subject, address(_subjectToken), _sellAmount, msg.sender, address(token), returnedAmount_, _onBehalfOf
         );
 
         // burn subjectToken
@@ -475,9 +457,11 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
      * @return protocolFee_ Buy side protocol fee in PCT_BASE.
      * @return subjectFee_  Buy side subject fee in PCT_BASE.
      */
-    function _calculateBuySideFee(
-        uint256 _depositAmount
-    ) internal view returns (uint256 protocolFee_, uint256 subjectFee_) {
+    function _calculateBuySideFee(uint256 _depositAmount)
+        internal
+        view
+        returns (uint256 protocolFee_, uint256 subjectFee_)
+    {
         protocolFee_ = (_depositAmount * protocolBuyFeePct) / PCT_BASE;
         subjectFee_ = (_depositAmount * subjectBuyFeePct) / PCT_BASE;
     }
@@ -488,9 +472,11 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
      * @return protocolFee_ Sell side protocol fee in PCT_BASE.
      * @return subjectFee_ Sell side subject fee in PCT_BASE.
      */
-    function _calculateSellSideFee(
-        uint256 _sellAmount
-    ) internal view returns (uint256 protocolFee_, uint256 subjectFee_) {
+    function _calculateSellSideFee(uint256 _sellAmount)
+        internal
+        view
+        returns (uint256 protocolFee_, uint256 subjectFee_)
+    {
         protocolFee_ = (_sellAmount * protocolSellFeePct) / PCT_BASE;
         subjectFee_ = (_sellAmount * subjectSellFeePct) / PCT_BASE;
     }
@@ -571,10 +557,11 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
      * @return subjectReserve_ Total reserve of Subject.
      * @return subjectSupply_ Total supply of subject token.
      */
-    function _validateSubjectInput(
-        address _subject,
-        uint256 _subjectTokenAmount
-    ) internal view returns (uint32 subjectReserveRatio_, uint256 subjectReserve_, uint256 subjectSupply_) {
+    function _validateSubjectInput(address _subject, uint256 _subjectTokenAmount)
+        internal
+        view
+        returns (uint32 subjectReserveRatio_, uint256 subjectReserve_, uint256 subjectSupply_)
+    {
         if (_isZeroAddress(_subject)) revert MoxieBondingCurve_InvalidSubject();
         if (_subjectTokenAmount == 0) revert MoxieBondingCurve_InvalidAmount();
 
@@ -591,9 +578,10 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         subjectSupply_ = subjectToken.totalSupply();
     }
 
-    function updateProtocolRewardAddress(
-        address _protocolRewardsAddress
-    ) external onlyRole(UPDATE_PROTOCOL_REWARD_ROLE) {
+    function updateProtocolRewardAddress(address _protocolRewardsAddress)
+        external
+        onlyRole(UPDATE_PROTOCOL_REWARD_ROLE)
+    {
         if (_isZeroAddress(_protocolRewardsAddress)) {
             revert MoxieBondingCurve_InvalidProtocolRewardAddress();
         }
@@ -630,8 +618,8 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         uint256 _orderReferrerSellFeePct
     ) external onlyRole(UPDATE_FEES_ROLE) {
         if (
-            !_feeIsValid(_platformReferrerBuyFeePct + _orderReferrerBuyFeePct) ||
-            !_feeIsValid(_platformReferrerSellFeePct + _orderReferrerSellFeePct)
+            !_feeIsValid(_platformReferrerBuyFeePct + _orderReferrerBuyFeePct)
+                || !_feeIsValid(_platformReferrerSellFeePct + _orderReferrerSellFeePct)
         ) revert MoxieBondingCurve_InvalidFeePercentage();
 
         platformReferrerBuyFeePct = _platformReferrerBuyFeePct;
@@ -640,10 +628,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         orderReferrerSellFeePct = _orderReferrerSellFeePct;
 
         emit UpdateReferralFees(
-            platformReferrerBuyFeePct,
-            platformReferrerSellFeePct,
-            orderReferrerBuyFeePct,
-            orderReferrerSellFeePct
+            platformReferrerBuyFeePct, platformReferrerSellFeePct, orderReferrerBuyFeePct, orderReferrerSellFeePct
         );
     }
 
@@ -652,7 +637,11 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
      * @param _subject Address of the subject to pause or unpause trading for.
      * @param _pause True to pause trading, false to unpause trading.
      */
-    function pauseTrading(address _subject, bool _pause) external onlyRole(UPDATE_RESERVE_RATIO) {
+    function pauseTrading(
+        address _subject,
+        bool _pause
+    ) external onlyRole(UPDATE_RESERVE_RATIO) {
+
         uint32 subjectReserveRatio = reserveRatio[_subject];
 
         if (subjectReserveRatio == 0) {
@@ -664,14 +653,18 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
 
         emit TradingPaused(_subject, _pause);
     }
-
     /**
      * @dev Allow updation of reserve ratio by determined by DAO for specific subject.
      * @param _subject Address of subject.
-     * @param _newReserveRatio new Reserve ratio.
+     * @param _newReserveRatio new Reserve ratio. 
      */
-    function updateReserveRatio(address _subject, uint32 _newReserveRatio) external onlyRole(UPDATE_RESERVE_RATIO) {
-        if (lastPaused[_subject] == 0) revert MoxieBondingCurve_SubjectNotPaused();
+    function updateReserveRatio(
+        address _subject,
+        uint32 _newReserveRatio
+    ) external onlyRole(UPDATE_RESERVE_RATIO) {
+
+         if (lastPaused[_subject] == 0) 
+              revert MoxieBondingCurve_SubjectNotPaused();
 
         uint32 currentReserveRatio = reserveRatio[_subject];
 
@@ -679,13 +672,17 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
             revert MoxieBondingCurve_SubjectNotInitialized();
         }
 
-        if (_newReserveRatio == 0 || !_reserveRatioIsValid(_newReserveRatio)) {
+        if ( _newReserveRatio == 0 || !_reserveRatioIsValid(_newReserveRatio)) {
             revert MoxieBondingCurve_InvalidReserveRation();
         }
 
         reserveRatio[_subject] = _newReserveRatio;
 
-        emit SubjectReserveRatioUpdated(_subject, currentReserveRatio, _newReserveRatio);
+        emit SubjectReserveRatioUpdated(
+            _subject,
+            currentReserveRatio,
+            _newReserveRatio
+        );
     }
 
     /**
@@ -781,11 +778,12 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
      * @param _depositAmount Deposit amount to buy shares.
      * @param _minReturnAmountAfterFee Minimum shares that must be returned.
      */
-    function buyShares(
-        address _subject,
-        uint256 _depositAmount,
-        uint256 _minReturnAmountAfterFee
-    ) external whenNotPaused whenNotTradingPaused(_subject) returns (uint256 shares_) {
+    function buyShares(address _subject, uint256 _depositAmount, uint256 _minReturnAmountAfterFee)
+        external
+        whenNotPaused
+        whenNotTradingPaused(_subject)
+        returns (uint256 shares_)
+    {
         shares_ = _buySharesInternal(_subject, _depositAmount, msg.sender, _minReturnAmountAfterFee, address(0));
     }
 
@@ -796,12 +794,12 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
      * @param _onBehalfOf Address of buy token beneficiary.
      * @param _minReturnAmountAfterFee Minimum buy token that must be returned.
      */
-    function sellSharesFor(
-        address _subject,
-        uint256 _sellAmount,
-        address _onBehalfOf,
-        uint256 _minReturnAmountAfterFee
-    ) external whenNotPaused whenNotTradingPaused(_subject) returns (uint256 returnAmount_) {
+    function sellSharesFor(address _subject, uint256 _sellAmount, address _onBehalfOf, uint256 _minReturnAmountAfterFee)
+        external
+        whenNotPaused
+        whenNotTradingPaused(_subject)
+        returns (uint256 returnAmount_)
+    {
         returnAmount_ = _sellSharesInternal(_subject, _sellAmount, _onBehalfOf, _minReturnAmountAfterFee, address(0));
     }
 
@@ -811,11 +809,12 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
      * @param _sellAmount Amount of subject shares to sell.
      * @param _minReturnAmountAfterFee Minimum buy token that must be returned.
      */
-    function sellShares(
-        address _subject,
-        uint256 _sellAmount,
-        uint256 _minReturnAmountAfterFee
-    ) external whenNotPaused whenNotTradingPaused(_subject) returns (uint256 returnAmount_) {
+    function sellShares(address _subject, uint256 _sellAmount, uint256 _minReturnAmountAfterFee)
+        external
+        whenNotPaused
+        whenNotTradingPaused(_subject)
+        returns (uint256 returnAmount_)
+    {
         returnAmount_ = _sellSharesInternal(_subject, _sellAmount, msg.sender, _minReturnAmountAfterFee, address(0));
     }
 
@@ -868,13 +867,8 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         uint256 _minReturnAmountAfterFee,
         address _orderReferrer
     ) external whenNotPaused whenNotTradingPaused(_subject) returns (uint256 returnAmount_) {
-        returnAmount_ = _sellSharesInternal(
-            _subject,
-            _sellAmount,
-            _onBehalfOf,
-            _minReturnAmountAfterFee,
-            _orderReferrer
-        );
+        returnAmount_ =
+            _sellSharesInternal(_subject, _sellAmount, _onBehalfOf, _minReturnAmountAfterFee, _orderReferrer);
     }
 
     /**
@@ -890,13 +884,7 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
         uint256 _minReturnAmountAfterFee,
         address _orderReferrer
     ) external whenNotPaused whenNotTradingPaused(_subject) returns (uint256 returnAmount_) {
-        returnAmount_ = _sellSharesInternal(
-            _subject,
-            _sellAmount,
-            msg.sender,
-            _minReturnAmountAfterFee,
-            _orderReferrer
-        );
+        returnAmount_ = _sellSharesInternal(_subject, _sellAmount, msg.sender, _minReturnAmountAfterFee, _orderReferrer);
     }
 
     /**
@@ -904,21 +892,16 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
      * @param _subject  Address of subject.
      * @param _subjectTokenAmount  Amount of subject tokens.
      */
-    function calculateTokensForBuy(
-        address _subject,
-        uint256 _subjectTokenAmount
-    ) external view returns (uint256 moxieAmount_, uint256 protocolFee_, uint256 subjectFee_) {
-        (uint32 subjectReserveRatio_, uint256 subjectReserve_, uint256 subjectSupply_) = _validateSubjectInput(
-            _subject,
-            _subjectTokenAmount
-        );
+    function calculateTokensForBuy(address _subject, uint256 _subjectTokenAmount)
+        external
+        view
+        returns (uint256 moxieAmount_, uint256 protocolFee_, uint256 subjectFee_)
+    {
+        (uint32 subjectReserveRatio_, uint256 subjectReserve_, uint256 subjectSupply_) =
+            _validateSubjectInput(_subject, _subjectTokenAmount);
 
-        uint256 estimatedAmount = formula.calculateFundCost(
-            subjectSupply_,
-            subjectReserve_,
-            subjectReserveRatio_,
-            _subjectTokenAmount
-        );
+        uint256 estimatedAmount =
+            formula.calculateFundCost(subjectSupply_, subjectReserve_, subjectReserveRatio_, _subjectTokenAmount);
 
         uint256 totalFeePCT = protocolBuyFeePct + subjectBuyFeePct;
         moxieAmount_ = (estimatedAmount * PCT_BASE) / (PCT_BASE - totalFeePCT);
@@ -931,21 +914,16 @@ contract MoxieBondingCurveV2 is IMoxieBondingCurveV2, SecurityModule {
      * @param _subject  Address of subject.
      * @param _subjectTokenAmount  Amount of subject tokens.
      */
-    function calculateTokensForSell(
-        address _subject,
-        uint256 _subjectTokenAmount
-    ) external view returns (uint256 moxieAmount_, uint256 protocolFee_, uint256 subjectFee_) {
-        (uint32 subjectReserveRatio_, uint256 subjectReserve_, uint256 subjectSupply_) = _validateSubjectInput(
-            _subject,
-            _subjectTokenAmount
-        );
+    function calculateTokensForSell(address _subject, uint256 _subjectTokenAmount)
+        external
+        view
+        returns (uint256 moxieAmount_, uint256 protocolFee_, uint256 subjectFee_)
+    {
+        (uint32 subjectReserveRatio_, uint256 subjectReserve_, uint256 subjectSupply_) =
+            _validateSubjectInput(_subject, _subjectTokenAmount);
 
-        uint256 estimatedAmount = formula.calculateSaleReturn(
-            subjectSupply_,
-            subjectReserve_,
-            subjectReserveRatio_,
-            _subjectTokenAmount
-        );
+        uint256 estimatedAmount =
+            formula.calculateSaleReturn(subjectSupply_, subjectReserve_, subjectReserveRatio_, _subjectTokenAmount);
 
         (protocolFee_, subjectFee_) = _calculateSellSideFee(estimatedAmount);
 
