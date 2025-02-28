@@ -58,6 +58,7 @@ This solidity code was audited by code4rena.
 - **Token Distribution** Audit report can be found [here](./audit//C4-Moxie-2024-07_Token_Distribution.pdf).
 - **Fan Token Staking** Audit report can be found [here](./audit/Moxie-Staking-Zenith-Audit-Report.pdf).
 - **Referral & Protocol Rewards** Audit report can be found [here](./audit/Zenith%20Audit-Moxie-Referral-12-04-2024.pdf).
+- **Graduation** Audit report can be found [here](./audit/Moxie%20Protocol%20-%20Zenith%20Audit%20Report-Graduation.pdf).
 
 ## License
 
