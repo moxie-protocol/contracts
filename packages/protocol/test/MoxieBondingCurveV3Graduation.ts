@@ -369,7 +369,7 @@ describe("MoxieBondingCurveV2Graduation", () => {
   // graduation market cap 100 million moxie tokens
   const graduationMarketCap = ethers.parseEther("100000000");
   const PPM = BigInt(10 ** 6);
-  const reserveRatios = [800000, 660000, 550000, 400000]; 
+  const reserveRatios = [800000, 660000, 550000, 400000];
   const graduationReserve = (ratio: number) => {
     return (graduationMarketCap * BigInt(ratio)) / PPM;
   };
@@ -407,7 +407,7 @@ describe("MoxieBondingCurveV2Graduation", () => {
             await d.moxieBondingCurve
               .connect(d.owner)
               .updateGraduationMarketCap(reserveRatio, graduationMarketCap);
-            
+
             await setupForGraduation(
               d,
               reserveRatio,
@@ -416,7 +416,7 @@ describe("MoxieBondingCurveV2Graduation", () => {
             );
 
             const subject = lower ? d.subjectLower : d.subjectHigher;
-            
+
             await expect(
               d.moxieBondingCurve
                 .connect(d.buyer)
@@ -426,7 +426,7 @@ describe("MoxieBondingCurveV2Graduation", () => {
                   0,
                 ),
             ).to.emit(d.moxieBondingCurve, "SubjectGraduated");
-            
+
             expect(await d.moxieBondingCurve.subjectGraduated(subject.address)).to.be.true;
           }
         });
@@ -438,8 +438,8 @@ describe("MoxieBondingCurveV2Graduation", () => {
     it("should update default graduation market cap", async () => {
       const d = await loadFixture(deploy);
       const newMarketCap = ethers.parseEther("200000000"); // 200 million
-      const currentMarketCap = ethers.MaxUint256 / BigInt("1000000000000000000"); 
-      
+      const currentMarketCap = ethers.MaxUint256 / BigInt("1000000000000000000");
+
       await expect(
         d.moxieBondingCurve
           .connect(d.owner)
@@ -448,8 +448,8 @@ describe("MoxieBondingCurveV2Graduation", () => {
         .to.emit(d.moxieBondingCurve, "DefaultGraduationMarketCapUpdated")
         .withArgs(currentMarketCap, newMarketCap);
 
-        // Verify the new value is set
-        expect(await d.moxieBondingCurve.graduationMarketCap(reserveRatios[0])).to.equal(newMarketCap);
+      // Verify the new value is set
+      expect(await d.moxieBondingCurve.graduationMarketCap(reserveRatios[0])).to.equal(newMarketCap);
     });
 
     it("should revert if caller doesn't have UPDATE_GRADUATION_MARKET_CAP_ROLE", async () => {
@@ -471,9 +471,9 @@ describe("MoxieBondingCurveV2Graduation", () => {
     it("should update graduation market cap for specific reserve ratio", async () => {
       const d = await loadFixture(deploy);
       const reserveRatio = reserveRatios[0];
-      const newMarketCap = ethers.parseEther("200000000"); 
+      const newMarketCap = ethers.parseEther("200000000");
       const oldMarketCap = await d.moxieBondingCurve.graduationMarketCap(reserveRatio);
-      
+
       await expect(
         d.moxieBondingCurve
           .connect(d.owner)
@@ -489,7 +489,7 @@ describe("MoxieBondingCurveV2Graduation", () => {
       const d = await loadFixture(deploy);
       const reserveRatio = reserveRatios[0];
       const defaultMarketCap = ethers.MaxUint256 / BigInt("1000000000000000000");
-      
+
       const customMarketCap = ethers.parseEther("200000000");
       await d.moxieBondingCurve
         .connect(d.owner)
@@ -524,14 +524,14 @@ describe("MoxieBondingCurveV2Graduation", () => {
       const d = await loadFixture(deploy);
       const reserveRatio = 800000;
       const initialMarketCap = ethers.parseEther("100000000");
-      const reducedMarketCap = ethers.parseEther("50000000"); 
-      
+      const reducedMarketCap = ethers.parseEther("50000000");
+
       await d.moxieBondingCurve
         .connect(d.owner)
         .updateGraduationMarketCap(reserveRatio, initialMarketCap);
 
       const requiredReserve = (initialMarketCap * BigInt(reserveRatio)) / BigInt(10 ** 6);
-      
+
       const buyAmount = amountWithFee(d, requiredReserve - d.initialReserve - ethers.parseEther("1000"));
       await setupForGraduation(d, reserveRatio, buyAmount, true);
 
@@ -607,8 +607,8 @@ describe("MoxieBondingCurveV2Graduation", () => {
                 await setupForGraduation(d, reserveRatio, buyAmount, lower);
 
                 await d.moxieBondingCurve
-                .connect(d.owner)
-                .updateGraduationMarketCap(reserveRatio, reducedMarketCap);
+                  .connect(d.owner)
+                  .updateGraduationMarketCap(reserveRatio, reducedMarketCap);
 
                 const subjectToken = lower ? d.subjectTokenLower : d.subjectTokenHigher;
                 const subjectAddress = lower ? d.subjectLower.address : d.subjectHigher.address;
@@ -702,6 +702,40 @@ describe("MoxieBondingCurveV2Graduation", () => {
     });
   });
 
+  describe("Buy & burn of created tokens after graduation", () => {
+    it("should burn tokens when recipient is address(0)", async () => {
+      const d = await loadFixture(deploy);
+      const reserveRatio = 800000;
+      const initialMarketCap = ethers.parseEther("100000000");
+      const reducedMarketCap = ethers.parseEther("50000000");
+
+      await d.moxieBondingCurve
+        .connect(d.owner)
+        .updateGraduationMarketCap(reserveRatio, initialMarketCap);
+
+      const requiredReserve = (initialMarketCap * BigInt(reserveRatio)) / BigInt(10 ** 6);
+      const buyAmount = amountWithFee(d, requiredReserve - d.initialReserve - ethers.parseEther("1000"));
+      await setupForGraduation(d, reserveRatio, buyAmount, true);
+
+
+      await d.moxieBondingCurve
+        .connect(d.owner)
+        .updateGraduationMarketCap(reserveRatio, reducedMarketCap);
+
+      await expect(d.moxieBondingCurve
+        .connect(d.owner)
+        .buySharesFor(d.subjectLower.address, ethers.parseEther("1000"), ethers.ZeroAddress, 0)
+      )
+      .to.emit(d.moxieBondingCurve, "SubjectGraduated")
+      .emit(d.subjectTokenLower, "Transfer").withArgs(
+        d.moxieBondingCurveAddress,
+        ethers.ZeroAddress,
+        "131251082967617318" // calculated manually
+      );
+
+    });
+  });
+
   describe("Fee Distribution with Different Configurations", () => {
     const testSubjects = [
       { name: "subjectLower", lower: true },
@@ -713,82 +747,82 @@ describe("MoxieBondingCurveV2Graduation", () => {
         reserveRatios.forEach((reserveRatio) => {
           it(`should distribute swap fees correctly with reserve ratio ${reserveRatio}`, async () => {
             const d = await loadFixture(deploy);
-                const donationAmount = ethers.parseEther("100");
-                const initialMarketCap = ethers.parseEther("100000000");
-                const reducedMarketCap = ethers.parseEther("50000000");
+            const donationAmount = ethers.parseEther("100");
+            const initialMarketCap = ethers.parseEther("100000000");
+            const reducedMarketCap = ethers.parseEther("50000000");
 
-                await d.moxieBondingCurve
-                  .connect(d.owner)
-                  .updateGraduationMarketCap(reserveRatio, initialMarketCap);
+            await d.moxieBondingCurve
+              .connect(d.owner)
+              .updateGraduationMarketCap(reserveRatio, initialMarketCap);
 
-                const requiredReserve = (initialMarketCap * BigInt(reserveRatio)) / BigInt(10 ** 6);
-                const buyAmount = amountWithFee(d, requiredReserve - d.initialReserve - ethers.parseEther("1000"));
-                await setupForGraduation(d, reserveRatio, buyAmount, lower);
+            const requiredReserve = (initialMarketCap * BigInt(reserveRatio)) / BigInt(10 ** 6);
+            const buyAmount = amountWithFee(d, requiredReserve - d.initialReserve - ethers.parseEther("1000"));
+            await setupForGraduation(d, reserveRatio, buyAmount, lower);
 
-                await d.moxieBondingCurve
-                  .connect(d.owner)
-                  .updateGraduationMarketCap(reserveRatio, reducedMarketCap);
+            await d.moxieBondingCurve
+              .connect(d.owner)
+              .updateGraduationMarketCap(reserveRatio, reducedMarketCap);
 
-                await expect(
-                  d.moxieBondingCurve
-                    .connect(d.owner)
-                    .buyShares(lower ? d.subjectLower.address : d.subjectHigher.address, 1, 0)
-                ).to.emit(d.moxieBondingCurve, "SubjectGraduated");
-                const subjectToken = lower ? d.subjectTokenLower : d.subjectTokenHigher;
-                await d.moxieToken.transfer(await d.fakeDonator.getAddress(), donationAmount);
-                await subjectToken.connect(d.owner).transfer(await d.fakeDonator.getAddress(), donationAmount);
-                await d.fakeDonator.connect(d.owner).donate(
-                  d.graduationHookAddress,
-                  await d.moxieToken.getAddress(),
-                  lower ? d.subjectTokenAddressLower : d.subjectTokenAddressHigher
-                );
+            await expect(
+              d.moxieBondingCurve
+                .connect(d.owner)
+                .buyShares(lower ? d.subjectLower.address : d.subjectHigher.address, 1, 0)
+            ).to.emit(d.moxieBondingCurve, "SubjectGraduated");
+            const subjectToken = lower ? d.subjectTokenLower : d.subjectTokenHigher;
+            await d.moxieToken.transfer(await d.fakeDonator.getAddress(), donationAmount);
+            await subjectToken.connect(d.owner).transfer(await d.fakeDonator.getAddress(), donationAmount);
+            await d.fakeDonator.connect(d.owner).donate(
+              d.graduationHookAddress,
+              await d.moxieToken.getAddress(),
+              lower ? d.subjectTokenAddressLower : d.subjectTokenAddressHigher
+            );
 
-                const protocolRewardsMoxieBalanceBefore = await d.moxieToken.balanceOf(d.protocolRewards);
-                const poolManager = await d.uniswapDeployer.poolManager();
-                const poolManagerMoxieBalanceBefore = await d.moxieToken.balanceOf(poolManager);
-                const subjectSupplyBefore = await subjectToken.totalSupply();
-                const protocolFeeBefore = await d.protocolRewards.balanceOf(d.feeBeneficiary);
-                const subjectFeeBefore = await d.protocolRewards.balanceOf(
-                  lower ? d.subjectLower.address : d.subjectHigher.address,
-                );
-                await d.moxieBondingCurve
-                  .connect(d.owner)
-                  .distributeSwapFee(
-                    lower ? d.subjectLower.address : d.subjectHigher.address,
-                  );
-                const subjectSupplyAfter = await subjectToken.totalSupply();
-                const poolManagerMoxieBalanceAfter = await d.moxieToken.balanceOf(poolManager);
-                const protocolRewardMoxieBalanceAfter = await d.moxieToken.balanceOf(d.protocolRewards);
-                expect(subjectSupplyBefore - subjectSupplyAfter).to.approximately(
-                  donationAmount,
-                  1,
-                  "did not burn fees"
+            const protocolRewardsMoxieBalanceBefore = await d.moxieToken.balanceOf(d.protocolRewards);
+            const poolManager = await d.uniswapDeployer.poolManager();
+            const poolManagerMoxieBalanceBefore = await d.moxieToken.balanceOf(poolManager);
+            const subjectSupplyBefore = await subjectToken.totalSupply();
+            const protocolFeeBefore = await d.protocolRewards.balanceOf(d.feeBeneficiary);
+            const subjectFeeBefore = await d.protocolRewards.balanceOf(
+              lower ? d.subjectLower.address : d.subjectHigher.address,
+            );
+            await d.moxieBondingCurve
+              .connect(d.owner)
+              .distributeSwapFee(
+                lower ? d.subjectLower.address : d.subjectHigher.address,
               );
-                expect(poolManagerMoxieBalanceBefore - poolManagerMoxieBalanceAfter).to.approximately(
-                  donationAmount,
-                  1,
-                  "did not transfer moxie"
-                );
-                expect(protocolRewardMoxieBalanceAfter - protocolRewardsMoxieBalanceBefore).to.approximately(
-                  donationAmount,
-                  1,
-                  "did not transfer moxie"
-                );
-                const protocolFeeAfter = await d.protocolRewards.balanceOf(d.feeBeneficiary);
-                expect(protocolFeeAfter - protocolFeeBefore).to.approximately(
-                  (donationAmount * BigInt(6)) / BigInt(10),
-                  1,
-                  "did not transfer moxie",
-                );
-                const subjectFeeAfter = await d.protocolRewards.balanceOf(
-                  lower ? d.subjectLower.address : d.subjectHigher.address,
-                );
-                expect(subjectFeeAfter - subjectFeeBefore).to.approximately(
-                  (donationAmount * BigInt(4)) / BigInt(10),
-                  1,
-                  "did not transfer moxie",
-                );
-            });
+            const subjectSupplyAfter = await subjectToken.totalSupply();
+            const poolManagerMoxieBalanceAfter = await d.moxieToken.balanceOf(poolManager);
+            const protocolRewardMoxieBalanceAfter = await d.moxieToken.balanceOf(d.protocolRewards);
+            expect(subjectSupplyBefore - subjectSupplyAfter).to.approximately(
+              donationAmount,
+              1,
+              "did not burn fees"
+            );
+            expect(poolManagerMoxieBalanceBefore - poolManagerMoxieBalanceAfter).to.approximately(
+              donationAmount,
+              1,
+              "did not transfer moxie"
+            );
+            expect(protocolRewardMoxieBalanceAfter - protocolRewardsMoxieBalanceBefore).to.approximately(
+              donationAmount,
+              1,
+              "did not transfer moxie"
+            );
+            const protocolFeeAfter = await d.protocolRewards.balanceOf(d.feeBeneficiary);
+            expect(protocolFeeAfter - protocolFeeBefore).to.approximately(
+              (donationAmount * BigInt(6)) / BigInt(10),
+              1,
+              "did not transfer moxie",
+            );
+            const subjectFeeAfter = await d.protocolRewards.balanceOf(
+              lower ? d.subjectLower.address : d.subjectHigher.address,
+            );
+            expect(subjectFeeAfter - subjectFeeBefore).to.approximately(
+              (donationAmount * BigInt(4)) / BigInt(10),
+              1,
+              "did not transfer moxie",
+            );
+          });
         });
       });
     });

@@ -481,19 +481,27 @@ contract MoxieBondingCurveV3 is IMoxieBondingCurveV3, SecurityModule {
      */
     function _executeSwap(IV4Router.ExactInputSingleParams memory _swapParams, address _tokenIn, uint256 _amountIn, address _tokenOut, address _recipient) internal returns (uint256 amountReturned) {
         if(_amountIn >= type(uint128).max) revert MoxieBondingCurve_InvalidAmount();
+
+        bool isBurn = _recipient == address(0);
+        address beneficiary = isBurn ? address(this) : _recipient;
+
         bytes[] memory params = new bytes[](3);
         params[0] = abi.encode(_swapParams);
         params[1] = abi.encode(_tokenIn, _amountIn, false);
         // 0 means take all
-        params[2] = abi.encode(_tokenOut, _recipient, 0);
+        params[2] = abi.encode(_tokenOut, beneficiary, 0);
         bytes memory command = abi.encode(
             abi.encodePacked(uint8(Actions.SWAP_EXACT_IN_SINGLE), uint8(Actions.SETTLE), uint8(Actions.TAKE)),
             params);
         bytes[] memory commands = new bytes[](1);
         commands[0] = command;
-        uint256 amountOutBefore = _balanceOf(_tokenOut, _recipient);
+        uint256 amountOutBefore = _balanceOf(_tokenOut, beneficiary);
         router.execute(abi.encodePacked(uint8(Commands.V4_SWAP)), commands, block.timestamp);
-        amountReturned = _balanceOf(_tokenOut, _recipient) - amountOutBefore;
+        amountReturned = _balanceOf(_tokenOut, beneficiary) - amountOutBefore;
+
+        if (isBurn) {
+            IERC20Extended(_tokenOut).burn(amountReturned);
+        }
     }
 
     /**
