@@ -703,7 +703,7 @@ describe("MoxieBondingCurveV2Graduation", () => {
   });
 
   describe("Buy & burn of created tokens after graduation", () => {
-    it.only("should burn tokens when recipient is address(0)", async () => {
+    it("should burn tokens when recipient is address(0)", async () => {
       const d = await loadFixture(deploy);
       const reserveRatio = 800000;
       const initialMarketCap = ethers.parseEther("100000000");
@@ -725,7 +725,7 @@ describe("MoxieBondingCurveV2Graduation", () => {
       await expect(d.moxieBondingCurve
         .connect(d.owner)
         .buySharesFor(d.subjectLower.address, ethers.parseEther("1000"), ethers.ZeroAddress, 0)
-      ).to
+      )
       .to.emit(d.moxieBondingCurve, "SubjectGraduated")
       .emit(d.subjectTokenLower, "Transfer").withArgs(
         d.moxieBondingCurveAddress,
