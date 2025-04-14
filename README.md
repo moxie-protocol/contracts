@@ -22,7 +22,7 @@ This repository contains the official source code for the Moxie smart contracts.
 
 ## Local Setup
 
-- Install the dependencies for all the contract project under this repository by simply running the following commnand:
+- Install the dependencies for all the contract project under this repository by simply running the following command:
 
 ```sh
 yarn
