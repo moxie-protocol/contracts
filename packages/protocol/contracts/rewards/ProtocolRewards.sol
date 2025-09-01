@@ -9,6 +9,7 @@ import {IERC20Extended} from "../interfaces/IERC20Extended.sol";
 
 import {SecurityModule} from "../SecurityModule.sol";
 import {IProtocolRewards} from "./IProtocolRewards.sol";
+import {IWETH} from "../interfaces/IWETH.sol";
 
 contract ProtocolRewards is
     IProtocolRewards,
@@ -24,6 +25,8 @@ contract ProtocolRewards is
 
     bytes32 public constant BLOCK_UNBLOCK_ROLE =
         keccak256("BLOCK_UNBLOCK_ROLE");
+
+    address public constant WETH_ADDRESS = address(0x4200000000000000000000000000000000000006);
 
     IERC20Extended public token;
 
@@ -165,7 +168,11 @@ contract ProtocolRewards is
 
         emit Withdraw(owner, to, amount);
 
-        token.transfer(to, amount);
+        if (WETH_ADDRESS == address(token)) {
+            unwrapAndTransferETH(to, amount);
+        } else {
+            token.transfer(to, amount);
+        }
     }
 
     /**
@@ -230,7 +237,11 @@ contract ProtocolRewards is
 
         emit Withdraw(from, to, amount);
 
-        token.transfer(to, amount);
+        if (WETH_ADDRESS == address(token)) {
+            unwrapAndTransferETH(to, amount);
+        } else {
+            token.transfer(to, amount);
+        }
     }
 
     /**
@@ -260,4 +271,15 @@ contract ProtocolRewards is
 
         emit BlockListUpdated(_wallet, false);
     }
+
+    function unwrapAndTransferETH(
+        address to,
+        uint256 amount
+    ) private {
+        IWETH(WETH_ADDRESS).approve(address(this), amount);
+        IWETH(WETH_ADDRESS).withdraw(amount);
+        payable(to).transfer(amount);
+    }
+
+    receive() external payable {}
 }
