@@ -25,6 +25,8 @@ interface IProtocolRewards {
 
     event BlockListUpdated(address _wallet, bool _isAdded);
 
+    event WETHAddressUpdated(address _wethAddress);
+
     function deposit(address _to, uint256 _amount, bytes4 _why, string calldata _comment) external;
 
     function depositBatch(

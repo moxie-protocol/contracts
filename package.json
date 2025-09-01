@@ -1,5 +1,6 @@
 {
   "name": "contracts",
+  "private": true,
   "packageManager": "yarn@4.2.2",
   "workspaces": [
     "packages/*"
@@ -10,5 +11,8 @@
     "check": "yarn workspaces foreach --all --parallel --verbose run check",
     "test": "yarn workspaces foreach --all --parallel --verbose --interlaced run test",
     "coverage": "yarn workspaces foreach --all --parallel --verbose --interlaced run coverage"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.1"
   }
 }

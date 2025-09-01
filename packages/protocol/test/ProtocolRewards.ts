@@ -2,21 +2,23 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import hre, { ethers } from "hardhat";
 
-describe('Protocol Rewards', () => {
+describe.only('Protocol Rewards', () => {
 
     const deploy = async () => {
         const [deployer, owner] = await ethers.getSigners();
 
         const MoxieToken = await hre.ethers.getContractFactory("MoxieToken");
+        const WETHToken = await hre.ethers.getContractFactory("WETH9");
         const ProtocolRewards = await hre.ethers.getContractFactory('ProtocolRewards');
 
 
         const moxieToken = await MoxieToken.connect(owner).deploy();
         const protocolRewards = await ProtocolRewards.connect(deployer).deploy();
+        const wethToken = await WETHToken.connect(owner).deploy();
 
 
         const moxieTokenAddress = await moxieToken.getAddress();
-
+        const wethTokenAddress = await wethToken.getAddress(); //WETH_ADDRESS = 0x1234
         await protocolRewards.initialize(
             moxieTokenAddress,
             owner
@@ -28,7 +30,9 @@ describe('Protocol Rewards', () => {
             moxieTokenAddress,
             protocolRewards,
             owner,
-            deployer
+            deployer,
+            wethToken,
+            wethTokenAddress
         }
 
     }
@@ -39,13 +43,15 @@ describe('Protocol Rewards', () => {
             const {
                 moxieTokenAddress,
                 protocolRewards,
-                owner
-
+                owner,
+                wethTokenAddress
             } = await loadFixture(deploy);
+
+            console.log("moxieTokenAddress", moxieTokenAddress);
+            console.log("tokem", protocolRewards.token());
 
             expect(await protocolRewards.hasRole(await protocolRewards.DEFAULT_ADMIN_ROLE(), owner.address)).to.true;
             expect(await protocolRewards.token()).to.equal(moxieTokenAddress);
-
         });
 
 
@@ -794,6 +800,140 @@ describe('Protocol Rewards', () => {
             );
             const totalSupply = await protocolRewards.totalSupply();
             expect(totalSupply).to.not.equal(0);
+        });
+    });
+
+    describe.only("withdrawWETH", () => {
+        it("should revert when withdrawing with zero address", async () => {
+            const { protocolRewards } = await loadFixture(deploy);
+
+            await expect(protocolRewards.withdraw(
+                ethers.ZeroAddress,
+                ethers.parseEther("50")
+            )).to.be.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_ADDRESS_ZERO");
+        });
+
+        it("should revert when withdrawing more than balance", async () => {
+            const { owner, protocolRewards, wethToken, wethTokenAddress } = await loadFixture(deploy);
+        
+            await protocolRewards.connect(owner).grantRole(await protocolRewards.SET_WETH_ADDRESS_ROLE(), owner.address);
+            await protocolRewards.connect(owner).setWETHAddress(wethTokenAddress);
+            expect(await protocolRewards.WETH_ADDRESS()).to.equal(wethTokenAddress);
+            // First deposit some rewards
+            const depositAmount = ethers.parseEther("40");
+
+            await wethToken.connect(owner).approve(await protocolRewards.getAddress(), depositAmount);
+            await protocolRewards.connect(owner).deposit(
+                owner.address,
+                depositAmount,
+                ethers.id("PROTOCOL_FEE").slice(0, 10),
+                "Test deposit"
+            );
+            await expect(protocolRewards.withdraw(
+                owner.address,
+                ethers.parseEther("50")
+            )).to.be.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_INVALID_WITHDRAW");
+        });
+
+        it("should successfully withdraw rewards", async () => {
+            const {
+                owner,
+                deployer,
+                wethToken,
+                protocolRewards,
+                wethTokenAddress
+            } = await loadFixture(deploy);
+
+            await protocolRewards.connect(owner).grantRole(await protocolRewards.SET_WETH_ADDRESS_ROLE(), owner.address);
+            await protocolRewards.connect(owner).setWETHAddress(wethTokenAddress);
+            expect(await protocolRewards.WETH_ADDRESS()).to.equal(wethTokenAddress);
+
+            // First deposit some rewards
+            const depositAmount = ethers.parseEther("100");
+            await wethToken.connect(owner).approve(await protocolRewards.getAddress(), depositAmount);
+            await protocolRewards.connect(owner).deposit(
+                deployer.address,
+                depositAmount,
+                ethers.id("PROTOCOL_FEE").slice(0, 10),
+                "Test deposit"
+            );
+
+            // Initial balances
+            const initialETHBalance = await ethers.provider.getBalance(owner.address);
+            const initialRewardsBalance = await protocolRewards.balanceOf(deployer.address);
+
+            // Withdraw half the rewards
+            const withdrawAmount = ethers.parseEther("50");
+            await expect(protocolRewards.connect(deployer).withdraw(
+                owner.address,
+                withdrawAmount
+            )).to.emit(protocolRewards, "Withdraw")
+                .withArgs(deployer.address, owner.address, withdrawAmount);
+
+            // Verify balances updated correctly
+            expect(await protocolRewards.balanceOf(deployer.address)).to.equal(initialRewardsBalance - withdrawAmount);
+            expect(await ethers.provider.getBalance(owner.address)).to.equal(initialETHBalance + withdrawAmount);
+        });
+
+        it("should withdraw full balance when amount is zero", async () => {
+            const {
+                owner,
+                deployer,
+                wethToken,
+                protocolRewards,
+                wethTokenAddress
+            } = await loadFixture(deploy);
+
+            await protocolRewards.connect(owner).grantRole(await protocolRewards.SET_WETH_ADDRESS_ROLE(), owner.address);
+            await protocolRewards.connect(owner).setWETHAddress(wethTokenAddress);
+            expect(await protocolRewards.WETH_ADDRESS()).to.equal(wethTokenAddress);
+
+            // First deposit some rewards
+            const depositAmount = ethers.parseEther("100");
+            await wethToken.connect(owner).approve(await protocolRewards.getAddress(), depositAmount);
+            await protocolRewards.connect(owner).deposit(
+                deployer.address,
+                depositAmount,
+                ethers.id("PROTOCOL_FEE").slice(0, 10),
+                "Test deposit"
+            );
+
+            // Initial balances
+            const initialETHBalance = await ethers.provider.getBalance(owner.address);
+            const initialRewardsBalance = await protocolRewards.balanceOf(deployer.address);
+
+            // Withdraw with amount = 0 should withdraw full balance
+            await expect(protocolRewards.connect(deployer).withdraw(
+                owner.address,
+                0
+            )).to.emit(protocolRewards, "Withdraw")
+                .withArgs(deployer.address, owner.address, initialRewardsBalance);
+
+            // Verify balances updated correctly
+            expect(await protocolRewards.balanceOf(deployer.address)).to.equal(0);
+            expect(await ethers.provider.getBalance(owner.address)).to.equal(initialETHBalance + initialRewardsBalance);
+        });
+
+        it("should revert when withdrawing while blocked", async () => {
+            const {
+                owner,
+                deployer,
+                protocolRewards,
+                wethTokenAddress
+            } = await loadFixture(deploy);
+
+            await protocolRewards.connect(owner).grantRole(await protocolRewards.SET_WETH_ADDRESS_ROLE(), owner.address);
+            await protocolRewards.connect(owner).setWETHAddress(wethTokenAddress);
+            expect(await protocolRewards.WETH_ADDRESS()).to.equal(wethTokenAddress);
+
+            // Block the deployer address
+            await protocolRewards.connect(owner).grantRole(await protocolRewards.BLOCK_UNBLOCK_ROLE(), owner.address);
+            await protocolRewards.connect(owner).addToBlockList(deployer.address);
+
+            await expect(protocolRewards.connect(deployer).withdraw(
+                owner.address,
+                ethers.parseEther("50")
+            )).to.be.revertedWithCustomError(protocolRewards, "PROTOCOL_REWARDS_BLOCKED");
         });
     });
 });
