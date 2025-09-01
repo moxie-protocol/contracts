@@ -10,5 +10,8 @@
     "check": "yarn workspaces foreach --all --parallel --verbose run check",
     "test": "yarn workspaces foreach --all --parallel --verbose --interlaced run test",
     "coverage": "yarn workspaces foreach --all --parallel --verbose --interlaced run coverage"
+  },
+  "dependencies": {
+    "hardhat": "^2.24.2"
   }
 }

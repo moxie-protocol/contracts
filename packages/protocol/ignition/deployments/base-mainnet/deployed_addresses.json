@@ -18,7 +18,7 @@
   "ProtocolContractsProxy#vaultInstance": "0x58708f65BacdF5040eac739cf01299fA756a1154",
   "ProtocolContractsProxy#tokenManagerProxyAdmin": "0x25132181Ff2dDE0D43e045C3aD326F58Ee934d2B",
   "ProtocolContractsProxy#vaultProxyAdmin": "0x998c0CC1e23F4e213e51783f4B07d5b3783108de",
-  "ProtocolContractsProxy#moxieBondingCurveProxy": "0x373065e66B32a1C428aa14698dFa99BA7199B55E",
+  "ProtocolContractsProxy#moxieBondingCurveProxy": "``  ``",
   "ProtocolContractsProxy#moxieBondingCurveInstance": "0x373065e66B32a1C428aa14698dFa99BA7199B55E",
   "ProtocolContractsProxy#moxieBondingCurveProxyAdmin": "0x7631884b5F0A8cB67CBc4B8B008fb00CDf2BeD76",
   "Staking#Staking": "0x26270a887787aC5E0c14DB21953A0d11A17dDe2B",
@@ -34,5 +34,7 @@
   "UpgradeProtocol#moxieBondingCurveV2": "0xebDA7002368afC86b0AdC06924C62E3403C42974",
   "UpgradeProtocol#subjectFactoryV2": "0xE87330564E49f86ECd8F9f764445e464a60453B0",
   "UpgradeStaking#stakingV2Instance": "0xCb2513d389354F7ac80F5042bB8948A234A439B2",
-  "UpgradeStaking#stakingV2MasterCopy": "0xd0eeaacF821F9AF52e909486880Acf6d4d4f6EBc"
+  "UpgradeStaking#stakingV2MasterCopy": "0xd0eeaacF821F9AF52e909486880Acf6d4d4f6EBc",
+  "GraduationHook#GraduationHook": "0xc5a48b447f01e9ce3ede71e4c1c2038c38bd9000",
+  "UpgradeProtocol#moxieBondingCurveV3": "0x1b67962294982155e86a512c1bcf6889b8c1ac96"
 }

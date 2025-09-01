@@ -29,6 +29,7 @@ contract HelperConfig is DeriveKeys {
 
     NetworkConfig public currentNetworkConfig;
     address public currentOwner;
+    address public graduationHook;
     mapping(uint256 chainId => NetworkConfig) public networkConfigs;
 
     constructor() {
@@ -82,8 +83,10 @@ contract HelperConfig is DeriveKeys {
         currentNetworkConfig = networkConfigs[block.chainid];
         if (block.chainid == 84532) {
             currentOwner = 0x9313eDE439fC91852D4Fd8f753C5569255286790;
+            graduationHook = 0x0a1AB444Ecd911E9A3ACFdfa13a22037958C9000;
         } else if (block.chainid == 8453) {
             currentOwner = 0x96feEd3b3071ebe641C2eCa422C6f57fd9EE4BbC; // TODO: confirm this owner
+            graduationHook = 0xC5a48B447f01E9ce3EDe71e4c1c2038C38bd9000;
         }
     }
 }
