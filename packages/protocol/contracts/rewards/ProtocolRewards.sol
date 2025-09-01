@@ -26,14 +26,10 @@ contract ProtocolRewards is
 
     bytes32 public constant BLOCK_UNBLOCK_ROLE =
         keccak256("BLOCK_UNBLOCK_ROLE");
-    
-    bytes32 public constant SET_WETH_ADDRESS_ROLE =
-        keccak256("SET_WETH_ADDRESS_ROLE");
 
-    address public WETH_ADDRESS;
+    address public constant WETH_ADDRESS = address(0x4200000000000000000000000000000000000006);
 
     IERC20Extended public token;
-    IWETH public weth;
 
     mapping(address => uint256) public balanceOf;
     mapping(address => uint256) public nonces;
@@ -62,9 +58,7 @@ contract ProtocolRewards is
             revert PROTOCOL_REWARDS_ADDRESS_ZERO();
         }
 
-        if (WETH_ADDRESS == address(_token)) {
-            weth = IWETH(_token);
-        }
+        token = IERC20Extended(_token);
 
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
     }
@@ -176,9 +170,9 @@ contract ProtocolRewards is
 
         emit Withdraw(owner, to, amount);
 
-        if (wethAddress[block.chainid] == address(token)) {
-            weth.approve(address(this), amount);
-            weth.withdraw(amount);
+        if (WETH_ADDRESS == address(token)) {
+            IWETH(WETH_ADDRESS).approve(address(this), amount);
+            IWETH(WETH_ADDRESS).withdraw(amount);
             payable(to).transfer(amount);
         } else {
             token.transfer(to, amount);
@@ -248,8 +242,8 @@ contract ProtocolRewards is
         emit Withdraw(from, to, amount);
 
         if (WETH_ADDRESS == address(token)) {
-            weth.approve(address(this), amount);
-            weth.withdraw(amount);
+            IWETH(WETH_ADDRESS).approve(address(this), amount);
+            IWETH(WETH_ADDRESS).withdraw(amount);
             payable(to).transfer(amount);
         } else {
             token.transfer(to, amount);
@@ -284,13 +278,7 @@ contract ProtocolRewards is
         emit BlockListUpdated(_wallet, false);
     }
 
-    function setWETHAddress(
-        address _wethAddress
-    ) external onlyRole(SET_WETH_ADDRESS_ROLE) {
-        if (_wethAddress == address(0)) revert PROTOCOL_REWARDS_ADDRESS_ZERO();
+    receive() external payable {}
 
-        WETH_ADDRESS = _wethAddress;
-
-        emit WETHAddressUpdated(_wethAddress);
-    }
+    //goes here
 }
