@@ -1161,7 +1161,7 @@ describe.only('Protocol Rewards WETH', () => {
         });
     });
 
-    describe.only("withdraw", () => {
+    describe("withdraw", () => {
         it("should revert when withdrawing with zero address", async () => {
             const { protocolRewards } = await loadFixture(deploy);
 
@@ -1311,23 +1311,36 @@ describe.only('Protocol Rewards WETH', () => {
              const initialEthBalance2 = await ethers.provider.getBalance(deployer.address); 
              const initialRewardsBalance2 = await protocolRewards.balanceOf(deployer.address);
 
-            await protocolRewards.connect(owner).withdraw(
+            const tx1 = await protocolRewards.connect(owner).withdraw(
                 owner.address,
                 amounts[0]
             );
-            await protocolRewards.connect(deployer).withdraw(
+            const tx2 = await protocolRewards.connect(deployer).withdraw(
                 deployer.address,
                 amounts[1]
             );
 
+            let gasCost1:bigint = BigInt(0);
+            const receipt1 = await tx1.wait();
+            if(receipt1) {
+                gasCost1 = receipt1.gasUsed * receipt1.gasPrice;   
+            }
+            
+            
+            let gasCost2:bigint = BigInt(0);
+            const receipt2 = await tx2.wait();
+            if(receipt2) {
+                gasCost2 = receipt2.gasUsed * receipt2.gasPrice;   
+            }
+
             expect(await protocolRewards.balanceOf(owner.address)).to.equal(initialRewardsBalance1-amounts[0]);
             expect(await protocolRewards.balanceOf(deployer.address)).to.equal(initialRewardsBalance2-amounts[1]);
-            expect(await ethers.provider.getBalance(owner.address)).to.equal(initialEthBalance1 + amounts[0]);
-            expect(await ethers.provider.getBalance(deployer.address)).to.equal(initialEthBalance2 + amounts[1]);
+            expect(await ethers.provider.getBalance(owner.address)).to.equal(initialEthBalance1 + amounts[0] - gasCost1);
+            expect(await ethers.provider.getBalance(deployer.address)).to.equal(initialEthBalance2 + amounts[1] - gasCost2);
 
         });
 
-        it.only("mutiple deposit and withdraw", async () => {
+        it("multiple deposits and withdrawals", async () => {
             const {
                 owner,
                 deployer,
@@ -1336,7 +1349,7 @@ describe.only('Protocol Rewards WETH', () => {
             } = await loadFixture(deploy);
 
             // First deposit some rewards
-            const recipients = [deployer.address, owner.address];
+            const recipients = [owner.address, deployer.address];
             const amounts = [ethers.parseEther("50"), ethers.parseEther("50")];
             const reasons = [ethers.id("PROTOCOL_FEE").slice(0, 10), ethers.id("PROTOCOL_FEE").slice(0, 10)];
             const comment = "Test batch deposit and withdraw";
@@ -1344,37 +1357,51 @@ describe.only('Protocol Rewards WETH', () => {
             await wethToken.connect(owner).deposit({value: amounts[0] + amounts[1]});
             await wethToken.connect(owner).approve(await protocolRewards.getAddress(), amounts[0] + amounts[1]);
             await protocolRewards.connect(owner).deposit(
-                deployer.address,
+                recipients[0],
                 amounts[0],
                 reasons[0],
                 comment
             );
-            await protocolRewards.connect(deployer).deposit(
-                owner.address,
+            await protocolRewards.connect(owner).deposit(
+                recipients[1],
                 amounts[1],
                 reasons[1],
                 comment
             );
 
             // Initial balances
-            const initialEthBalance1 = await ethers.provider.getBalance(owner.address); 
-            const initialRewardsBalance1 = await protocolRewards.balanceOf(owner.address);
-            const initialEthBalance2 = await ethers.provider.getBalance(deployer.address); 
-            const initialRewardsBalance2 = await protocolRewards.balanceOf(deployer.address);
+            const initialEthBalance1 = await ethers.provider.getBalance(recipients[0]);
+            const initialRewardsBalance1 = await protocolRewards.balanceOf(recipients[0]);
+            const initialEthBalance2 = await ethers.provider.getBalance(recipients[1]); 
+            const initialRewardsBalance2 = await protocolRewards.balanceOf(recipients[1]);
 
-            await protocolRewards.connect(owner).withdraw(
-                owner.address,
+            const tx1 = await protocolRewards.connect(owner).withdraw(
+                recipients[0],
                 amounts[0]
             );
-            await protocolRewards.connect(deployer).withdraw(
-                deployer.address,
+
+            let gasCost1:bigint = BigInt(0);
+            const receipt1 = await tx1.wait();
+            if(receipt1) {
+                gasCost1 = receipt1.gasUsed * receipt1.gasPrice;   
+            }
+
+            let gasCost2:bigint = BigInt(0);
+            const tx2 = await protocolRewards.connect(deployer).withdraw(
+                recipients[1],
                 amounts[1]
             );
 
-            expect(await protocolRewards.balanceOf(owner.address)).to.equal(initialRewardsBalance1-amounts[0]);
-            expect(await protocolRewards.balanceOf(deployer.address)).to.equal(initialRewardsBalance2-amounts[1]);
-            expect(await ethers.provider.getBalance(owner.address)).to.equal(initialEthBalance1 + amounts[0]);
-            expect(await ethers.provider.getBalance(deployer.address)).to.equal(initialEthBalance2 + amounts[1]);
+            const receipt2 = await tx2.wait();
+            if(receipt2) {
+                gasCost2 = receipt2.gasUsed * receipt2.gasPrice;   
+            }
+
+            expect(await protocolRewards.balanceOf(recipients[0])).to.equal(initialRewardsBalance1-amounts[0]);
+            expect(await protocolRewards.balanceOf(recipients[1])).to.equal(initialRewardsBalance2-amounts[1]);
+            expect(await ethers.provider.getBalance(recipients[0])).to.equal(initialEthBalance1 + amounts[0] - gasCost1);
+            expect(await ethers.provider.getBalance(recipients[1])).to.equal(initialEthBalance2 + amounts[1] - gasCost2);
+
         });
     });
 
