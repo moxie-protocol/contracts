@@ -30,5 +30,9 @@
   "UpgradeProtocol#moxieBondingCurveV2": "0xE5FD5Ba4b7963fc6D375dD69Cb48aede40093a62",
   "UpgradeProtocol#subjectFactoryV2": "0xfeBEf75C4864d9e0a3CD59e1B34cC561774eD636",
   "UpgradeStaking#stakingV2MasterCopy": "0x695256DCa7C6F33366e69948af1B789302227ACe",
-  "Staking#stakingProxyAdmin": "0xA142a4ba6cB104459B828a170FEFbc2445F55d93"
+  "Staking#stakingProxyAdmin": "0xA142a4ba6cB104459B828a170FEFbc2445F55d93",
+  "ProtocolRewardsV2#ProtocolRewardsV2": "0xeADa260b370f5F73000501Cf33249a743678B575",
+  "ProtocolRewardsV2#protocolRewardsV2Proxy": "0x4a7f3C6E390A24d655cb72a3DAafEba0cd3327a9",
+  "ProtocolRewardsV2#protocolRewardsV2Instance": "0x4a7f3C6E390A24d655cb72a3DAafEba0cd3327a9",
+  "ProtocolRewardsV2#protocolRewardsV2ProxyAdmin": "0x1395Bc29F64863c3B04F299b1a262b3A65920b40"
 }
