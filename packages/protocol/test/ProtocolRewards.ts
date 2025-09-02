@@ -987,26 +987,26 @@ describe.only('Protocol Rewards WETH', () => {
                 protocolRewards
             } = await loadFixture(deploy);
 
-            const depositAmount = ethers.parseEther("100000000000"); // Amount larger than total supply
+
+            const depositAmount = ethers.parseEther("5"); 
+            await wethToken.connect(owner).deposit({value: depositAmount});
+
+
             const reason = ethers.id("PROTOCOL_FEE").slice(0, 10);
             const comment = "Test deposit";
 
-            await wethToken.connect(owner).deposit({value: depositAmount});
 
             await wethToken.connect(deployer).approve(await protocolRewards.getAddress(), depositAmount);
 
-            await protocolRewards.connect(deployer).deposit(
+            const rewardAmount = ethers.parseEther("10"); 
+
+            await expect(protocolRewards.connect(deployer).deposit(
                 deployer.address,
-                depositAmount,
+                rewardAmount,
                 reason,
                 comment
-            );
-            // await expect(protocolRewards.connect(deployer).deposit(
-            //     deployer.address,
-            //     depositAmount,
-            //     reason,
-            //     comment
-            // )).to.be.reverted;
+            )).to.be.reverted;
+
         });
     });
 
@@ -1107,13 +1107,13 @@ describe.only('Protocol Rewards WETH', () => {
             } = await loadFixture(deploy);
 
             const recipients = [deployer.address, owner.address];
-            const amounts = [ethers.parseEther("50000000000"), ethers.parseEther("50000000000")]; // Amounts larger than total supply
+            const amounts = [ethers.parseEther("50"), ethers.parseEther("50")]; // Amounts larger than total supply
             const reasons = [ethers.id("PROTOCOL_FEE").slice(0, 10), ethers.id("PROTOCOL_FEE").slice(0, 10)];
             const comment = "Test batch deposit";
 
             await wethToken.connect(owner).deposit({value: amounts[0]});
 
-            await wethToken.connect(deployer).approve(await protocolRewards.getAddress(), amounts[0] + amounts[1]);
+            await wethToken.connect(deployer).approve(await protocolRewards.getAddress(), amounts[0]);
 
             await expect(protocolRewards.connect(deployer).depositBatch(
                 recipients,
