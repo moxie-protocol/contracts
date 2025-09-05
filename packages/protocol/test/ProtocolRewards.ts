@@ -1,6 +1,6 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import hre, { artifacts, ethers, network } from "hardhat";
+import hre, { ethers } from "hardhat";
 
 describe('Protocol Rewards', () => {
 
