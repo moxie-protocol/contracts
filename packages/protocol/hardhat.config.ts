@@ -50,6 +50,13 @@ const config: HardhatUserConfig = {
         mnemonic: process.env.MNEMONIC as string,
       },
     },
+    hyperevm: {
+      url: process.env.HYPEREVM_RPC_URL ?? "https://rpc.hyperliquid.xyz/evm",
+      chainId: 999,
+      accounts: {
+        mnemonic: process.env.MNEMONIC as string,
+      },
+    },
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY as string,
