@@ -50,6 +50,19 @@ const config: HardhatUserConfig = {
         mnemonic: process.env.MNEMONIC as string,
       },
     },
+    hyperevm: {
+      url: process.env.HYPEREVM_RPC_URL ?? "https://rpc.hyperliquid.xyz/evm",
+      chainId: 999,
+      accounts: {
+        mnemonic: process.env.MNEMONIC as string,
+      },
+      // Avoid "intrinsic gas too low" when Ignition/ethers estimate too low on HyperEVM
+      gas: 100_000_000,
+      ignition: {
+        maxFeePerGas: 100_000_000_000n, // 100 gwei cap
+        maxPriorityFeePerGas: 10_000_000_000n, // 10 gwei
+      },
+    },
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY as string,
