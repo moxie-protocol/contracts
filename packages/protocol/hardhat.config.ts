@@ -56,6 +56,12 @@ const config: HardhatUserConfig = {
       accounts: {
         mnemonic: process.env.MNEMONIC as string,
       },
+      // Avoid "intrinsic gas too low" when Ignition/ethers estimate too low on HyperEVM
+      gas: 100_000_000,
+      ignition: {
+        maxFeePerGas: 100_000_000_000n, // 100 gwei cap
+        maxPriorityFeePerGas: 10_000_000_000n, // 10 gwei
+      },
     },
   },
   etherscan: {
