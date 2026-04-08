@@ -40,7 +40,8 @@ contract UniswapDeployer {
             bytes32(0), // bytes32 v3PoolInitCodeHash,
             address(poolManager), // address v4PoolManager,
             address(0), // address v3NFTPositionManager,
-            address(positionManager) // address v4PositionManager
+            address(positionManager), // address v4PositionManager
+            address(0) // address acrossSpokePool
         );
     }
 

@@ -1,22 +1,33 @@
-
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 import config from "../config/config.json";
 
+const REQUIRED_DEPLOY_ENV = ["REWARD_TOKEN_ADDRESS", "MNEMONIC"] as const;
+
+function requireEnv(keys: readonly string[]): void {
+    const missing = keys.filter((k) => !process.env[k]?.trim());
+    if (missing.length > 0) {
+        throw new Error(
+            `ProtocolRewardsV2 deploy requires env: ${missing.join(", ")}. Set them before running ignition deploy.`
+        );
+    }
+}
+
+requireEnv(REQUIRED_DEPLOY_ENV);
+
 export default buildModule("ProtocolRewardsV2", (m) => {
-    
     const proxyAdminOwner = config.proxyAdminOwner;
 
     const deployer = m.getAccount(0);
     const owner = m.getAccount(1);
 
-    const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
+    const rewardTokenAddress = process.env.REWARD_TOKEN_ADDRESS!.trim();
     const protocolRewardsV2 = m.contract("ProtocolRewardsV2", [], { from: deployer });
 
-    
-    m.call(protocolRewardsV2, "initialize", [WETH_ADDRESS, owner], { from: deployer, id: "initializeProtocolRewardMasterCopy" });
 
-    const protocolRewardsCallData = m.encodeFunctionCall(protocolRewardsV2, "initialize", [WETH_ADDRESS,  owner]);
+    m.call(protocolRewardsV2, "initialize", [rewardTokenAddress, owner], { from: deployer, id: "initializeProtocolRewardMasterCopy" });
+
+    const protocolRewardsCallData = m.encodeFunctionCall(protocolRewardsV2, "initialize", [rewardTokenAddress, owner]);
 
     const protocolRewardV2Proxy = m.contract("TransparentUpgradeableProxy", [
         protocolRewardsV2,
